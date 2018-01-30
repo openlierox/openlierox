@@ -211,10 +211,6 @@ simulateStart:
 	if(!bDedicated)
 		SimulateEntities(orig_dt);
 
-	// Weather
-	// TODO: if this will be implemented once, this should be moved to the PhysicsEngine
-	//cWeather.Simulate(tLX->fDeltaTime, game.gameMap());
-
 	// Projectiles
 	if(shouldDoProjectileSimulation())
 		PhysicsEngine::Get()->simulateProjectiles(cProjectiles.begin());

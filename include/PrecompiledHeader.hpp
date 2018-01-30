@@ -56,7 +56,6 @@
 #include "Cursor.h"
 #include "CVec.h"
 #include "CViewport.h"
-#include "CWeather.h"
 #include "CWormBot.h"
 #include "CWorm.h"
 #include "CWormHuman.h"
