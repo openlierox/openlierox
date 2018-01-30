@@ -24,7 +24,6 @@
 #include "GfxPrimitives.h"
 #include "DeprecatedGUI/CTitleButton.h"
 #include "DeprecatedGUI/CButton.h"
-#include "DeprecatedGUI/CGuiSkin.h"
 #include "DeprecatedGUI/CLabel.h"
 #include "DeprecatedGUI/CCombobox.h"
 #include "DeprecatedGUI/CCheckbox.h"
@@ -46,12 +45,10 @@ enum {
 	mm_LevelEditor,
 	mm_Options,
 	mm_Quit,
-	mm_LXALink
+	mm_LXALink,
+	mm_Theme,
 };
 
-#ifdef DEBUG
-static void Menu_Main_GuiSkinComboboxCreate();
-#endif
 static void Menu_Main_GuiThemeComboboxCreate();
 
 ///////////////////
@@ -84,18 +81,9 @@ void Menu_MainInitialize()
 	// Quit
 	cMainMenu.Add( new CButton(BUT_QUIT, tMenu->bmpButtons), mm_Quit, 25,440, 50,15);
 
-	#ifdef DEBUG
-	Menu_Main_GuiSkinComboboxCreate();	// Just moved ugly code to function so it won't stand out too much
-	#endif
 	// selection of different themes (like default, LX56, ...)
 	Menu_Main_GuiThemeComboboxCreate();
 
-	// Check if skin should be loaded instead of main menu ( also when selecting different skin from skinned menu )
-	if( tLXOptions->sSkinPath != "" )
-	{
-		Menu_MainShutdown();
-		Menu_CGuiSkinInitialize();
-	}
 	const char * LXALinkText = "Visit our website https://openlierox.net";
 	int orig_spacing = tLX->cFont.GetVSpacing();
 	tLX->cFont.SetVSpacing(tMenu->tFrontendInfo.iCreditsSpacing);
@@ -209,10 +197,30 @@ void Menu_MainFrame()
 					OpenLinkInExternBrowser("https://openlierox.net");
 				}
 				break;
+
+			case mm_Theme:
+				if( ev->iEventMsg == CMB_CHANGED ) {
+					CCombobox * cbox = (CCombobox *) cMainMenu.getWidget(mm_Theme);
+					if (cbox && cbox->getSelectedItem().get() && cbox->getSelectedItem()->index() != tLXOptions->sTheme) {
+						tLXOptions->sTheme = cbox->getSelectedItem()->index();
+						notes("Changed theme to: " + tLXOptions->sTheme + "\n");
+
+						// Atm it's the easiest way and we ensure that every gfx is newly loaded.
+						// The problem is that we would have to clear all the caches because
+						// the order of the searchpaths changed etc.
+
+						// restart game
+						game.state = Game::S_Quit;
+						Menu_MainShutdown(); // cleanup for this menu
+						bRestartGameAfterQuit = true; // set restart-flag
+					}
+				}
+				break;
+
+			default:
+				break;
 		}
 	}
-
-	CGuiSkin::ProcessUpdateCallbacks();	// Process the news box
 
 	if(mouseover) {
 		alpha += tLX->fDeltaTime.seconds()*5;
@@ -299,17 +307,9 @@ struct Menu_Main_GuiThemeComboboxCreate__Executer {
 	void execute() {
 		// GUI theme combobox
 
-		CScriptableVars::RegisterVars("GUI")
-			( (ScriptCallback_t)& ThemeCombobox_OnChange, "ThemeCombobox_OnChange" );
-
-		std::vector< ScriptVar_t > GuiThemeInit;
-		GuiThemeInit.push_back( ScriptVar_t ( "None#" ) );	// List of items
-		GuiThemeInit.push_back( ScriptVar_t ( "" ) );	// Attached var (set it later because we must fill it first)
-		GuiThemeInit.push_back( ScriptVar_t ( "GUI.MakeSound() GUI.ThemeCombobox_OnChange()" ) );	// OnClick handler
-
 		cMainMenu.Add( new CLabel("Theme", tLX->clNormalLabel), -1, 465,10,0,0);
-		combobox = (CCombobox*) CCombobox::WidgetCreator(GuiThemeInit, &cMainMenu, -1, 515,8,115,17);
-
+		combobox = new CCombobox();
+		cMainMenu.Add(combobox, mm_Theme, 515,8,115,17);
 
 		// Find all directories in the the lierox
 		combobox->clear();
@@ -318,25 +318,7 @@ struct Menu_Main_GuiThemeComboboxCreate__Executer {
 
 		combobox->addItem("", "- Default -");
 		FindFiles(*this, "themes", false, FM_DIR);
-
-		themeVar = ScriptVarPtr_t(&tLXOptions->sTheme);
-		combobox->setAttachedVar( &themeVar );
 		combobox->setCurSIndexItem(tLXOptions->sTheme);
-		
-		combobox->ProcessGuiSkinEvent( CGuiSkin::SHOW_WIDGET );
-	}
-
-	static void ThemeCombobox_OnChange( const std::string & param, CWidget * source ) {
-		notes("Changed theme to: " + tLXOptions->sTheme + "\n");
-
-		// Atm it's the easiest way and we ensure that every gfx is newly loaded.
-		// The problem is that we would have to clear all the caches because
-		// the order of the searchpaths changed etc.
-
-		// restart game
-		game.state = Game::S_Quit; // quit
-		Menu_MainShutdown(); // cleanup for this menu
-		bRestartGameAfterQuit = true; // set restart-flag
 	}
 
 	// handler for FindFile
@@ -351,28 +333,9 @@ struct Menu_Main_GuiThemeComboboxCreate__Executer {
 	}
 };
 
-
 void Menu_Main_GuiThemeComboboxCreate() {
 	Menu_Main_GuiThemeComboboxCreate__Executer initialiser;
 	initialiser.execute();
 }
-
-#ifdef DEBUG
-void Menu_Main_GuiSkinComboboxCreate()
-{
-	// GUI skin combobox
-	// TODO: hacky hacky, non-skinned code with skinned widgets, maybe move to different function
-	cMainMenu.Add( new CLabel("Skin",tLX->clNormalLabel), -1, 480,40,0,0);
-	std::vector< ScriptVar_t > GuiSkinInit;
-	GuiSkinInit.push_back( ScriptVar_t ( "None#" ) );	// List of items
-	GuiSkinInit.push_back( ScriptVar_t ( "GameOptions.Game.SkinPath" ) );	// Attached var
-	GuiSkinInit.push_back( ScriptVar_t ( "GUI.MakeSound() GUI.SkinCombobox_Change()" ) );	// OnClick handler
-	// TODO: position as constant, will remove this code when only skins will be left
-	CWidget * GuiSkin = CCombobox::WidgetCreator(GuiSkinInit, &cMainMenu, -1, 515,38,115,17);
-	CGuiSkin::CallbackHandler c_init( "GUI.SkinCombobox_Init()", GuiSkin );
-	c_init.Call();
-	GuiSkin->ProcessGuiSkinEvent( CGuiSkin::SHOW_WIDGET );
-}
-#endif
 
 }; // namespace DeprecatedGUI

@@ -21,7 +21,6 @@
 #include "GfxPrimitives.h"
 #include "Cursor.h"
 #include "Menu.h"
-#include "DeprecatedGUI/CGuiSkin.h"
 #include "DeprecatedGUI/CWidget.h"
 
 
@@ -96,7 +95,6 @@ private:
     int         iGoodWidth;
 	int			iButtonType;
 	bool		bUseFallback;
-	CGuiSkin::CallbackHandler cClick;
 	
 	void initWidthHeight() {
 		iWidth = iGoodWidth;
@@ -130,32 +128,8 @@ public:
 	void	Draw(SDL_Surface * bmpDest);
     void	Draw2(SDL_Surface * bmpDest);
 
-	void	LoadStyle() {}
-
 	int		getType()  { return iButtonType; }
 	void	setType(int _t)  { iButtonType = _t; }
-
-	static CWidget * WidgetCreator( const std::vector< ScriptVar_t > & p, CGuiLayoutBase * layout, int id, int x, int y, int dx, int dy )
-	{
-		CButton * w = new CButton( p[0].toInt(), tMenu->bmpButtons );
-		w->cClick.Init( p[1].toString(), w );
-		layout->Add( w, id, x, y, dx, dy );
-		return w;
-	};
-
-	static CWidget * WidgetCreator_Image( const std::vector< ScriptVar_t > & p, CGuiLayoutBase * layout, int id, int x, int y, int dx, int dy )
-	{
-		CButton * w = new CButton( p[0].toString() );
-		w->cClick.Init( p[1].toString(), w );
-		layout->Add( w, id, x, y, dx, dy );
-		return w;
-	};
-	
-	void	ProcessGuiSkinEvent(int iEvent) 
-	{
-		if( iEvent == BTN_CLICKED )
-			cClick.Call();
-	};
 
 	void setImageID(int theValue) {
 		iImageID = theValue;

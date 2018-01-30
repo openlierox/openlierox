@@ -25,7 +25,6 @@
 #include "DeprecatedGUI/CScrollbar.h"
 #include "DynDraw.h"
 #include "gui/List.h"
-#include "DeprecatedGUI/CGuiSkin.h"
 
 class ScriptVar_t;
 struct ScriptVarPtr_t;
@@ -130,7 +129,6 @@ private:
 
 	ScriptVar_t		*var;
 	ScriptVarPtr_t	*varPtr;
-	CGuiSkin::CallbackHandler cClick;
 
 private:
 	GuiListItem::Pt getItemRW(int index);
@@ -138,6 +136,7 @@ private:
 	void	Unique();
 	std::list<GuiListItem::Pt>::iterator lowerBound(const GuiListItem::Pt& item, int *index, bool *equal);
 	std::list<GuiListItem::Pt>::iterator upperBound(const GuiListItem::Pt& item, int *index, bool *equal);
+	void	ProcessChangedEvent();
 
 public:
 	// Methods
@@ -155,7 +154,6 @@ public:
 	int		KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate);
 
 	void	Draw(SDL_Surface * bmpDest);
-	void	LoadStyle() {}
 	
 	uintptr_t SendMessage(int iMsg, uintptr_t Param1, uintptr_t Param2);
 	uintptr_t SendMessage(int iMsg, const std::string& sStr, uintptr_t Param);
@@ -203,12 +201,8 @@ public:
 
 	void	setAttachedVar(ScriptVar_t* v)	{ var = v; }
 	void	setAttachedVar(ScriptVarPtr_t* v)	{ varPtr = v; }
-	
-	static CWidget * WidgetCreator( const std::vector< ScriptVar_t > & p, CGuiLayoutBase * layout, int id, int x, int y, int dx, int dy );
-	void	ProcessGuiSkinEvent(int iEvent);
-	
-	boost::signals2::signal<void (const GuiListItem::Pt&)> OnChangeSelection;
 
+	boost::signals2::signal<void (const GuiListItem::Pt&)> OnChangeSelection;
 };
 
 } // namespace DeprecatedGUI

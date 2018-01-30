@@ -31,7 +31,6 @@
 #include "DeprecatedGUI/CCheckbox.h"
 #include "DeprecatedGUI/CMenu.h"
 #include "DeprecatedGUI/CImage.h"
-#include "DeprecatedGUI/CGuiSkin.h"
 #include "DeprecatedGUI/CBox.h"
 #include "DeprecatedGUI/CGuiSkinnedLayout.h"
 #include "DeprecatedGUI/CBrowser.h"

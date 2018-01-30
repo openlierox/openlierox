@@ -298,10 +298,6 @@ void Menu_Frame() {
 		case MNU_OPTIONS:
 			Menu_OptionsFrame();
 			break;
-
-		case MNU_GUISKIN:
-			Menu_CGuiSkinFrame();
-			break;
 	}
 
 	// In network menu, we do the update anyway.
@@ -1487,10 +1483,6 @@ void Menu_Current_Shutdown() {
 				// Options
 			case MNU_OPTIONS:
 				Menu_OptionsShutdown();
-				break;
-				
-			case MNU_GUISKIN:
-				Menu_CGuiSkinShutdown();
 				break;
 		}
 	

@@ -100,17 +100,12 @@ public:
 	// Draw the title button
 	void	Draw(SDL_Surface * bmpDest);
 
-	INLINE void	LoadStyle() {}
-
 
 	INLINE int		getValue()						{ return iKeyvalue; }
 	INLINE void	setValue(int _v)					{ iKeyvalue = _v; }
 	INLINE std::string	getText()				{ return sText; }
 	INLINE void	setText(const std::string& _t)		{ sText = _t; }
 	INLINE std::string	getName()				{ return sName; }
-
-	static CWidget * WidgetCreator( const std::vector< ScriptVar_t > & p, CGuiLayoutBase * layout, int id, int x, int y, int dx, int dy );
-	void	ProcessGuiSkinEvent(int iEvent);
 
 	static CInputbox * InputBoxSelected;
 	static std::string InputBoxLabel;	// "GUI.InputBoxLabel" skin string
@@ -127,12 +122,6 @@ class CInputboxInput: public CInputbox	// InputBoxDialog.xml should contain exac
 	~CInputboxInput();
 	
 	void	Draw(SDL_Surface * bmpDest) {};
-
-	static CWidget * WidgetCreator( const std::vector< ScriptVar_t > & p, CGuiLayoutBase * layout, int id, int x, int y, int dx, int dy );
-	
-	void	ProcessGuiSkinEvent(int iEvent);
-
-	static void UpdateCallback( const std::string & param, CWidget * source );
 };
 
 } // namespace DeprecatedGUI

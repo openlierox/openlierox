@@ -17,7 +17,6 @@
 #include "LieroX.h"
 
 #include "DeprecatedGUI/Menu.h"
-#include "DeprecatedGUI/CGuiSkin.h"
 #include "GfxPrimitives.h"
 #include "StringUtils.h"
 #include "Cursor.h"
@@ -1864,21 +1863,5 @@ lv_subitem_t *CListview::getSubItem(lv_item_t *it, int subitem_index)
 
 	return sub;
 }
-
-CWidget * CListview::WidgetCreator( const std::vector< ScriptVar_t > & p, CGuiLayoutBase * layout, int id, int x, int y, int dx, int dy )
-{
-	CListview * w = new CListview();
-	layout->Add( w, id, x, y, dx, dy );
-	w->setOldStyle( p[0].toBool() );
-	w->setShowSelect( ! p[1].toBool() );
-	w->setDrawBorder( ! p[2].toBool() );
-	return w;
-}
-
-static bool CListview_WidgetRegistered =
-	CGuiSkin::RegisterWidget( "listview", & CListview::WidgetCreator )
-							( "oldstyle", SVT_BOOL )
-							( "hideselection", SVT_BOOL )
-							( "hideborder", SVT_BOOL );
 
 }; // namespace DeprecatedGUI

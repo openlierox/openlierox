@@ -95,11 +95,6 @@ public:
 	
 	// Draw the label
 	void	Draw(SDL_Surface * bmpDest);
-	void	LoadStyle() {}
-
-	static CWidget * WidgetCreator( const std::vector< ScriptVar_t > & p, CGuiLayoutBase * layout, int id, int x, int y, int dx, int dy );
-	
-	void	ProcessGuiSkinEvent(int iEvent) {}
 };
 
 }; // namespace DeprecatedGUI

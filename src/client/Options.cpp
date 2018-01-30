@@ -184,8 +184,6 @@ bool GameOptions::Init() {
 		( tLXOptions->bShowHealth, "Game.ShowWormHealth", false )
 		( tLXOptions->bColorizeNicks, "Game.ColorizeNicks", true )
 		( tLXOptions->bAutoTyping, "Game.AutoTyping", false )
-		( tLXOptions->sSkinPath, "Game.SkinPath", "" )
-		( tLXOptions->bNewSkinnedGUI, "Game.NewSkinnedGUI", false )
 		( tLXOptions->sTheme, "Game.Theme", "" )
 		( tLXOptions->bAntiAliasing, "Game.Antialiasing", true )
 		( tLXOptions->bMouseAiming, "Game.MouseAiming", false ) // TODO: rename to mouse control?
@@ -319,8 +317,6 @@ bool GameOptions::Init() {
 		
 	bool ret = tLXOptions->LoadFromDisc();
 
-	/*notes << "Skinnable vars:\n" << CGuiSkin::DumpVars() << endl;
-	notes << "Skinnable widgets:\n" << CGuiSkin::DumpWidgets() << endl;*/
 	return ret;
 }
 

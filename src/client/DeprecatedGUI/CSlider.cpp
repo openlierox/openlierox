@@ -94,11 +94,4 @@ uintptr_t CSlider::SendMessage(int iMsg, uintptr_t Param1, uintptr_t Param2)
 	return 0;
 }
 
-static bool CSlider_WidgetRegistered = 
-	CGuiSkin::RegisterWidget( "slider", & CSlider::WidgetCreator )
-							( "min", SVT_INT32 )
-							( "max", SVT_INT32 )
-							( "var", SVT_STRING )
-							( "click", SVT_STRING );
-
 }; // namespace DeprecatedGUI

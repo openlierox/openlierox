@@ -18,7 +18,6 @@
 
 #include "DeprecatedGUI/CWidget.h"
 #include "DeprecatedGUI/Menu.h"
-#include "DeprecatedGUI/CGuiSkin.h"
 #include "StringUtils.h"
 
 
@@ -26,7 +25,6 @@ namespace DeprecatedGUI {
 
 CWidget::~CWidget() 
 {
-	CGuiSkin::DeRegisterUpdateCallback( this );	// Remove any possible callbacks 'cause widget not exists anymore
 }
 
 ///////////////////

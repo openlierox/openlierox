@@ -12,7 +12,6 @@
 #define __CIMAGE_H__DEPRECATED_GUI__
 
 #include "DeprecatedGUI/CWidget.h"
-#include "DeprecatedGUI/CGuiSkin.h"
 #include "InputEvents.h"
 #include "GfxPrimitives.h"
 #include "DynDraw.h"
@@ -79,7 +78,6 @@ private:
     // Attributes
 	SmartPointer<DynDrawIntf> tImage;
 	std::string	sPath;
-	CGuiSkin::CallbackHandler cClick;
 
 public:
     // Methods
@@ -109,16 +107,6 @@ public:
 	uintptr_t SendMessage(int iMsg, std::string *sStr, uintptr_t Param)  { return 0; }
 
 	void	Draw(SDL_Surface * bmpDest);
-
-	void	LoadStyle() {}
-
-	static CWidget * WidgetCreator( const std::vector< ScriptVar_t > & p, CGuiLayoutBase * layout, int id, int x, int y, int dx, int dy );
-
-	void	ProcessGuiSkinEvent(int iEvent) 
-	{
-		if( iEvent == IMG_CLICK )
-			cClick.Call();
-	}
 };
 
 }; // namespace DeprecatedGUI

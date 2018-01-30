@@ -152,14 +152,11 @@ public:
 	virtual	int		KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate) = 0;
 	virtual	int		KeyUp(UnicodeChar c, int keysym,  const ModifiersState& modstate) = 0;
 
-	virtual	void	LoadStyle() = 0;	// Not used anywhere
 	virtual	void	Draw(SDL_Surface * bmpDest) = 0;
 
 	virtual uintptr_t	SendMessage(int iMsg, uintptr_t Param1, uintptr_t Param2) = 0;
 	virtual uintptr_t	SendMessage(int iMsg, const std::string& sStr, uintptr_t Param) = 0;
 	virtual uintptr_t	SendMessage(int iMsg, std::string *sStr, uintptr_t Param) = 0;
-	
-	virtual void	ProcessGuiSkinEvent(int iEvent) {};
 };
 
 // Base class for CGuiLayout and CGuiSkinnedLayout

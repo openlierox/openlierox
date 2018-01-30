@@ -572,12 +572,6 @@ void	Menu_Net_NETUpdateList();
 void    Menu_Net_NETShowServer(const std::string& szAddress);
 void	Menu_Net_NET_ServerList_Refresher();
 
-	
-// CGuiSkin menu - when GUI skinning system will be complete (hopefully) this will become the main menu
-bool	Menu_CGuiSkinInitialize();
-void	Menu_CGuiSkinFrame();
-void	Menu_CGuiSkinShutdown();
-
 void	Menu_Current_Shutdown();
 	
 } // namespace DeprecatedGUI

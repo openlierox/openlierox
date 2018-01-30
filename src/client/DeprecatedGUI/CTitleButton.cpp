@@ -36,9 +36,4 @@ void CTitleButton::Draw(SDL_Surface * bmpDest)
 	bMouseOver = false;
 }
 
-static bool CTitleButton_WidgetRegistered =
-	CGuiSkin::RegisterWidget( "titlebutton", & CTitleButton::WidgetCreator )
-							( "textid", SVT_INT32 )
-							( "click", SVT_STRING );
-
 }; // namespace DeprecatedGUI

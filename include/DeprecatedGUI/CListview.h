@@ -235,8 +235,6 @@ public:
 
 	void	Draw(SDL_Surface * bmpDest);
 
-	void	LoadStyle() {}
-
 	uintptr_t SendMessage(int iMsg, uintptr_t Param1, uintptr_t Param2);
 	uintptr_t SendMessage(int iMsg, const std::string& sStr, uintptr_t Param);
 	uintptr_t SendMessage(int iMsg, std::string *sStr, uintptr_t Param);
@@ -310,14 +308,6 @@ public:
 	void	setMouseOverEventEnabled(bool b)	{ bMouseOverEventEnabled = b; }
 	int		getMouseOverIndex()		 { if(tMouseOver) return tMouseOver->iIndex; else return -1; }
 	std::string getMouseOverSIndex() { if(tMouseOver) return tMouseOver->sIndex; else return ""; }
-
-
-	// Read-only listview for skinning (typically text list), more variants to come.
-	static CWidget * WidgetCreator( const std::vector< ScriptVar_t > & p, CGuiLayoutBase * layout, int id, int x, int y, int dx, int dy );
-
-	void	ProcessGuiSkinEvent(int iEvent)
-	{
-	}
 };
 
 } // namespace DeprecatedGUI

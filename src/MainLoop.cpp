@@ -14,7 +14,6 @@
 #include "TaskManager.h"
 #include "Timer.h"
 #include "DeprecatedGUI/Menu.h"
-#include "SkinnedGUI/CGuiSkin.h"
 #include "CServer.h"
 #include "IRC.h"
 #include "CrashHandler.h"
@@ -437,28 +436,6 @@ Result MainLoopTask::handle_Startup() {
 	gameloopThreadId = getCurrentThreadId();
 	assert(gameloopThreadId != (ThreadId)-1);
 	setCurThreadPriority(0.5f);
-
-	// NOTE: This code is really old and outdated.
-	// We might just merge that with the new code.
-	// Otherwise, it will never work like this because of
-	// missing stuff, e.g. no game.init call (which does
-	// also init the old menu, so we cannot simply call it
-	// like this right now).
-	if( tLXOptions->bNewSkinnedGUI )
-	{
-		// Just for test - it's not real handler yet
-		SkinnedGUI::cMainSkin->Load("default");
-		SkinnedGUI::cMainSkin->OpenLayout("test.skn");
-		while (game.state != Game::S_Quit)  {
-			tLX->fDeltaTime = GetTime() - tLX->currentTime;
-			tLX->currentTime = GetTime();
-
-			ProcessEvents();
-			SkinnedGUI::cMainSkin->Frame();
-		}
-
-		return "quit";
-	}
 
 	state = State_Loop;
 	return true;

@@ -70,7 +70,6 @@ private:
 	Color	iTextColor;
 	float	fValueScale;
 	std::string sAppendText;
-	CGuiSkin::CallbackHandler cClick;
 
 public:
 	// Methods
@@ -89,8 +88,6 @@ public:
 
 	void	Draw(SDL_Surface * bmpDest);
 
-	void	LoadStyle() {}
-
 	uintptr_t SendMessage(int iMsg, uintptr_t Param1, uintptr_t Param2);
 	uintptr_t SendMessage(int iMsg, const std::string& sStr, uintptr_t Param) { return 0; }
 	uintptr_t SendMessage(int iMsg, std::string *sStr, uintptr_t Param)  { return 0; }
@@ -103,31 +100,6 @@ public:
 	int		getMax() const						{ return iMax; }
 	int		getMin() const						{ return iMin; }
 
-	static CWidget * WidgetCreator( const std::vector< ScriptVar_t > & p, CGuiLayoutBase * layout, int id, int x, int y, int dx, int dy )
-	{
-		CSlider * w = new CSlider( p[1].toInt(), p[0].toInt() );
-		layout->Add( w, id, x, y, dx, dy );
-		w->iVar = CScriptableVars::GetVarP<int>( p[2].toString() );
-		if( w->iVar )
-			w->setValue( *w->iVar );
-		w->cClick.Init( p[3].toString(), w );
-		return w;
-	}
-	
-	void	ProcessGuiSkinEvent(int iEvent) 
-	{
-		if( iEvent == CGuiSkin::SHOW_WIDGET )
-		{
-			if( iVar )
-				setValue( *iVar );
-		}
-		if( iEvent == SLD_CHANGE )
-		{
-			if( iVar )
-				*iVar = iValue;
-			cClick.Call();
-		}
-	}
 };
 
 }; // namespace DeprecatedGUI

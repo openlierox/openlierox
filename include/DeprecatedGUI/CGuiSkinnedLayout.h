@@ -98,12 +98,7 @@ public:
 	uintptr_t	SendMessage(int iMsg, const std::string& sStr, uintptr_t Param) { return 0; };
 	uintptr_t	SendMessage(int iMsg, std::string *sStr, uintptr_t Param) { return 0; };
 
-	void	LoadStyle() { };
-	
-	void	ProcessGuiSkinEvent(int iEvent);
 	virtual void ProcessChildEvent(int iEvent, CWidget * child) { };
-	
-	static CWidget * WidgetCreator( const std::vector< ScriptVar_t > & p, CGuiLayoutBase * layout, int id, int x, int y, int dx, int dy );
 
 	static void ExitDialog( const std::string & param, CWidget * source );
 	static void ChildDialog( const std::string & param, CWidget * source );

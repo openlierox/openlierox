@@ -46,12 +46,6 @@ void CCheckbox::Create()
 }
 
 
-static bool CCheckBox_WidgetRegistered = 
-	CGuiSkin::RegisterWidget( "checkbox", & CCheckbox::WidgetCreator )
-							( "var", SVT_STRING )
-							( "click", SVT_STRING );
-
-	
 CCheckbox::CCheckbox(ScriptVar_t& var) {
 	assert(var.type == SVT_BOOL);
 	bValue = var.toBool();
