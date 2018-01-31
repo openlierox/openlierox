@@ -57,7 +57,8 @@ static_assert( sizeof(ply_def2) / sizeof(std::string) == __SIN_PLY_BOTTOM, "ply_
 static_assert( sizeof(gen_keys) / sizeof(std::string) == __SIN_GENERAL_BOTTOM, "gen_keys__sizecheck" );
 static_assert( sizeof(gen_def) / sizeof(std::string) == __SIN_GENERAL_BOTTOM, "gen_def__sizecheck" );
 
-static const Version defaultMinVersion("OpenLieroX/0.58_rc1");
+static const char * defaultMinVersionStr = "OpenLieroX/0.58_rc1";
+static const Version defaultMinVersion(defaultMinVersionStr);
 
 
 
@@ -163,7 +164,7 @@ bool GameOptions::Init() {
 		( tLXOptions->bWantsJoinBanned, "Network.WantsToJoinFromBanned", true )
 		( tLXOptions->bAllowRemoteBots, "Network.AllowRemoteBots", true )
 		( tLXOptions->bForceCompatibleConnect, "Network.ForceCompatibleConnect", true, "Force Compatible", "Don't allow incompatible clients to connect" )
-		( tLXOptions->sForceMinVersion, "Network.ForceMinVersion", defaultMinVersion.asString(), "Force Min Version", "Minimal version needed to play on this server" )
+		( tLXOptions->sForceMinVersion, "Network.ForceMinVersion", defaultMinVersionStr, "Force Min Version", "Minimal version needed to play on this server" )
 		( tLXOptions->bCheckChatMessageLength, "Network.CheckChatMessageLength", true)	//Check chat message length
 		( tLXOptions->iMaxChatMessageLength, "Network.MaxChatMessageLength", 800)	//Max chat message length, 800 should be more than enough for reasonable messages? NOTE: Includes nickname and ": " after it.
 		( tLXOptions->bKickOversizedMsgSenders, "Network.KickOversizedMsgSenders", false)	//Drop clients who send oversized messages NOTE: This should be off by default. It can be used on dedicated servers, but it is better to implement kicking in the control script.
