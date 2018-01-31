@@ -163,15 +163,7 @@ void CServerNetEngine::ParsePacket(CBytestream *bs) {
 		case C2S_REPORTDAMAGE:
 			ParseReportDamage(bs);
 			break;
-			
-		case C2S_NEWNET_KEYS:
-			ParseNewNetKeys(bs);
-			break;
 
-		case C2S_NEWNET_CHECKSUM:
-			ParseNewNetChecksum(bs);
-			break;
-				
 		case C2S_GUSANOS:
 			network.olxParse(NetConnID_conn(cl), *bs);
 			break;
@@ -985,53 +977,6 @@ void CServerNetEngineBeta9::ParseReportDamage(CBytestream *bs)
 	for( int i=0; i < MAX_CLIENTS; i++ )
 		if( server->cClients[i].getStatus() == NET_CONNECTED && (&server->cClients[i]) != cl )
 			server->cClients[i].getNetEngine()->QueueReportDamage( w->getID(), damage, offender->getID() );
-}
-
-
-void CServerNetEngineBeta9::ParseNewNetKeys(CBytestream *bs)
-{
-	int id = bs->readByte();
-	if( id < 0 || id >= MAX_WORMS || !cl->OwnsWorm(id) )
-	{
-		warnings << "CServerNetEngineBeta9::ParseNewNetKeys(): worm id " << id << " client doesn't own worm" << endl;
-		bs->Skip( NewNet::NetPacketSize() );
-		return;
-	}
-
-	CBytestream send;
-	send.writeByte( S2C_NEWNET_KEYS );
-	send.writeByte( id );
-	send.writeData( bs->readData( NewNet::NetPacketSize() ) );
-	
-	// Re-send the packet to all clients, except the sender
-	for( int i=0; i < MAX_CLIENTS; i++ )
-		if( server->cClients[i].getStatus() == NET_CONNECTED && (&server->cClients[i]) != cl )
-		{
-			send.ResetPosToBegin();
-			server->cClients[i].getNetEngine()->SendPacket(&send);
-		}
-}
-
-void CServerNetEngineBeta9::ParseNewNetChecksum(CBytestream *bs)
-{
-	unsigned checksum = bs->readInt(4);
-	AbsTime checkTime(bs->readInt(4));
-	AbsTime myTime;
-	unsigned myChecksum = NewNet::GetChecksum(&myTime);
-	if( myTime != checkTime )
-	{
-		warnings << "CServerNetEngineBeta9::ParseNewNetChecksum(): received time " << checkTime.milliseconds() <<
-					" our time " << myTime.milliseconds() << endl;
-		return;
-	}
-	if( myChecksum != checksum && ! game.gameOver )
-	{
-		std::string wormName = "unknown";
-		if( game.wormsOfClient(cl)->isValid() )
-			wormName = game.wormsOfClient(cl)->get()->getName();
-		server->DropClient(cl, CLL_KICK, "Game state was de-synced in new net engine!");
-		server->SendGlobalText( "Game state was de-synced in new net engine for worm " + wormName, TXT_NETWORK );
-	}
 }
 
 /*

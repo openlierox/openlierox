@@ -991,32 +991,8 @@ void CClient::Frame()
 		game.gameMap()->isLoaded() &&
 		game.gameScript())
 	{
-		if( NewNet::Active() )
-			NewNet_Frame();
-		else
-			Simulation();
+		Simulation();
 	}
-}
-
-void CClient::NewNet_Frame()
-{
-	CBytestream out, packet;
-	if( game.localWorms()->size() <= 0 )
-		return;
-	out.writeByte( C2S_NEWNET_KEYS );
-	out.writeByte( game.localWorms()->get()->getID() );
-	while( NewNet::Frame(&out) )
-	{
-		packet.Append(&out);
-		out.Clear();
-		out.writeByte( C2S_NEWNET_KEYS );
-		out.writeByte( game.localWorms()->get()->getID() );
-	}
-	
-	if( NewNet::ChecksumRecalculated() )
-		getNetEngine()->SendNewNetChecksum();
-
-	cNetChan->AddReliablePacketToSend(packet);
 }
 
 ///////////////////
@@ -1093,9 +1069,6 @@ bool CClient::ReadPackets()
 		if (bDownloadingMap && cHttpDownloader)
 			cHttpDownloader->CancelFileDownload(sMapDownloadName);
 		getUdpFileDownloader()->reset();
-
-		if( NewNet::Active() )
-			NewNet::EndRound();
 
 		// The next frame will pickup the server error flag set & handle the msgbox, disconnecting & quiting
 	}
@@ -2228,16 +2201,6 @@ void CClient::SetupGameInputs()
 
 	InitializeSpectatorViewportKeys();
 
-}
-
-void CClient::NewNet_SaveProjectiles()
-{
-//	NewNet_SavedProjectiles = cProjectiles;
-}
-
-void CClient::NewNet_LoadProjectiles()
-{
-//	cProjectiles = NewNet_SavedProjectiles;
 }
 
 long CClient::MapPosIndex::index(const CMap* m) const {

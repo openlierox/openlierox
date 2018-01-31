@@ -10,7 +10,6 @@
 #include "Physics.h"
 #include "PhysicsLX56.h"
 #include "Debug.h"
-#include "NewNetEngine.h"
 #include "LieroX.h"
 #include "game/CWorm.h"
 #include "CClient.h"
@@ -31,7 +30,7 @@ void PhysicsEngine::UnInit() {
 }
 
 AbsTime GetPhysicsTime() {
-	return NewNet::Active() ? NewNet::GetCurTime() : game.simulationAbsTime();
+	return game.simulationAbsTime();
 }
 
 void PhysicsEngine::skipProjectiles(Iterator<CProjectile*>::Ref projs) {

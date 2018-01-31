@@ -145,7 +145,7 @@ Feature(77, "RopeCanAttachWorm", "Rope can attach worm", "when false, you cannot
 	Feature(127, "HS_SeekerVisionAngle",	"Seeker vision angle",			"The angle of seeker vision (180 = half-circle, 360 = full circle)",
 			360, 	360, 			Version(),			GIG_HideAndSeek, ALT_Advanced,	0,	360,	false,	true ),
 
-	Feature(130, "NewNetEngine", 		"New net engine (restricted)",	"New net engine without self-shooting and lag effects, CPU-eating, many features won't work with it; DONT USE IF YOU DONT KNOW IT",
+	Feature(130, "NewNetEngine", 		"New net engine (restricted)",	"New net engine, it was never finished and later was removed",
 			false, 	false, 			OLXBetaVersion(0,58,1),	GIG_Advanced, ALT_DevKnownUnstable ),
 
 	Feature(140, "FillWithBotsTo",		"Fill with bots up to",	"If too less players, it will get filled with bots",

@@ -194,7 +194,6 @@ bool SinglePlayerGame::startGame() {
 	gameSettings.overwrite[FT_Mod].as<ModInfo>()->path = modInfo.path;
 	gameSettings.overwrite[FT_Mod].as<ModInfo>()->name = modInfo.name;
 
-	gameSettings.overwrite[FT_NewNetEngine] = false;
 	gameSettings.overwrite[FT_Lives] = -2;
 	gameSettings.overwrite[FT_KillLimit] = -1;
 	gameSettings.overwrite[FT_TimeLimit] = -1.0f;

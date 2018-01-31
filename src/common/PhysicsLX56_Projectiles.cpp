@@ -64,7 +64,6 @@ INLINE int CProjectile::ProjWormColl(CVec pos)
 		ownerWorm = game.wormById(GetOwner(), false);
 	
 	bool preventSelfShooting =
-		!NewNet::Active() &&
 		(this->getIgnoreWormCollBeforeTime() > this->fLastSimulationTime); // if the simulation is too early, ignore this worm col
 
 	for_each_iterator(CWorm*, w_, game.aliveWorms()) {

@@ -53,7 +53,7 @@ public:
 	void skipProjectiles(Iterator<CProjectile*>::Ref projs);
 };
 
-AbsTime GetPhysicsTime(); // Returns tLX->currentTime, or NewNet::GetCurTime() if new net engine is active
+AbsTime GetPhysicsTime(); // Returns tLX->currentTime
 
 
 INLINE void warpSimulationTimeForDeltaTimeCap(AbsTime& simulationTime, TimeDiff deltaTime, TimeDiff realDeltaTime) {

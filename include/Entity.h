@@ -136,9 +136,6 @@ void	DrawEntities(SDL_Surface * bmpDest, CViewport *v);
 void	SimulateEntities(TimeDiff dt);
 void	EntityBounce(entity_t *ent);
 
-void	NewNet_SaveEntities();
-void	NewNet_LoadEntities();
-
 struct Line;
 
 void	SetWormBeamEntity(int worm, Color col, const Line& startLine, const Line& endLine);

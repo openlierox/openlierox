@@ -450,8 +450,6 @@ void GameServer::BeginMatch(CServerConnection* receiver)
 	// getting spawned. Thus, this should only be sent if we got ParseImReady from client.
 	CBytestream bs;
 	bs.writeInt(S2C_STARTGAME,1);
-	if (gameSettings[FT_NewNetEngine])
-		bs.writeInt(NewNet::netRandom.getSeed(), 4);
 	if(receiver)
 		receiver->getNetEngine()->SendPacket(&bs);
 	else

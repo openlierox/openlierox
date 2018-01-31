@@ -96,7 +96,6 @@
 #include "Music.h"
 #include "Mutex.h"
 #include "Networking.h"
-#include "NewNetEngine.h"
 #include "NotifyUser.h"
 #include "OLXCommand.h"
 #include "OLXConsole.h"

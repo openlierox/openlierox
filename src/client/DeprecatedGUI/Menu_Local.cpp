@@ -815,9 +815,6 @@ static bool Menu_LocalStartGame_CustomGame() {
 	//
 	gameSettings.overwrite[FT_GameMode].as<GameModeInfo>()->mode = GameMode((GameModeIndex)cLocalMenu.SendMessage(ml_Gametype, CBM_GETCURINDEX, (uintptr_t)0, 0));
 	
-	gameSettings.overwrite[FT_NewNetEngine] = false; // May become buggy otherwise, new net engine doesn't support any kind of pause
-	
-	
     // Get the mod name
 	GuiListItem::Pt it = ((CCombobox*)cLocalMenu.getWidget(ml_ModName))->getSelectedItem();
     if(it.get()) {

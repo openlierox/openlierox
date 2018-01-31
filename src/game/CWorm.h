@@ -28,7 +28,6 @@
 #include "game/CMap.h"
 #include "CGameSkin.h"
 #include "Entity.h"
-#include "NewNetEngine.h" // For NetSyncedRandom
 #include "Version.h"
 #include "DynDraw.h"
 #include "game/CGameObject.h"
@@ -404,9 +403,6 @@ public:
 
 	void		setAiDiff(int aiDif);
 	
-	NewNet::KeyState_t NewNet_GetKeys();
-	void		NewNet_SimulateWorm( NewNet::KeyState_t keys, NewNet::KeyState_t keysChanged );
-
 	//
 	// Misc.
 	//
@@ -613,11 +609,6 @@ public:
 	void reinitInputHandler();
 	
 	std::map< int, DamageReport> & getDamageReport() { return cDamageReport; }
-	
-	void NewNet_CopyWormState(const CWorm & w);
-	void NewNet_InitWormState( int seed );
-	
-	NewNet::NetSyncedRandom NewNet_random;
 	
 	/* Keeps track over the positions over time.
 	 This is used for LX56 physics to have better damage calculation. */
