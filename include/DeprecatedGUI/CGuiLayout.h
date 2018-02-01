@@ -101,6 +101,8 @@ private:
 
 	SmartPointer<TooltipIntern> tooltip;
 
+	static bool		bKeyboardNavigation;
+
 	
 public:
 	// Methods

@@ -316,6 +316,7 @@ struct Menu_Main_GuiThemeComboboxCreate__Executer {
 		combobox->clear();
 		combobox->setSorted(SORT_ASC);
 		combobox->setUnique(true);
+		combobox->setKeyboardNavigationOrder(1);
 
 		combobox->addItem("", "- Default -");
 		FindFiles(*this, "themes", false, FM_DIR);

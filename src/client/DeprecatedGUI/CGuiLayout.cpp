@@ -29,84 +29,15 @@
 #include "DeprecatedGUI/CLabel.h"
 #include "DeprecatedGUI/CSlider.h"
 #include "DeprecatedGUI/CTextbox.h"
-#include "XMLutils.h"
 #include "OLXConsole.h"
 #include "sound/SoundsBase.h"
-
-
-// XML parsing library
-#include <libxml/xmlmemory.h>
-#include <libxml/parser.h>
-
-
-/*
- // Useful XML functions
- int		xmlGetInt(xmlNodePtr Node, const std::string& Name);
- float	xmlGetFloat(xmlNodePtr Node, const std::string& Name);
- Uint32	xmlGetColour(xmlNodePtr Node, const std::string& Name);
- */
-
-
-// ==============================
-//
-// Useful XML functions
-//
-// ==============================
-
-#define		CMP(str1,str2)  !xmlStrcmp((const xmlChar *)str1,(const xmlChar *)str2)
-
-/*
- 
- // TODO: why are these xml* functions defined multiple times? (also in XMLUtils)
- 
-///////////////////
-// Get an integer from the specified property
-int xmlGetInt(xmlNodePtr Node, const std::string& Name)
-{
-	xmlChar *sValue;
-	sValue = xmlGetProp(Node,(const xmlChar *)Name.c_str());
-	if(!sValue)
-		return 0;
-	int result = atoi((const char *)sValue);
-	xmlFree(sValue);
-	return result;
-}
-
-///////////////////
-// Get a float from the specified property
-float xmlGetFloat(xmlNodePtr Node, const std::string& Name)
-{
-	xmlChar *sValue = xmlGetProp(Node,(const xmlChar *)Name.c_str());
-	if (!sValue)
-		return 0;
-	float result = (float)atof((const char *)sValue);
-	xmlFree(sValue);
-	return result;
-}
-
-///////////////////
-// Get a colour from the specified property
-Uint32 xmlGetColour(xmlNodePtr Node, const std::string& Name)
-{
-	xmlChar *sValue;
-	
-	// Get the value
-	sValue = xmlGetProp(Node,(const xmlChar *)Name.c_str());
-	
-	Uint32 result = StrToCol((char*)sValue).get();
-	
-	xmlFree(sValue);
-	return result;
-}
-
-*/
 
 
 
 namespace DeprecatedGUI {
 
 
-
+bool CGuiLayout::bKeyboardNavigation = true;
 
 
 ///////////////////
@@ -289,34 +220,6 @@ void CGuiLayout::Draw(SDL_Surface * bmpDest)
 		tooltip->draw(bmpDest);
 }
 
-//////////////////
-// Reads common events, that are available for almost every widget
-void CGuiLayout_ReadEvents(CGuiLayout* gui, xmlNodePtr Node, generic_events_t *Events)
-{
-	// TODO: this function was a member function before; this is now gui
-
-	// Load the values
-	xmlChar *evs[NumEvents];
-	evs[OnMouseOver] = xmlGetProp(Node,(const xmlChar *)"onmouseover");
-	evs[OnMouseOut]  = xmlGetProp(Node,(const xmlChar *)"onmouseout");
-	evs[OnMouseDown] = xmlGetProp(Node,(const xmlChar *)"onmousedown");
-	evs[OnClick]	 = xmlGetProp(Node,(const xmlChar *)"onclick");
-
-	// Copy the values into the events
-	int i;
-	for (i=0;i<NumEvents;i++)  {
-		if (evs[i]) {
-			fix_strncpy(Events->Events[i], (char *)evs[i]);
-		} else
-			Events->Events[i][0] = '\0';
-	}
-
-	// Free the data
-	xmlFree(evs[OnMouseOver]);
-	xmlFree(evs[OnMouseOut]);
-	xmlFree(evs[OnMouseDown]);
-	xmlFree(evs[OnClick]);
-}
 
 //////////////////
 // Build the layout according to code specified in skin file
@@ -353,6 +256,8 @@ gui_event_t *CGuiLayout::Process()
 	// as they make no sense anymore and can make trouble
 	if (cFocused && !ApplicationHasFocus())
 		cFocused->setLoseFocus(true);
+
+	bool widgetSelectedWithKeyboard = false;
 
 	// Parse keyboard events to the focused widget
 	// Make sure a key event happened
@@ -440,73 +345,78 @@ gui_event_t *CGuiLayout::Process()
 		for(int i = 0; i < Keyboard->queueLength; i++) {
 			const KeyboardEvent& kbev = Keyboard->keyQueue[i];
 
-			if (kbev.down && bCanFocus && (cFocused == NULL || cFocused->CanLoseFocus()) &&
-				(kbev.sym == SDLK_UP || kbev.sym == SDLK_LEFT || kbev.sym == SDLK_DOWN || kbev.sym == SDLK_RIGHT)) {
-				if (!cFocused) {
-					unsigned posmax = 0xffffffff;
-					for(auto widget: cWidgets) {
-						if (!widget->getEnabled() || widget->getType() == wid_Label)
-							continue;
-						unsigned pos = widget->getX() + widget->getY() * 0x10000;
-						if (posmax > pos) {
-							posmax = pos;
-							cFocused = widget;
-						}
-					}
+			if (kbev.down && (kbev.sym == SDLK_UP || kbev.sym == SDLK_LEFT || kbev.sym == SDLK_DOWN || kbev.sym == SDLK_RIGHT)) {
+
+				bKeyboardNavigation = true;
+				CWidget * selected = NULL;
+
+				if (!bCanFocus || cFocused == NULL || !cFocused->CanLoseFocus()) {
+					// Do nothing
 				} else if (kbev.sym == SDLK_UP || kbev.sym == SDLK_LEFT) {
-					CWidget * selected = NULL;
-					unsigned posmin = 0;
-					unsigned posmax = cFocused->getX() + cFocused->getY() * 0x10000;
+					int posmin = 0;
+					int posmax = cFocused->getX() + cFocused->getY() * 0x10000 + cFocused->getKeyboardNavigationOrder() * 0x10000000;
 					for(auto widget: cWidgets) {
 						if (!widget->getEnabled() || widget == cFocused || widget->getType() == wid_Label)
 							continue;
-						unsigned pos = widget->getX() + widget->getY() * 0x10000;
+						int pos = widget->getX() + widget->getY() * 0x10000 + widget->getKeyboardNavigationOrder() * 0x10000000;
 						if (posmin < pos && posmax > pos) {
 							posmin = pos;
 							selected = widget;
 						}
 					}
-					if (selected) {
-						cFocused->setFocused(false);
-						cFocused = selected;
-					}
 				} else if (kbev.sym == SDLK_DOWN || kbev.sym == SDLK_RIGHT) {
-					CWidget * selected = NULL;
-					unsigned posmin = cFocused->getX() + cFocused->getY() * 0x10000;
-					unsigned posmax = 0xffffffff;
+					int posmin = cFocused->getX() + cFocused->getY() * 0x10000 + cFocused->getKeyboardNavigationOrder() * 0x10000000;
+					int posmax = INT_MAX;
 					for(auto widget: cWidgets) {
 						if (!widget->getEnabled() || widget == cFocused || widget->getType() == wid_Label)
 							continue;
-						unsigned pos = widget->getX() + widget->getY() * 0x10000;
+						int pos = widget->getX() + widget->getY() * 0x10000 + widget->getKeyboardNavigationOrder() * 0x10000000;
 						if (posmin < pos && posmax > pos) {
 							posmax = pos;
 							selected = widget;
 						}
 					}
-					if (selected) {
-						cFocused->setFocused(false);
-						cFocused = selected;
-					}
 				}
-				if (cFocused) {
-					cFocused->setFocused(true);
-					struct RepositionMouse: public Action
-					{
-						int x, y;
-						RepositionMouse(int _x, int _y): x(_x), y(_y)
-						{
-						}
-						Result handle()
-						{
-							SDL_WarpMouseInWindow(NULL, x, y);
-							return true;
-						}
-					};
-					doActionInMainThread( new RepositionMouse(cFocused->getX() + 1, cFocused->getY() + cFocused->getHeight() - 2) );
-					PlaySoundSample(sfxGeneral.smpClick);
+
+				if (cFocused && selected && cFocused != selected) {
+					cFocused->setFocused(false);
+					cFocused = selected;
+					widgetSelectedWithKeyboard = true;
 				}
 			}
 		}
+	}
+
+	if (!cFocused && bKeyboardNavigation) {
+		int posmax = INT_MAX;
+		for(auto widget: cWidgets) {
+			if (!widget->getEnabled() || widget->getType() == wid_Label)
+				continue;
+			int pos = widget->getX() + widget->getY() * 0x10000 + widget->getKeyboardNavigationOrder() * 0x10000000;
+			if (posmax > pos) {
+				posmax = pos;
+				cFocused = widget;
+			}
+		}
+		widgetSelectedWithKeyboard = true;
+	}
+
+	if (cFocused && widgetSelectedWithKeyboard) {
+		cFocused->setFocused(true);
+		struct RepositionMouse: public Action
+		{
+			int x, y;
+			RepositionMouse(int _x, int _y): x(_x), y(_y)
+			{
+			}
+			Result handle()
+			{
+				SDL_WarpMouseInWindow(NULL, x, y);
+				return true;
+			}
+		};
+		doActionInMainThread( new RepositionMouse(cFocused->getX() + 1, cFocused->getY() + cFocused->getHeight() - 2) );
+		PlaySoundSample(sfxGeneral.smpClick);
 	}
 
 	// Special mouse button event first (for focused widgets)
@@ -527,7 +437,7 @@ gui_event_t *CGuiLayout::Process()
 		}
 		else if(tMouse->Up) {
 			bCanFocus = true;
-			
+			bKeyboardNavigation = false; // Mouse click disables key navigation mode
 			// Process the skin defined code
 			// OnClick is only fired if mouseup was done over the widget
 			if(cFocused->InBox(tMouse->X,tMouse->Y))

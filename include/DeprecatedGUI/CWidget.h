@@ -76,6 +76,7 @@ public:
 		bEnabled = true;
 		bRedrawMenu = true;
 		bCanLoseFocus = true;
+		iKeyboardNavigationOrder = 0;
 	}
 
 	CWidget(const CWidget&) { assert(false); }
@@ -95,6 +96,7 @@ protected:
 private:
 	int					iID;
 	bool				bEnabled;
+	int					iKeyboardNavigationOrder;
 
 	generic_events_t	tEvents;
 	CGuiLayoutBase		*cParent;
@@ -130,6 +132,10 @@ public:
 
 	CGuiLayoutBase	*getParent()				{ return cParent; }
 	void			setParent(CGuiLayoutBase *l)	{ cParent = l; }
+
+	int				getKeyboardNavigationOrder() const	{ return iKeyboardNavigationOrder; }
+	// Default order is 0, positive value - widget will be the last, negative value - widget will be the first to be selected, range is between -120 and 120
+	void			setKeyboardNavigationOrder(int i)	{ iKeyboardNavigationOrder = i; }
 
 	bool			CanLoseFocus()				{ return bCanLoseFocus; }
 	void			setLoseFocus(bool _f)			{ bCanLoseFocus = _f; }

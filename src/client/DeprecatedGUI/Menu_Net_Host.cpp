@@ -139,6 +139,10 @@ bool Menu_Net_HostInitialize()
 	//cHostPly.Add( new CLabel("Server-side Health",			tLX->clNormalLabel),-1,	125, 418,0,  0);
 	//cHostPly.Add( new CCheckbox(false),	                    hs_ServerSideHealth,	270,415,17, 17);
 
+	cHostPly.getWidget(hs_Playing)->setKeyboardNavigationOrder(1);
+	cHostPly.getWidget(hs_Back)->setKeyboardNavigationOrder(1);
+	cHostPly.getWidget(hs_Ok)->setKeyboardNavigationOrder(1);
+
 	cHostPly.SendMessage(hs_Playing,		LVM_SETOLDSTYLE, (uintptr_t)0, 0);
 	cHostPly.SendMessage(hs_PlayerList,		LVM_SETOLDSTYLE, (uintptr_t)0, 0);
 

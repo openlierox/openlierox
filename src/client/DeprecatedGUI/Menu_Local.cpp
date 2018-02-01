@@ -101,6 +101,8 @@ static void Menu_Local_InitCustomLevel() {
 
 	cLocalMenu.Add( new CListview(), ml_PlayerList,  410,115, 200, 126);
 	cLocalMenu.Add( new CListview(), ml_Playing,     310,250, 300, 185);
+
+	cLocalMenu.getWidget(ml_Playing)->setKeyboardNavigationOrder(1);
 	
 	int y = 235;
     cLocalMenu.AddBack( new CLabel("Level",tLX->clNormalLabel),	    -1,         30,  y+1, 0,   0);
@@ -320,6 +322,9 @@ void Menu_LocalInitialize()
 
 	cLocalMenu.Add( new CButton(BUT_BACK, tMenu->bmpButtons), ml_Back, 27,440, 50,15);
 	cLocalMenu.Add( new CButton(BUT_START, tMenu->bmpButtons), ml_Start, 555,440, 60,15);
+
+	cLocalMenu.getWidget(ml_Back)->setKeyboardNavigationOrder(1);
+	cLocalMenu.getWidget(ml_Start)->setKeyboardNavigationOrder(1);
 	
 	initCurrentGameMenu();
 	
