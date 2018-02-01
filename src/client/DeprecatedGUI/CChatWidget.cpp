@@ -228,7 +228,7 @@ void CChatWidget::ProcessChildEvent(int iEvent, CWidget * child)
 				break;
 
 			case nc_UserList:
-				if (iEvent == LV_DOUBLECLK)  {
+				if (iEvent == LV_DOUBLECLK || iEvent == LV_ENTER)  {
 					CTextbox *txt = (CTextbox *)this->getWidget(nc_ChatInput);
 					CListview *lsv = (CListview *)this->getWidget(nc_UserList);
 					if (txt)  {

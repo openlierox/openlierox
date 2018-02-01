@@ -538,6 +538,7 @@ int CCombobox::findItem(UnicodeChar startLetter) {
 // Key down event
 int CCombobox::KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate)
 {
+#if 0 /* This will disallow to navigate menu with arrow keys */
 	// Search for items by pressed key
 	if (!bCanSearch)
 		return CMB_NONE;
@@ -553,30 +554,50 @@ int CCombobox::KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate
 		ProcessChangedEvent();
 		return CMB_CHANGED;
 	}
-
+#endif
 	// TODO: this doesn't work as expected atm if the mouse is over
 	// Handle key up/down
 	if (bDropped)  {
 		if (keysym == SDLK_DOWN)  {
 			if (selectNext())  {
 				// Move the scrollbar if necessary
-				if (cScrollbar.getValue() + cScrollbar.getItemsperbox() <= iSelected)
-					cScrollbar.setValue(cScrollbar.getValue() + 1);
+				cScrollbar.setValue( iSelected - cScrollbar.getItemsperbox() / 2 );
 				iKeySelectedItem = iSelected;
-				ProcessChangedEvent();
-				return CMB_CHANGED;
 			}
+			ProcessChangedEvent();
+			return CMB_CHANGED;
 		} else if (keysym == SDLK_UP)  {
 			if (selectPrev())  {
 				// Move the scrollbar if necessary
-				if (cScrollbar.getValue() > iSelected)
-					cScrollbar.setValue(cScrollbar.getValue() - 1);
+				cScrollbar.setValue( iSelected - cScrollbar.getItemsperbox() / 2 );
 				iKeySelectedItem = iSelected;
-				ProcessChangedEvent();
-				return CMB_CHANGED;
 			}
-		} else if(keysym == SDLK_RETURN) {
+			ProcessChangedEvent();
+			return CMB_CHANGED;
+		} else if(keysym == SDLK_RETURN ||
+					keysym == SDLK_KP_ENTER ||
+					keysym == SDLK_LALT ||
+					keysym == SDLK_LCTRL ||
+					keysym == SDLK_LSHIFT ||
+					keysym == SDLK_x ||
+					keysym == SDLK_z) {
 			bDropped = false;
+			ProcessChangedEvent();
+			return CMB_CHANGED;
+		}
+	} else {
+		if (keysym == SDLK_RETURN ||
+			keysym == SDLK_KP_ENTER ||
+			keysym == SDLK_LALT ||
+			keysym == SDLK_LCTRL ||
+			keysym == SDLK_LSHIFT ||
+			keysym == SDLK_x ||
+			keysym == SDLK_z) {
+			bDropped = true;
+			cScrollbar.setValue( iSelected - cScrollbar.getItemsperbox() / 2 );
+			iKeySelectedItem = iSelected;
+			ProcessChangedEvent();
+			return CMB_CHANGED;
 		}
 	}
 

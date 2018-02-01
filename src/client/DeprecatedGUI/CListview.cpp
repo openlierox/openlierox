@@ -1347,7 +1347,7 @@ int	CListview::MouseUp(mouse_t *tMouse, int nDown)
 			if(tSelected && (tMouse->Up & SDL_BUTTON(1))) {
 				if(tSelected->_iID == item->_iID) {
 					//notes << "tLX->currentTime " << tLX->currentTime.seconds() << " fLastMouseUp " << fLastMouseUp.seconds() << " tLX->currentTime - fLastMouseUp " << (tLX->currentTime - fLastMouseUp).seconds() << endl;
-					if(tLX->currentTime - fLastMouseUp < 0.5f) {
+					if(tLX->currentTime - fLastMouseUp < 1.5f) {
 						event = LV_DOUBLECLK;
 						fLastMouseUp = AbsTime();
 					}
@@ -1585,14 +1585,14 @@ int CListview::KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate
 	}
 
 	// Enter
-	if (keysym == SDLK_RETURN)  {
+	if (keysym == SDLK_RETURN ||
+		keysym == SDLK_KP_ENTER ||
+		keysym == SDLK_LALT ||
+		keysym == SDLK_LCTRL ||
+		keysym == SDLK_LSHIFT ||
+		keysym == SDLK_x ||
+		keysym == SDLK_z) {
 		iLastChar = SDLK_RETURN;
-		return LV_ENTER;
-	}
-
-	// Enter (numeric)
-	if (keysym == SDLK_KP_ENTER)  {
-		iLastChar = SDLK_KP_ENTER;
 		return LV_ENTER;
 	}
 

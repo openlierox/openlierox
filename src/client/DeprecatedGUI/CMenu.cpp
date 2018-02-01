@@ -267,6 +267,23 @@ int CMenu::KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate)
 				}
 			}
 		break;
+
+		case SDLK_RETURN:
+		case SDLK_KP_ENTER:
+		case SDLK_LALT:
+		case SDLK_LCTRL:
+		case SDLK_LSHIFT:
+		case SDLK_x:
+		case SDLK_z:
+			if (m_nSelectedIndex >= 0 && m_nSelectedIndex < (int)m_psItemList.size()) {
+				std::list<mnu_item_t>::iterator it = m_psItemList.begin();
+				for(int i = 0; i < m_nSelectedIndex && it != m_psItemList.end(); i++)
+					it++;
+				if (it->bCheckable)
+					it->bChecked = !it->bChecked;
+				return MNU_USER + it->nID;
+			}
+		break;
 	}
 
 	return MNU_NONE;

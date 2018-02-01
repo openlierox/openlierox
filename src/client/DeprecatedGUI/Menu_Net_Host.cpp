@@ -323,7 +323,7 @@ void Menu_Net_HostPlyFrame(int mouse)
 
 			// Player list
 			case hs_PlayerList:
-				if(ev->iEventMsg == LV_DOUBLECLK || ev->iEventMsg == LV_RIGHTCLK) {
+				if(ev->iEventMsg == LV_DOUBLECLK || ev->iEventMsg == LV_RIGHTCLK || ev->iEventMsg == LV_ENTER) {
 					// Add the item to the players list
 					lv = (CListview *)cHostPly.getWidget(hs_PlayerList);
 					lv2 = (CListview *)cHostPly.getWidget(hs_Playing);
@@ -360,7 +360,7 @@ void Menu_Net_HostPlyFrame(int mouse)
 
 			// Playing list
 			case hs_Playing:
-				if(ev->iEventMsg == LV_DOUBLECLK || ev->iEventMsg == LV_RIGHTCLK) {
+				if(ev->iEventMsg == LV_DOUBLECLK || ev->iEventMsg == LV_RIGHTCLK || ev->iEventMsg == LV_ENTER) {
 					// Add the item to the players list
 					lv = (CListview *)cHostPly.getWidget(hs_Playing);
 					lv2 = (CListview *)cHostPly.getWidget(hs_PlayerList);

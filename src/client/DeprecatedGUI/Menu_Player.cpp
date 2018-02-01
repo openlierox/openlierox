@@ -34,7 +34,6 @@ namespace DeprecatedGUI {
 
 CGuiLayout	cNewPlayer;
 CGuiLayout	cViewPlayers;
-CButton		cPlyButtons[2];
 int			iPlayerMode = 0;
 float       fPlayerSkinFrame=0;
 float		fPlayerSkinAngle = 0;
@@ -46,12 +45,13 @@ Timer *		tAnimTimer = NULL;
 enum {
 	Static=-1,
 	pp_NewPlayerTab=0,
-	pp_ViewPlayersTab
+	pp_ViewPlayersTab,
+	pp_Num
 };
 
 // New player widgets
 enum {
-	np_Back=0,
+	np_Back=pp_Num + 1,
 	np_Create,
 	np_Name,
 	np_Red, np_Blue, np_Green,
@@ -65,7 +65,7 @@ enum {
 
 // View players widgets
 enum {
-	vp_Back=0,
+	vp_Back=pp_Num + 1,
 	vp_Name,
 	vp_Red, vp_Blue, vp_Green,
 	vp_Players,
@@ -100,19 +100,13 @@ void Menu_PlayerInitialize()
 
 	tAnimTimer = new Timer("Menu_Player animation", null, NULL, 25, false);
 
-	// Setup the top buttons
-	cPlyButtons[pp_NewPlayerTab]   = CButton(BUT_NEWPLAYER,	tMenu->bmpButtons);
-	cPlyButtons[pp_ViewPlayersTab] = CButton(BUT_VIEWPLAYERS,	tMenu->bmpButtons);
-
-	cPlyButtons[pp_NewPlayerTab].Setup(0, 150, 110, 120, 15);
-	cPlyButtons[pp_ViewPlayersTab].Setup(1, 370, 110, 135, 15);
-    cPlyButtons[pp_NewPlayerTab].Create();
-    cPlyButtons[pp_ViewPlayersTab].Create();
-
-
 	// New player
 	cNewPlayer.Shutdown();
 	cNewPlayer.Initialize();
+
+	cNewPlayer.Add( new CButton(BUT_NEWPLAYER,	tMenu->bmpButtons), pp_NewPlayerTab, 150, 110, 120, 15);
+	cNewPlayer.Add( new CButton(BUT_VIEWPLAYERS,tMenu->bmpButtons), pp_ViewPlayersTab, 370, 110, 135, 15);
+
 	cNewPlayer.Add( new CButton(BUT_BACK, tMenu->bmpButtons),	np_Back, 25,440, 50,15);
 	cNewPlayer.Add( new CButton(BUT_CREATE, tMenu->bmpButtons), np_Create, 540,440, 70,15);
 
@@ -173,6 +167,9 @@ void Menu_PlayerInitialize()
 	cViewPlayers.Shutdown();
 	cViewPlayers.Initialize();
 
+	cViewPlayers.Add( new CButton(BUT_NEWPLAYER,	tMenu->bmpButtons), pp_NewPlayerTab, 150, 110, 120, 15);
+	cViewPlayers.Add( new CButton(BUT_VIEWPLAYERS,	tMenu->bmpButtons), pp_ViewPlayersTab, 370, 110, 135, 15);
+
 	cViewPlayers.Add( new CButton(BUT_BACK, tMenu->bmpButtons),     vp_Back,   25, 440, 50, 15);
 	cViewPlayers.Add( new CListview(),                              vp_Players,40, 150, 200,170);
     cViewPlayers.Add( new CLabel("Name", tLX->clNormalLabel),                   Static, 350,172, 0,  0);
@@ -230,41 +227,15 @@ void Menu_PlayerShutdown()
 // Player frame
 void Menu_PlayerFrame()
 {
-	mouse_t *Mouse = GetMouse();
 	int mouse = 0;
 
 	DrawImageAdv(VideoPostProcessor::videoSurface().get(), tMenu->bmpBuffer, 20,140, 20,140, 620,340);
 	DrawImageAdv(VideoPostProcessor::videoSurface().get(), tMenu->bmpBuffer, 140,110,  140,110,  400,30);
 
-
-	// Process the top buttons
-	cPlyButtons[iPlayerMode].MouseOver(Mouse);
-	for(int i=0;i<2;i++) {
-
-		cPlyButtons[i].Draw(VideoPostProcessor::videoSurface().get());
-
-		if(i==iPlayerMode)
-			continue;
-
-		if(cPlyButtons[i].InBox(Mouse->X,Mouse->Y)) {
-			cPlyButtons[i].MouseOver(Mouse);
-			mouse = 1;
-			if(Mouse->Up) {
-				iPlayerMode = i;
-                if( i == 0 )
-                    Menu_Player_NewPlayerInit();
-                else
-                    Menu_Player_ViewPlayerInit();
-				PlaySoundSample(sfxGeneral.smpClick);
-			}
-		}
-	}
-
-
 	if(iPlayerMode == 0)
 		Menu_Player_NewPlayer(mouse);
 
-	if(iPlayerMode == 1)
+	else if(iPlayerMode == 1)
 		Menu_Player_ViewPlayers(mouse);
 }
 
@@ -293,6 +264,7 @@ void Menu_Player_NewPlayerInit()
 	tMenu->cSkin.ColorizeDefault();
 	fPlayerSkinFrame = 0;
     bPlayerSkinAnimation = false;
+    cNewPlayer.FocusWidget(pp_NewPlayerTab);
 }
 
 
@@ -342,6 +314,7 @@ void Menu_Player_ViewPlayerInit()
         fPlayerSkinFrame = 0;
         bPlayerSkinAnimation = false;
     }
+    cViewPlayers.FocusWidget(pp_ViewPlayersTab);
 }
 
 
@@ -361,10 +334,16 @@ void Menu_Player_NewPlayer(int mouse)
 	Uint8 b = ((CSlider *)cNewPlayer.getWidget(np_Blue))->getValue();
 
 
-
 	if(ev) {
 
 		switch(ev->iControlID) {
+
+			case pp_ViewPlayersTab:
+				if(ev->iEventMsg == BTN_CLICKED) {
+					Menu_Player_ViewPlayerInit();
+					return;
+				}
+				break;
 
 			// Back button
 			case np_Back:
@@ -517,10 +496,16 @@ void Menu_Player_ViewPlayers(int mouse)
 	ev = cViewPlayers.Process();
 	cViewPlayers.Draw(VideoPostProcessor::videoSurface().get());
 
-
 	if(ev) {
 
 		switch(ev->iControlID) {
+
+			case pp_NewPlayerTab:
+				if(ev->iEventMsg == BTN_CLICKED) {
+					Menu_Player_NewPlayerInit();
+					return;
+				}
+				break;
 
 			// Back button
 			case vp_Back:
@@ -560,10 +545,6 @@ void Menu_Player_ViewPlayers(int mouse)
 							Mouse->Button = Mouse->Up = Mouse->Down = 0;
 							Mouse->X = Mouse->Y = 0;
 							cViewPlayers.Draw(tMenu->bmpBuffer.get());
-
-							for(int i=0;i<2;i++)
-								cPlyButtons[i].Draw(tMenu->bmpBuffer.get());
-
 
 							// Ask if they are sure they wanna delete it
 							buf = std::string("Delete player ") + p->sName;

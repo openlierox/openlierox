@@ -64,7 +64,7 @@ public:
 	int		MouseClicked(mouse_t *tMouse, int nDown)	{ return TBT_CLICKED; }
 	int		MouseWheelDown(mouse_t *tMouse)		{ return TBT_NONE; }
 	int		MouseWheelUp(mouse_t *tMouse)		{ return TBT_NONE; }
-	int		KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate)	{ return TBT_NONE; }
+	int		KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate);
 	int		KeyUp(UnicodeChar c, int keysym, const ModifiersState& modstate)	{ return TBT_NONE; }
 
 	uintptr_t SendMessage(int iMsg, uintptr_t Param1, uintptr_t Param2)	{ return 0; }

@@ -753,6 +753,7 @@ int CBrowser::KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate)
 		}
 	return BRW_KEY_PROCESSED;
 
+#if 0 /* This will disallow to navigate menu with arrow keys */
 	case SDLK_RIGHT:
 		if (iCursorLine < tLines.size())  {
 			if (iCursorColumn >= Utf8StringSize(tLines[iCursorLine]->getPureText()))  {
@@ -810,6 +811,7 @@ int CBrowser::KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate)
 			}
 		}
 	return BRW_KEY_PROCESSED;
+#endif // 0
 
 	case SDLK_HOME:
 		if (tLines.size() > 0 && iCursorLine < tLines.size())  {
@@ -888,7 +890,7 @@ int CBrowser::KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate)
 		keysym == SDLK_LALT || keysym == SDLK_RALT)
 		return BRW_KEY_PROCESSED;
 
-	return BRW_KEY_NOT_PROCESSED;
+	return BRW_NONE;
 }
 
 ////////////////////

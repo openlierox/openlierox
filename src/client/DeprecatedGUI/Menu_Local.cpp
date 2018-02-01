@@ -474,14 +474,14 @@ void Menu_LocalFrame()
 
 			// Player list
 			case ml_PlayerList:
-				if(ev->iEventMsg == LV_DOUBLECLK || ev->iEventMsg == LV_RIGHTCLK) {
+				if(ev->iEventMsg == LV_DOUBLECLK || ev->iEventMsg == LV_RIGHTCLK || ev->iEventMsg == LV_ENTER) {
 					Menu_LocalAddPlaying();
 				}
 				break;
 
 			// Playing list
 			case ml_Playing:
-				if(ev->iEventMsg == LV_DOUBLECLK || ev->iEventMsg == LV_RIGHTCLK) {
+				if(ev->iEventMsg == LV_DOUBLECLK || ev->iEventMsg == LV_RIGHTCLK || ev->iEventMsg == LV_ENTER) {
 					Menu_LocalRemovePlaying();
 				}
 
@@ -1845,7 +1845,7 @@ void Menu_WeaponPresets(bool save, CWpnRest *wpnrest)
 
 			// OK and double click on listview
 			if (ev->iControlID == wp_Ok || ev->iControlID == wp_PresetList)  {
-				if((ev->iEventMsg == BTN_CLICKED && ev->iControlID == 1) || ev->iEventMsg == LV_DOUBLECLK) {
+				if((ev->iEventMsg == BTN_CLICKED && ev->iControlID == 1) || ev->iEventMsg == LV_DOUBLECLK || ev->iEventMsg == LV_ENTER) {
 
 					// Play the sound only for OK button
 					if (ev->iControlID == wp_Ok)

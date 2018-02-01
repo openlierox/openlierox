@@ -176,7 +176,8 @@ void Menu_MainFrame()
 
                     cMainMenu.Draw(tMenu->bmpBuffer.get());
 
-                    if( Menu_MessageBox(GetGameName(),"Quit OpenLieroX?", LMB_YESNO) == MBR_YES ) {
+					MessageBoxReturnType answer = Menu_MessageBox(GetGameName(), "Quit OpenLieroX?", LMB_YESNO);
+					if( answer == MBR_YES || answer == MBR_INVALID ) {
 						game.state = Game::S_Quit;
 					    Menu_MainShutdown();
 				    } else {

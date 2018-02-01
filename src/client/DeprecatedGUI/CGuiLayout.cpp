@@ -31,6 +31,7 @@
 #include "DeprecatedGUI/CTextbox.h"
 #include "XMLutils.h"
 #include "OLXConsole.h"
+#include "sound/SoundsBase.h"
 
 
 // XML parsing library
@@ -358,6 +359,25 @@ gui_event_t *CGuiLayout::Process()
 	keyboard_t *Keyboard = GetKeyboard();
 	if(!Con_IsVisible() && Keyboard->queueLength > 0) {
 
+		// Process Escape key - try to find Back button
+		for(int i = 0; i < Keyboard->queueLength; i++) {
+			const KeyboardEvent& kbev = Keyboard->keyQueue[i];
+			if(!kbev.down && kbev.sym == SDLK_ESCAPE) {
+				for(auto widget: cWidgets) {
+					if(widget && widget->getType() == wid_Button && (
+						((CButton *) widget)->getImageID() == BUT_BACK ||
+						((CButton *) widget)->getImageID() == BUT_QUIT ||
+						((CButton *) widget)->getImageID() == BUT_QUITGAME ||
+						((CButton *) widget)->getImageID() == BUT_LEAVE)) {
+						ev = widget->MouseClicked(GetMouse(), 1);
+						tEvent->iEventMsg = ev;
+						tEvent->iControlID = widget->getID();
+						tEvent->cWidget = widget;
+						return tEvent;
+					}
+				}
+			}
+		}
 
 		// If we don't have any focused widget, get the first textbox
 		if (!cFocused)  {
@@ -388,6 +408,78 @@ gui_event_t *CGuiLayout::Process()
 				tEvent->iControlID = cFocused->getID();
 				tEvent->cWidget = cFocused;
 				return tEvent;
+			}
+		}
+
+		// Navigate menu with arrow keys
+		for(int i = 0; i < Keyboard->queueLength; i++) {
+			const KeyboardEvent& kbev = Keyboard->keyQueue[i];
+
+			if (kbev.down && bCanFocus && (cFocused == NULL || cFocused->CanLoseFocus()) &&
+				(kbev.sym == SDLK_UP || kbev.sym == SDLK_LEFT || kbev.sym == SDLK_DOWN || kbev.sym == SDLK_RIGHT)) {
+				if (!cFocused) {
+					unsigned posmax = 0xffffffff;
+					for(auto widget: cWidgets) {
+						if (!widget->getEnabled() || widget->getType() == wid_Label)
+							continue;
+						unsigned pos = widget->getX() + widget->getY() * 0x10000;
+						if (posmax > pos) {
+							posmax = pos;
+							cFocused = widget;
+						}
+					}
+				} else if (kbev.sym == SDLK_UP || kbev.sym == SDLK_LEFT) {
+					CWidget * selected = NULL;
+					unsigned posmin = 0;
+					unsigned posmax = cFocused->getX() + cFocused->getY() * 0x10000;
+					for(auto widget: cWidgets) {
+						if (!widget->getEnabled() || widget == cFocused || widget->getType() == wid_Label)
+							continue;
+						unsigned pos = widget->getX() + widget->getY() * 0x10000;
+						if (posmin < pos && posmax > pos) {
+							posmin = pos;
+							selected = widget;
+						}
+					}
+					if (selected) {
+						cFocused->setFocused(false);
+						cFocused = selected;
+					}
+				} else if (kbev.sym == SDLK_DOWN || kbev.sym == SDLK_RIGHT) {
+					CWidget * selected = NULL;
+					unsigned posmin = cFocused->getX() + cFocused->getY() * 0x10000;
+					unsigned posmax = 0xffffffff;
+					for(auto widget: cWidgets) {
+						if (!widget->getEnabled() || widget == cFocused || widget->getType() == wid_Label)
+							continue;
+						unsigned pos = widget->getX() + widget->getY() * 0x10000;
+						if (posmin < pos && posmax > pos) {
+							posmax = pos;
+							selected = widget;
+						}
+					}
+					if (selected) {
+						cFocused->setFocused(false);
+						cFocused = selected;
+					}
+				}
+				if (cFocused) {
+					cFocused->setFocused(true);
+					struct RepositionMouse: public Action
+					{
+						int x, y;
+						RepositionMouse(int _x, int _y): x(_x), y(_y)
+						{
+						}
+						Result handle()
+						{
+							SDL_WarpMouseInWindow(NULL, x, y);
+							return true;
+						}
+					};
+					doActionInMainThread( new RepositionMouse(cFocused->getX() + 1, cFocused->getY() + cFocused->getHeight() - 2) );
+					PlaySoundSample(sfxGeneral.smpClick);
+				}
 			}
 		}
 	}
