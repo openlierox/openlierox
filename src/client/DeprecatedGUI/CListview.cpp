@@ -103,7 +103,7 @@ void CListview::Draw(SDL_Surface * bmpDest)
 	int texty = 0;
 
 	{
-		SDL_Rect clipRect = {iX+4, y, iWidth-8, iHeight - (y-iY)};
+		SDL_Rect clipRect = {(SDLRect::Type) (iX+4), (SDLRect::Type) y, (SDLRect::TypeS) (iWidth-8), (SDLRect::TypeS) (iHeight - (y-iY))};
 		ScopedSurfaceClip clip(bmpDest, clipRect);
 		
 		// Draw the items
@@ -553,14 +553,12 @@ void CListview::RemoveItem(int iIndex)
 	lv_item_t *next = NULL;
 	lv_subitem_t *s,*sub;
 	int first = true;
-	int found = false;
 
 	// Find the item and it's previous item
 	prev = i;
 	for(;i;i=i->tNext) {
 
 		if(i->iIndex == iIndex) {
-			found=true;
 			next = i->tNext;
 
 			// If it's the first item, we do it differently
@@ -956,18 +954,15 @@ int	CListview::MouseOver(mouse_t *tMouse)
 	if (!bOldStyle)  {
 		if( tMouse->Y >= iY+2 && tMouse->Y <= iY+2+tLX->cFont.GetHeight()+1)  {
 			lv_column_t *col = tColumns;
-			lv_column_t *prev = NULL;
 			if (col)  {
 				int x = iX+col->iWidth-2;
 				col = col->tNext;
-				prev = col;
 				for (;col;col = col->tNext)  {
 					if (tMouse->X >= x && tMouse->X <= x+4)  {
 						SetGameCursor(CURSOR_RESIZE);
 						return LV_NONE;
 					}
 					x += col->iWidth-2;
-					prev = col;
 				}
 			}
 		}
@@ -982,7 +977,6 @@ int	CListview::MouseOver(mouse_t *tMouse)
 	tMouseOverSubWidget = NULL; // Reset it here
 	lv_item_t *item = tItems;
 	lv_subitem_t *subitem = NULL;
-	int result = LV_NONE;
 	int scroll = (bGotScrollbar ? cScrollbar.getValue() : 0);
 	int y = iY + 2 + (tColumns ? tLX->cFont.GetHeight() + 2 : 0);
 	for(int i = 0;item;item = item->tNext, i++) {
@@ -998,8 +992,6 @@ int	CListview::MouseOver(mouse_t *tMouse)
 					tLastWidgetEvent.iControlID = subitem->tWidget->getID();
 					tLastWidgetEvent.iEventMsg = subitem->tWidget->MouseOver(tMouse);
 					tMouseOverSubWidget = subitem->tWidget;
-					if (tLastWidgetEvent.iEventMsg != -1)
-						result = LV_WIDGETEVENT;
 				}
 			} else if (col) {
 				// Check if the mouse is over the subitem
@@ -1629,8 +1621,8 @@ int CListview::KeyUp(UnicodeChar c, int keysym, const ModifiersState& modstate)
 // Get the ID of the currently selected item
 int CListview::getSelectedID()
 {
-	if (!this)
-		return -1;
+//	if (!this) // TODO: dirty hack to fix use-after-delete
+//		return -1;
     if(tSelected)
         return tSelected->_iID;
     return -1;

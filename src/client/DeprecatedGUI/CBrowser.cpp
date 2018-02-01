@@ -1613,7 +1613,8 @@ void CBrowser::RenderContent()
 	DrawRectFill(bmpBuffer.get(), iBorderSize, iBorderSize, iWidth, iHeight, tBgColor);
 
 	// Setup the clipping
-	SDL_Rect clipRect = {iBorderSize, iBorderSize, iWidth - iBorderSize * 2, iHeight - iBorderSize * 2};
+	SDL_Rect clipRect = {(SDLRect::Type) iBorderSize, (SDLRect::Type) iBorderSize,
+						(SDLRect::TypeS) (iWidth - iBorderSize * 2), (SDLRect::TypeS) (iHeight - iBorderSize * 2)};
 	ScopedSurfaceClip clip(bmpBuffer.get(), clipRect);
 
 	// Selection

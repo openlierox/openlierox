@@ -1123,7 +1123,8 @@ void GameServer::ParseGetChallenge(const SmartPointer<NetworkSocket>& tSocket, C
 // Handle a 'connect' message
 void GameServer::ParseConnect(const SmartPointer<NetworkSocket>& net_socket, CBytestream *bs) {
 	NetworkAddr		adrFrom;
-	int				p, player = -1;
+	int				p;
+	int				player = -1;
 	CServerConnection	*newcl = NULL;
 
 
@@ -1299,7 +1300,6 @@ void GameServer::ParseConnect(const SmartPointer<NetworkSocket>& net_socket, CBy
 	}
 
 	// Find a spot for the client
-	player = -1;
 	p=0;
 	if(newcl == NULL)
 		for (CServerConnection* cl = cClients; p < MAX_CLIENTS; p++, cl++) {

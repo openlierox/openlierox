@@ -75,8 +75,6 @@ void CWormHumanInputHandler::getInput() {
 		m_worm->fLastInputTime = GetPhysicsTime();
 	}
 
-	int		weap = false;
-
 	mouse_t *ms = GetMouse();
 
 	worm_state_t *ws = &m_worm->tState.write();
@@ -292,7 +290,6 @@ void CWormHumanInputHandler::getInput() {
 		if(cSelWeapon.isDown()) {
 			// TODO: was is the intention of this var? if weapon change, then it's wrong
 			// if cSelWeapon.isDown(), then we don't need it
-			weap = true;
 
 			// we don't want keyrepeats here, so only count the first down-event
 			int change = (rightOnce ? 1 : 0) - (leftOnce ? 1 : 0);

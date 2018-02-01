@@ -493,6 +493,8 @@ if(UNIX)
 	IF(NOT MINGW_CROSS_COMPILE)
 		SET(LIBS ${LIBS} ${SDLLIBS} pthread)
 	ENDIF(NOT MINGW_CROSS_COMPILE)
+
+	ADD_DEFINITIONS("-ftabstop=4") # Avoid some GCC and clang warnings due to messy indentation
 endif(UNIX)
 
 IF (NOT DEDICATED_ONLY)

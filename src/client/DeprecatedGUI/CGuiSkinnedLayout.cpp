@@ -501,16 +501,6 @@ void CGuiSkinnedLayout::ChildDialog( const std::string & param, CWidget * source
 	std::vector<std::string> params = explode(param, ",");
 	for( unsigned i=0; i<params.size(); i++ )
 		TrimSpaces(params[i]);
-	int x = 0, y = 0;
-	bool fullscreen = false;
-	if( params.size() > 1 )
-		if( params[1] == "fullscreen" )
-			fullscreen = true;
-	if( params.size() > 2 )
-	{
-		x = atoi( params[1] );
-		y = atoi( params[2] );
-	}
 	std::string file = params[0];
 }
 

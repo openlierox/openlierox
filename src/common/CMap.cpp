@@ -896,7 +896,8 @@ void CMap::Draw(SDL_Surface *bmpDest, const SDL_Rect& rect, int worldX, int worl
 // Draw the map
 void CMap::Draw(SDL_Surface * bmpDest, CViewport *view)
 {
-	SDL_Rect destRect = {view->GetLeft(),view->GetTop(),view->GetWidth()*2,view->GetHeight()*2};
+	SDL_Rect destRect = {(SDLRect::Type) view->GetLeft(), (SDLRect::Type) view->GetTop(),
+						(SDLRect::TypeS) (view->GetWidth()*2), (SDLRect::TypeS) (view->GetHeight()*2) };
 	Draw(bmpDest, destRect, view->GetWorldX(), view->GetWorldY());
 }
 
@@ -1380,7 +1381,7 @@ void CMap::StaticCollisionCheckFinite(const CVec &objpos, int objw, int objh, CM
 	}
 
 	// Cross check, taken from worm collision
-	SDL_Rect coll_r = { (int)objpos.x - objw / 2, (int)objpos.y - objh / 2, objw, objh };
+	SDL_Rect coll_r = { (SDLRect::Type) ((int)objpos.x - objw / 2), (SDLRect::Type) ((int)objpos.y - objh / 2), (SDLRect::TypeS) objw, (SDLRect::TypeS) objh };
 	if (!ClipRefRectWith(coll_r.x, coll_r.y, coll_r.w, coll_r.h, (SDLRect&)material->surf->clip_rect))
 		return;
 	result.x = coll_r.x + coll_r.w / 2;
@@ -1426,7 +1427,7 @@ void CMap::StaticCollisionCheckFinite(const CVec &objpos, int objw, int objh, CM
 void CMap::StaticCollisionCheckInfinite(const CVec &objpos, int objw, int objh, CMap::CollisionInfo &result) const
 {
 	// Cross check, taken from worm collision
-	SDL_Rect coll_r = { (int)objpos.x - objw / 2, (int)objpos.y - objh / 2, objw, objh };
+	SDL_Rect coll_r = { (SDLRect::Type) ((int)objpos.x - objw / 2), (SDLRect::Type) ((int)objpos.y - objh / 2), (SDLRect::TypeS) objw, (SDLRect::TypeS) objh };
 	result.x = coll_r.x + coll_r.w / 2;
 	result.y = coll_r.y + coll_r.h / 2;
 
@@ -1578,7 +1579,6 @@ void CMap::PlaceMisc(int id, CVec pos)
 	SmartPointer<SDL_Surface> misc;
 	short dy,dx, sx,sy;
 	short x,y;
-	short w,h;
 
 	if(id < 0 || id >= Theme.NumMisc) {
 		warnings("Bad misc size\n");
@@ -1598,8 +1598,6 @@ void CMap::PlaceMisc(int id, CVec pos)
 
 	// Calculate half
 	misc = Theme.bmpMisc[id];
-	w = misc.get()->w;
-	h = misc.get()->h;
 
 	sx = (int)pos.x-(misc.get()->w>>1);
 	sy = (int)pos.y-(misc.get()->h>>1);

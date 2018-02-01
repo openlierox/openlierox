@@ -635,7 +635,8 @@ void Proj_SpawnInfo::apply(Proj_SpawnParent parent, AbsTime spawnTime) const {
 }
 
 Proj_Action& Proj_Action::operator=(const Proj_Action& a) {
-	if(additionalAction) delete additionalAction; additionalAction = NULL;
+	if(additionalAction) delete additionalAction;
+	additionalAction = NULL;
 	Type = a.Type;
 	Damage = a.Damage;
 	Projectiles = a.Projectiles;

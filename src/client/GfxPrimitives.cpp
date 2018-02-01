@@ -799,7 +799,7 @@ void DrawImageAdv(SDL_Surface * bmpDest, SDL_Surface * bmpSrc, SDL_Rect& rDest, 
 // Draw the image tiled on the dest surface
 void DrawImageTiled(SDL_Surface *bmpDest, SDL_Surface *bmpSrc, int sx, int sy, int sw, int sh, int dx, int dy, int dw, int dh)
 {
-	SDL_Rect newClip = { (Sint16)dx, (Sint16)dy, (Uint16)dw, (Uint16)dh };
+	SDL_Rect newClip = { (SDLRect::Type) dx, (SDLRect::Type) dy, (SDLRect::TypeS) dw, (SDLRect::TypeS) dh };
 	ScopedSurfaceClip clip(bmpDest,newClip);	
 	MOD(sx, (int)bmpSrc->w); MOD(sy, (int)bmpSrc->h);
 	
@@ -1177,7 +1177,6 @@ int SafeSoftStretch(SDL_Surface *src, SDL_Rect *srcrect,
 	int src_locked;
 	int dst_locked;
 	int pos, inc;
-	int dst_width;
 	int dst_maxrow;
 	int src_row, dst_row;
 	Uint8 *srcp = NULL;
@@ -1244,7 +1243,6 @@ int SafeSoftStretch(SDL_Surface *src, SDL_Rect *srcrect,
 	inc = (srcrect->h << 16) / dstrect->h;
 	src_row = srcrect->y;
 	dst_row = dstrect->y;
-	dst_width = dstrect->w*dbpp;
 
 	PixelCopy& copier = getPixelCopyFunc(src, dst);
 
@@ -1283,8 +1281,8 @@ void DrawImageResampledAdv(SDL_Surface * bmpDest, SDL_Surface * bmpSrc, int sx, 
 {
 	if(!bmpSrc || !bmpDest) return;
 	
-	SDL_Rect src = { (Sint16)sx, (Sint16)sy, (Uint16)sw, (Uint16)sh };
-	SDL_Rect dst = { (Sint16)dx, (Sint16)dy, (Uint16)((float)sw * xratio), (Uint16)((float)sh * yratio) };
+	SDL_Rect src = { (SDLRect::Type) sx, (SDLRect::Type) sy, (SDLRect::TypeS) sw, (SDLRect::TypeS) sh };
+	SDL_Rect dst = { (SDLRect::Type) dx, (SDLRect::Type) dy, (SDLRect::TypeS) ((float)sw * xratio), (SDLRect::TypeS) ((float)sh * yratio) };
 	
 	// Source clipping
 	if (!ClipRefRectWith((SDLRect&)src, (SDLRect&)bmpSrc->clip_rect))
@@ -1304,8 +1302,8 @@ void DrawImageResampledAdv(SDL_Surface * bmpDest, SDL_Surface * bmpSrc, int sx, 
 {
 	if(!bmpSrc || !bmpDest) return;
 
-	SDL_Rect src = { (Sint16)sx, (Sint16)sy, (Uint16)sw, (Uint16)sh };
-	SDL_Rect dst = { (Sint16)dx, (Sint16)dy, (Uint16)dw, (Uint16)dh };
+	SDL_Rect src = { (SDLRect::Type) sx, (SDLRect::Type) sy, (SDLRect::TypeS) sw, (SDLRect::TypeS) sh };
+	SDL_Rect dst = { (SDLRect::Type) dx, (SDLRect::Type) dy, (SDLRect::TypeS) dw, (SDLRect::TypeS) dh };
 	
 	// Source clipping
 	if (!ClipRefRectWith((SDLRect&)src, (SDLRect&)bmpSrc->clip_rect))
@@ -2368,7 +2366,7 @@ static void DrawRectFill_Overlay(SDL_Surface *bmpDest, const SDL_Rect& r, Color 
 // Draws a filled rectangle
 void DrawRectFill(SDL_Surface *bmpDest, int x, int y, int x2, int y2, Color color)
 {
-	SDL_Rect r = { (Sint16)x, (Sint16)y, (Uint16)(x2 - x), (Uint16)(y2 - y) };
+	SDL_Rect r = { (SDLRect::Type) x, (SDLRect::Type) y, (SDLRect::TypeS) (x2 - x), (SDLRect::TypeS) (y2 - y) };
 
 	switch (color.a)  {
 		case SDL_ALPHA_OPAQUE:

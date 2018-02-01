@@ -871,7 +871,9 @@ bool FileCopy(const std::string& src, const std::string& dest) {
 	notes << "FileCopy: |" << flush;
 	size_t len = 0;
 	while((len = fread(tmp, 1, sizeof(tmp), src_f)) > 0) {
-		if(count == 0) notes << "." << flush; count++; count %= 20;
+		if(count == 0) notes << "." << flush;
+		count++;
+		count %= 20;
 		if(len != fwrite(tmp, 1, len, dest_f)) {
 			errors << "FileCopy: problem while writing" << endl;
 			success = false;

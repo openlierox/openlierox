@@ -899,7 +899,7 @@ int CCombobox::getIndexByName(const std::string& szString) {
 		GuiListItem::Pt tmp = new cb_item_t(szString);
 		int index = -1;
 		bool found = false;
-		std::list<GuiListItem::Pt>::const_iterator i = lowerBound(tmp, &index, &found);
+		lowerBound(tmp, &index, &found);
 		return found ? index : -1;
 	}
     return -1;

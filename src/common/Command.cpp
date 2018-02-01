@@ -229,13 +229,11 @@ struct AutocompleteRequest {
 		AutocompletionInfo::InputState ret;
 		ret.text = pretxt;
 		ret.pos = pretxt.size() + repl.size();
-		bool needToAddPreQuotes = false;
 		bool needToAddPostQuotes = false;
 		bool hadPreQuotes = pretxt.size() > 0 && pretxt[pretxt.size()-1] == '\"';
 		if(repl.find_first_of(" ,\t") != std::string::npos || hadPreQuotes) { // we must have quotes
 			if(!hadPreQuotes) { // no pre-quotes
 				// we need to put pre-quotes
-				needToAddPreQuotes = true;
 				ret.text += '\"';
 				ret.pos++;
 			}

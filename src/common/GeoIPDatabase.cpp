@@ -232,8 +232,6 @@ bool GeoIPDatabase::load(const std::string& filename)
 // Returns true on success, false otherwise
 bool GeoIPDatabase::setupSegments()
 {
-	size_t silence;
-
 	// Cleanup
 	if (m_dbSegments)
 		delete[] m_dbSegments;
@@ -245,9 +243,11 @@ bool GeoIPDatabase::setupSegments()
 	fseek(m_file, -3l, SEEK_END);
 	for (int i = 0; i < STRUCTURE_INFO_MAX_SIZE; i++) {
 		unsigned char delim[3];  // Record delimiter
-		silence = fread(delim, 1, 3, m_file);
+		if (fread(delim, 1, 3, m_file) != 3)
+			errors << "Error reading from GeoIP database" << endl;
 		if (delim[0] == 255 && delim[1] == 255 && delim[2] == 255) {
-			silence = fread(&m_dbType, 1, 1, m_file);
+			if (fread(&m_dbType, 1, 1, m_file) != 1)
+				errors << "Error reading from GeoIP database" << endl;
 
 			// Backwards compatibility with databases from April 2003 and earlier
 			if (m_dbType >= 106)
@@ -272,7 +272,8 @@ bool GeoIPDatabase::setupSegments()
 				m_dbSegments[0] = 0;
 
 				unsigned char buf[SEGMENT_RECORD_LENGTH];
-				silence = fread(buf, SEGMENT_RECORD_LENGTH, 1, m_file);
+				if (fread(buf, SEGMENT_RECORD_LENGTH, 1, m_file) != 1)
+					errors << "Error reading from GeoIP database" << endl;
 				for (int j = 0; j < SEGMENT_RECORD_LENGTH; j++)
 					m_dbSegments[0] += (buf[j] << (j * 8));
 				
@@ -309,12 +310,12 @@ unsigned int GeoIPDatabase::seekRecord(unsigned long ipnum) const
 	unsigned int offset = 0;
 
 	const unsigned char * p;
-	size_t silence;
 
 	for (int depth = 31; depth >= 0; depth--) {
 		// Read from disk
 		fseek(m_file, (long)m_recordLength * 2 * offset, SEEK_SET);
-		silence = fread(stack_buffer, m_recordLength, 2, m_file);
+		if (fread(stack_buffer, m_recordLength, 2, m_file) != 2)
+			errors << "Error reading from GeoIP database" << endl;
 
 		if (ipnum & (1 << depth)) {
 			// Take the right-hand branch
