@@ -359,16 +359,41 @@ gui_event_t *CGuiLayout::Process()
 	keyboard_t *Keyboard = GetKeyboard();
 	if(!Con_IsVisible() && Keyboard->queueLength > 0) {
 
-		// Process Escape key - try to find Back button
+		// Process Escape key in menus
 		for(int i = 0; i < Keyboard->queueLength; i++) {
 			const KeyboardEvent& kbev = Keyboard->keyQueue[i];
 			if(!kbev.down && kbev.sym == SDLK_ESCAPE) {
+				// Try to find 'Resume game' button first, hitting Escape during the match should go back to the match
+				for(auto widget: cWidgets) {
+					if(widget && widget->getType() == wid_Button &&
+						((CButton *) widget)->getImageID() == BUT_RESUME) {
+						ev = widget->MouseClicked(GetMouse(), 1);
+						tEvent->iEventMsg = ev;
+						tEvent->iControlID = widget->getID();
+						tEvent->cWidget = widget;
+						return tEvent;
+					}
+				}
+				// Try to find 'Back' or 'Quit' button
 				for(auto widget: cWidgets) {
 					if(widget && widget->getType() == wid_Button && (
 						((CButton *) widget)->getImageID() == BUT_BACK ||
 						((CButton *) widget)->getImageID() == BUT_QUIT ||
 						((CButton *) widget)->getImageID() == BUT_QUITGAME ||
-						((CButton *) widget)->getImageID() == BUT_LEAVE)) {
+						((CButton *) widget)->getImageID() == BUT_LEAVE ||
+						((CButton *) widget)->getImageID() == BUT_CANCEL ||
+						((CButton *) widget)->getImageID() == BUT_NO)) {
+						ev = widget->MouseClicked(GetMouse(), 1);
+						tEvent->iEventMsg = ev;
+						tEvent->iControlID = widget->getID();
+						tEvent->cWidget = widget;
+						return tEvent;
+					}
+				}
+				// Some dialogs have only 'OK' button, press it if nothing else works
+				for(auto widget: cWidgets) {
+					if(widget && widget->getType() == wid_Button &&
+						((CButton *) widget)->getImageID() == BUT_OK) {
 						ev = widget->MouseClicked(GetMouse(), 1);
 						tEvent->iEventMsg = ev;
 						tEvent->iControlID = widget->getID();
