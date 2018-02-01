@@ -71,6 +71,9 @@ bool Menu_Net_LANInitialize()
 	cLan.Add( new CCombobox(),								nl_PlayerSelection,		225,150, 170,  19);
 	//cLan.Add( new CLabel("Local Area Network", tLX->clHeading),	   -1,		   40, 140, 0,   0);
 
+	Menu_Net_AddTabBarButtons(&cLan);
+
+
 	// Fill the players box
 	CCombobox* PlayerSelection = (CCombobox*) cLan.getWidget( nl_PlayerSelection );
 	bool validName = false;
@@ -132,7 +135,7 @@ void Menu_Net_LANShutdown()
 				tLXOptions->sLastSelectedPlayer = item->index();
 		}
 
-		if (iNetMode == net_lan)  {
+		if (iNetMode == net_lan && cLan.getWidget(nl_ServerList))  {
 			// Save the column widths
 			for (int i=0;i<6;i++)
 				tLXOptions->iLANList[i] = (int)cLan.SendMessage(nl_ServerList,LVM_GETCOLUMNWIDTH,i,0);
@@ -158,6 +161,8 @@ void Menu_Net_LANFrame(int mouse)
 	ev = cLan.Process();
 	cLan.Draw( VideoPostProcessor::videoSurface().get() );
 
+	if (Menu_Net_ProcessTabBarButtons(ev))
+		return;
 
 	// Process the server list
 	if( ServerList::get()->process() ) {
@@ -393,8 +398,6 @@ void Menu_Net_LANJoinServer(const std::string& sAddress, const std::string& sNam
 		return;
 }
 
-// TODO: remove this here!
-extern CButton	cNetButtons[5];
 
 enum {
 	ld_Ok=0,
@@ -415,9 +418,6 @@ void Menu_Net_LanShowServer(const std::string& szAddress)
 		Menu_DrawBox(tMenu->bmpBuffer.get(), 15,130, 625, 465);
 	Menu_DrawSubTitle(tMenu->bmpBuffer.get(),SUB_NETWORK);
 	cLan.Draw(tMenu->bmpBuffer.get());
-
-	for(int i=1;i<4;i++)
-		cNetButtons[i].Draw(tMenu->bmpBuffer.get());
 
 	Menu_RedrawMouse(true);
 

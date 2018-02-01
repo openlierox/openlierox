@@ -484,6 +484,8 @@ void	Menu_Net_ServerList_Refresher();
 bool	Menu_Net_MainInitialize();
 void	Menu_Net_MainFrame(int mouse);
 void	Menu_Net_MainShutdown();
+void	Menu_Net_AddTabBarButtons(CGuiLayout * layout);
+bool	Menu_Net_ProcessTabBarButtons(gui_event_t *ev);
 
 
 // Net::Host menu

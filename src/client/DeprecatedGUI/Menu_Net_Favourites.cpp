@@ -73,6 +73,7 @@ bool Menu_Net_FavouritesInitialize()
 	cFavourites.Add( new CLabel("Select player:",tLX->clNormalLabel),-1,		125, 152, 180,15);
 	cFavourites.Add( new CCombobox(),								mf_PlayerSelection,		225,150, 170,  19);
 
+	Menu_Net_AddTabBarButtons(&cFavourites);
 
 	// Fill the players box
 	CCombobox* PlayerSelection = (CCombobox*) cFavourites.getWidget( mf_PlayerSelection );
@@ -136,7 +137,7 @@ void Menu_Net_FavouritesShutdown()
 		}
 
 		// Save the list
-		if (iNetMode == net_favourites)  {
+		if (iNetMode == net_favourites && cFavourites.getWidget(mf_ServerList))  {
 			ServerList::get()->save();
 
 			// Save the column widths
@@ -164,6 +165,9 @@ void Menu_Net_FavouritesFrame(int mouse)
 	// Process & Draw the gui
 	ev = cFavourites.Process();
 	cFavourites.Draw( VideoPostProcessor::videoSurface().get() );
+
+	if (Menu_Net_ProcessTabBarButtons(ev))
+		return;
 
 	// Process the server list
 	if( ServerList::get()->process() ) {
@@ -451,8 +455,6 @@ enum  {
 	fd_Join
 };
 
-// TODO: remove this here!
-extern CButton cNetButtons[5];
 
 ///////////////////
 // Show a server's details
@@ -466,9 +468,6 @@ void Menu_Net_FavouritesShowServer(const std::string& szAddress)
     Menu_DrawBox(tMenu->bmpBuffer.get(), 15,130, 625, 465);
 	Menu_DrawSubTitle(tMenu->bmpBuffer.get(),SUB_NETWORK);
 	cFavourites.Draw(tMenu->bmpBuffer.get());
-
-	for(int i=0;i<4;i++)
-		cNetButtons[i].Draw(tMenu->bmpBuffer.get());
 
 	Menu_RedrawMouse(true);
 
