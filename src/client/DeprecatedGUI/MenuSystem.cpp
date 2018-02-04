@@ -1010,6 +1010,11 @@ void Menu_EnableNetEvents()
 			tMenu->tSocket[i]->setWithEvents(true);
 }
 
+bool Menu_IsKeyboardNavigationUsed()
+{
+	return CGuiLayout::isKeyboardNavigationUsed();
+}
+
 	
 	
 bool bGotDetails = false;

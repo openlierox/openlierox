@@ -727,8 +727,12 @@ int CBrowser::KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate)
 			} else {
 				ClearSelection();
 			}
+		} else {
+			if (Menu_IsKeyboardNavigationUsed())
+				return BRW_NONE; // Switch to next widget
 		}
 	return BRW_KEY_PROCESSED;
+
 	case SDLK_UP:
 		if (iCursorLine > 0 && iCursorLine < tLines.size())  {
 			--iCursorLine;
@@ -750,6 +754,9 @@ int CBrowser::KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate)
 			} else {
 				ClearSelection();
 			}
+		} else {
+			if (Menu_IsKeyboardNavigationUsed())
+				return BRW_NONE; // Switch to next widget
 		}
 	return BRW_KEY_PROCESSED;
 

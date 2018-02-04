@@ -381,6 +381,7 @@ void	Menu_FillLevelList(CCombobox *cmb, int random);
 void    Menu_redrawBufferRect(int x, int y, int w, int h);
 void	Menu_DisableNetEvents();
 void	Menu_EnableNetEvents();
+bool	Menu_IsKeyboardNavigationUsed();
 
 void    Menu_SvrList_DrawInfo(const std::string& szAddress, int w, int h);
 	

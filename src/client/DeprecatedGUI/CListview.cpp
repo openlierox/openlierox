@@ -1505,7 +1505,7 @@ int CListview::KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate
 
 	iLastChar = c;
 
-	// Up arrow
+	// Down arrow
 	if (keysym == SDLK_DOWN) {
 		if (tSelected) {
 			if (tSelected->tNext)  {
@@ -1527,11 +1527,10 @@ int CListview::KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate
 				return LV_CHANGED;
 			}
 		}
-		return LV_NONE;
 	}
 
 
-	// Down arrow
+	// Up arrow
 	if (keysym == SDLK_UP)  {
 		lv_item_t *i = tItems;
 		if (tItems)  {
