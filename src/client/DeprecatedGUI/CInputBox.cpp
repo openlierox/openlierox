@@ -19,10 +19,14 @@
 #include "DeprecatedGUI/Menu.h"
 #include "GfxPrimitives.h"
 #include "CInput.h"
+#include "Sounds.h"
 #include "DeprecatedGUI/CInputBox.h"
 
 
 namespace DeprecatedGUI {
+
+CInputbox * CInputbox::InputBoxSelected = NULL;
+std::string CInputbox::InputBoxLabel;
 
 ///////////////////
 // Draw the input box
@@ -55,17 +59,19 @@ void CInputbox::Draw(SDL_Surface * bmpDest)
     tLX->cFont.DrawCentre(bmpDest, iX + bw/2, iY+1, tLX->clWhite, sText);
 }
 
-CInputbox * CInputbox::InputBoxSelected = NULL;
-std::string CInputbox::InputBoxLabel;
-
-CInputboxInput::CInputboxInput(): CInputbox( 0, "", tMenu->bmpInputbox, "" )
+int CInputbox::KeyUp(UnicodeChar c, int keysym, const ModifiersState& modstate)
 {
-	CInput::InitJoysticksTemp(); // for supporting joystick in CInput::Wait
-}
-
-CInputboxInput::~CInputboxInput()
-{
-	CInput::UnInitJoysticksTemp();
+	if (keysym == SDLK_RETURN ||
+		keysym == SDLK_KP_ENTER ||
+		keysym == SDLK_LALT ||
+		keysym == SDLK_LCTRL ||
+		keysym == SDLK_LSHIFT ||
+		keysym == SDLK_x ||
+		keysym == SDLK_z) {
+		PlaySoundSample(sfxGeneral.smpClick);
+		return INB_MOUSEUP;
+	}
+	return INB_NONE;
 }
 
 }; // namespace DeprecatedGUI

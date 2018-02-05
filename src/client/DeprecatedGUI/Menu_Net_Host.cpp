@@ -758,7 +758,7 @@ void Menu_Net_HostLobbyCreateGui()
 	// Setup the player list
 	CListview *player_list = (CListview *)cHostLobby.getWidget(hl_PlayerList);
 	if (player_list)  {
-		player_list->setShowSelect(false);
+		player_list->setShowSelect(Menu_IsKeyboardNavigationUsed());
 		player_list->setOldStyle(true);
 		player_list->AddColumn("Players", gfxGUI.bmpCommandBtn.get()->w / 2 + 2, tLX->clHeading);  // Command button/Player label
 		player_list->AddColumn("", tMenu->bmpLobbyReady.get()->w + 2);  // Lobby ready

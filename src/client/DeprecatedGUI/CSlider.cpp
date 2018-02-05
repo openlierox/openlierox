@@ -19,6 +19,7 @@
 #include "DeprecatedGUI/Graphics.h"
 #include "DeprecatedGUI/Menu.h"
 #include "GfxPrimitives.h"
+#include "Sounds.h"
 #include "DeprecatedGUI/CSlider.h"
 
 
@@ -77,15 +78,17 @@ int CSlider::KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate)
 {
 	switch (keysym)  {
 		case SDLK_LEFT:
-			iValue -= (iMax - iMin) >= 10 ? (iMax - iMin) / 10 : 1;
+			iValue -= (iMax - iMin) >= 50 ? (iMax - iMin) / 50 : (iMax - iMin) >= 10 ? (iMax - iMin) / 10 : 1;
 			iValue = MAX(iMin,iValue);
 			iValue = MIN(iMax,iValue);
+			PlaySoundSample(sfxGeneral.smpClick);
 		return SLD_CHANGE;
 
 		case SDLK_RIGHT:
-			iValue += (iMax - iMin) >= 10 ? (iMax - iMin) / 10 : 1;
+			iValue += (iMax - iMin) >= 50 ? (iMax - iMin) / 50 : (iMax - iMin) >= 10 ? (iMax - iMin) / 10 : 1;
 			iValue = MAX(iMin,iValue);
 			iValue = MIN(iMax,iValue);
+			PlaySoundSample(sfxGeneral.smpClick);
 		return SLD_CHANGE;
 	}
 

@@ -22,6 +22,7 @@
 #include "AuxLib.h"
 #include "DeprecatedGUI/Menu.h"
 #include "StringUtils.h"
+#include "Sounds.h"
 #include "DeprecatedGUI/CBox.h"
 #include "DeprecatedGUI/CImage.h"
 #include "DeprecatedGUI/CButton.h"
@@ -356,7 +357,7 @@ gui_event_t *CGuiLayout::Process()
 					int posmin = 0;
 					int posmax = cFocused->getX() + cFocused->getY() * 0x10000 + cFocused->getKeyboardNavigationOrder() * 0x10000000;
 					for(auto widget: cWidgets) {
-						if (!widget->getEnabled() || widget == cFocused || widget->getType() == wid_Label)
+						if (!widget->getEnabled() || widget == cFocused || widget->getType() == wid_Label || widget->getType() == wid_None)
 							continue;
 						int pos = widget->getX() + widget->getY() * 0x10000 + widget->getKeyboardNavigationOrder() * 0x10000000;
 						if (posmin < pos && posmax > pos) {
@@ -368,7 +369,7 @@ gui_event_t *CGuiLayout::Process()
 					int posmin = cFocused->getX() + cFocused->getY() * 0x10000 + cFocused->getKeyboardNavigationOrder() * 0x10000000;
 					int posmax = INT_MAX;
 					for(auto widget: cWidgets) {
-						if (!widget->getEnabled() || widget == cFocused || widget->getType() == wid_Label)
+						if (!widget->getEnabled() || widget == cFocused || widget->getType() == wid_Label || widget->getType() == wid_None)
 							continue;
 						int pos = widget->getX() + widget->getY() * 0x10000 + widget->getKeyboardNavigationOrder() * 0x10000000;
 						if (posmin < pos && posmax > pos) {
@@ -390,7 +391,7 @@ gui_event_t *CGuiLayout::Process()
 	if (!cFocused && bKeyboardNavigation) {
 		int posmax = INT_MAX;
 		for(auto widget: cWidgets) {
-			if (!widget->getEnabled() || widget->getType() == wid_Label)
+			if (!widget->getEnabled() || widget->getType() == wid_Label || widget->getType() == wid_None)
 				continue;
 			int pos = widget->getX() + widget->getY() * 0x10000 + widget->getKeyboardNavigationOrder() * 0x10000000;
 			if (posmax > pos) {

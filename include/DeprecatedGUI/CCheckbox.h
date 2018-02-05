@@ -77,7 +77,7 @@ public:
 	int		MouseDown(mouse_t *tMouse, int nDown)	{ return CHK_NONE; }
 	int		MouseWheelDown(mouse_t *tMouse)		{ return CHK_NONE; }
 	int		MouseWheelUp(mouse_t *tMouse)		{ return CHK_NONE; }
-	int		KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate)	{ return CHK_NONE; }
+	int		KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate);
 	int		KeyUp(UnicodeChar c, int keysym, const ModifiersState& modstate)	{ return CHK_NONE; }
 
 

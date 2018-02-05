@@ -437,6 +437,7 @@ void Menu_LocalFrame()
 	cLocalMenu.Draw(VideoPostProcessor::videoSurface().get());
 
 	if(ev) {
+		int changeTeamPlayerId = -1;
 
 		switch(ev->iControlID) {
 			case ml_Game:
@@ -486,33 +487,38 @@ void Menu_LocalFrame()
 
 			// Playing list
 			case ml_Playing:
-				if(ev->iEventMsg == LV_DOUBLECLK || ev->iEventMsg == LV_RIGHTCLK || ev->iEventMsg == LV_ENTER) {
-					Menu_LocalRemovePlaying();
+				if (ev->iEventMsg == LV_DOUBLECLK || ev->iEventMsg == LV_RIGHTCLK || ev->iEventMsg == LV_ENTER) {
+					if (!Menu_IsKeyboardNavigationUsed() || gameSettings[FT_GameMode].as<GameModeInfo>()->mode->GameTeams() <= 1)
+						Menu_LocalRemovePlaying();
 				}
 
+				lv = (CListview *)cLocalMenu.getWidget(ml_Playing);
 
 				if(ev->iEventMsg == LV_WIDGETEVENT && gameSettings[FT_GameMode].as<GameModeInfo>()->mode->GameTeams() > 1) {
-
 					// If the team colour item was clicked on, change it
-					lv = (CListview *)cLocalMenu.getWidget(ml_Playing);
-
 					ev = lv->getWidgetEvent();
 					if (ev->cWidget->getType() == wid_Image && ev->iEventMsg == IMG_CLICK)  {
-						lv_item_t *it = lv->getItem(ev->iControlID);
-						lv_subitem_t *sub = lv->getSubItem(it, 2);
+						changeTeamPlayerId = ev->iControlID;
+					}
+					if (Menu_IsKeyboardNavigationUsed()) {
+						changeTeamPlayerId = lv->getCurIndex();
+					}
+				}
 
-						if(sub) {
-							sub->iExtra++;
-							sub->iExtra %= 4;
+				if (changeTeamPlayerId >= 0) {
+					lv_item_t *it = lv->getItem(changeTeamPlayerId);
+					lv_subitem_t *sub = lv->getSubItem(it, 2);
 
-							// Change the image
-							((CImage *)ev->cWidget)->Change(DynDrawFromSurface(gfxGame.bmpTeamColours[sub->iExtra]));
+					if(sub) {
+						sub->iExtra++;
+						sub->iExtra %= 4;
 
-							SmartPointer<profile_t> p = FindProfile(it->iIndex);
-							if(p.get()) {
-								p->iTeam = sub->iExtra;
-								//tMenu->sLocalPlayers[ev->iControlID].ChangeGraphics(gameSettings[FT_GameMode].as<GameModeInfo>()->mode->GeneralGameType());
-							}
+						// Change the image
+						((CImage *)sub->tWidget)->Change(DynDrawFromSurface(gfxGame.bmpTeamColours[sub->iExtra]));
+
+						SmartPointer<profile_t> p = FindProfile(it->iIndex);
+						if(p.get()) {
+							p->iTeam = sub->iExtra;
 						}
 					}
 				}

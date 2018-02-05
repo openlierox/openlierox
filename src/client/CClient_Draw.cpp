@@ -1446,8 +1446,10 @@ void CClient::InitializeGameMenu()
 			cGameMenuLayout.Add(new DeprecatedGUI::CLabel(teamName, tLX->clNormalLabel), gm_Winner, 515, 5, 0, 0);
 			if(game.iMatchWinnerTeam >= 0 && game.iMatchWinnerTeam < MAX_TEAMS) {
 				SmartPointer<SDL_Surface> pic = DeprecatedGUI::gfxGame.bmpTeamColours[game.iMatchWinnerTeam];
-				if (pic.get())
+				if (pic.get()) {
 					cGameMenuLayout.Add(new DeprecatedGUI::CImage(DynDrawFromSurface(pic)), gm_TopSkin, 490, 5, pic.get()->w, pic.get()->h);
+					cGameMenuLayout.getWidget(gm_TopSkin)->setKeyboardNavigationOrder(1);
+				}
 			}
 		} else {
 			std::string winnerName = "noone";
@@ -1464,8 +1466,10 @@ void CClient::InitializeGameMenu()
 			if(game.iMatchWinner >= 0 && game.iMatchWinner < MAX_WORMS) {
 				CWorm* w = game.wormById(game.iMatchWinner, false);
 				SmartPointer<DynDrawIntf> pic = w ? w->getPicimg() : NULL;
-				if (pic.get())
+				if (pic.get()) {
 					cGameMenuLayout.Add(new DeprecatedGUI::CImage(pic), gm_TopSkin, 490, 5, WORM_SKIN_WIDTH, WORM_SKIN_HEIGHT);
+					cGameMenuLayout.getWidget(gm_TopSkin)->setKeyboardNavigationOrder(1);
+				}
 			}
 		}
 	}
@@ -1486,6 +1490,8 @@ void CClient::InitializeGameMenu()
 	Right->setRedrawMenu(false);
 	Left->setOldStyle(true);
 	Right->setOldStyle(true);
+	Left->setKeyboardNavigationOrder(1);
+	Right->setKeyboardNavigationOrder(1);
 
 	AddColumns(Left);
 	AddColumns(Right);

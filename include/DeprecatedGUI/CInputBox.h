@@ -81,7 +81,7 @@ public:
 	int		MouseWheelDown(mouse_t *tMouse)		{ return INB_NONE; }
 	int		MouseWheelUp(mouse_t *tMouse)		{ return INB_NONE; }
 	int		KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate)	{ return INB_NONE; }
-	int		KeyUp(UnicodeChar c, int keysym, const ModifiersState& modstate)	{ return INB_NONE; }
+	int		KeyUp(UnicodeChar c, int keysym, const ModifiersState& modstate); // return event on key up so we won't process that same event inside key reader
 
 
 	// Process a message sent
@@ -115,19 +115,6 @@ public:
 
 	static CInputbox * InputBoxSelected;
 	static std::string InputBoxLabel;	// "GUI.InputBoxLabel" skin string
-	friend class CInputboxInput;
-};
-
-class CInputboxInput: public CInputbox	// InputBoxDialog.xml should contain exactly one such control at the end
-{
-	private:
-	int		iSkipFirstFrame;
-
-	public:
-	CInputboxInput();
-	~CInputboxInput();
-	
-	void	Draw(SDL_Surface * bmpDest) {};
 };
 
 } // namespace DeprecatedGUI

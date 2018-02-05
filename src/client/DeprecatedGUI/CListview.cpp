@@ -21,6 +21,7 @@
 #include "StringUtils.h"
 #include "Cursor.h"
 #include "Timer.h"
+#include "Sounds.h"
 
 
 namespace DeprecatedGUI {
@@ -1516,6 +1517,7 @@ int CListview::KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate
 				if (bGotScrollbar)
 					if (tSelected->_iID >= (cScrollbar.getItemsperbox()-1 + cScrollbar.getValue()))
 						cScrollbar.setValue( cScrollbar.getValue()+1 );
+				PlaySoundSample(sfxGeneral.smpClick);
 				return LV_CHANGED;
 			}
 		} else {
@@ -1524,6 +1526,7 @@ int CListview::KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate
 				tSelected->bSelected = true;
 				if (bGotScrollbar)
 					cScrollbar.setValue(0);
+				PlaySoundSample(sfxGeneral.smpClick);
 				return LV_CHANGED;
 			}
 		}
@@ -1545,6 +1548,7 @@ int CListview::KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate
 					if (bGotScrollbar)
 						if (cScrollbar.getValue() > idx)
 							cScrollbar.setValue( cScrollbar.getValue()-1 );
+					PlaySoundSample(sfxGeneral.smpClick);
 					return LV_CHANGED;
 				}
 			}
@@ -1560,6 +1564,7 @@ int CListview::KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate
 			tSelected->bSelected = true;
 			if (bGotScrollbar)
 				cScrollbar.setValue(0);
+			PlaySoundSample(sfxGeneral.smpClick);
 			return LV_CHANGED;
 		}
 	}
@@ -1573,6 +1578,7 @@ int CListview::KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate
 			tSelected->bSelected = true;
 			if (bGotScrollbar)
 				cScrollbar.setValue(tSelected->_iID);
+			PlaySoundSample(sfxGeneral.smpClick);
 			return LV_CHANGED;
 		}
 	}
@@ -1580,6 +1586,7 @@ int CListview::KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate
 	// Delete
 	if (keysym == SDLK_DELETE)  {
 		iLastChar = SDLK_DELETE;
+		PlaySoundSample(sfxGeneral.smpClick);
 		return LV_DELETE;
 	}
 
@@ -1592,6 +1599,7 @@ int CListview::KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate
 		keysym == SDLK_x ||
 		keysym == SDLK_z) {
 		iLastChar = SDLK_RETURN;
+		PlaySoundSample(sfxGeneral.smpClick);
 		return LV_ENTER;
 	}
 

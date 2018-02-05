@@ -58,7 +58,7 @@ enum WidgetType_t {
 	wid_Image,
 	wid_Frame,
 	wid_Animation,
-	wid_GuiLayout
+	wid_GuiLayout,
 };
 
 class CGuiLayoutBase;
