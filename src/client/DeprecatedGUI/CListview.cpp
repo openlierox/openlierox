@@ -610,9 +610,7 @@ void CListview::RemoveItem(int iIndex)
 			tLastItem = i;
 	}
 
-	tSelected = tItems;
-	if(tSelected)
-		tSelected->bSelected = true;
+	tSelected = NULL;
 
 	// Adjust the scrollbar
 	//cScrollbar.setMax( cScrollbar.getMax()-1 );

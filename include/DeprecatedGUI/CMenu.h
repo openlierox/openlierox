@@ -27,6 +27,7 @@ namespace DeprecatedGUI {
 enum {
 	MNU_NONE=-1,
 	MNU_LOSTFOCUS=0,
+	MNU_SELECTION_CHANGED,
 	MNU_USER        // Must be last
 };
 
@@ -57,6 +58,8 @@ private:
 	bool	m_bContainsCheckableItems;
 
 	std::list<mnu_item_t>  m_psItemList;
+
+	void	MoveMouseToCurrentItem();
 
 
 public:
