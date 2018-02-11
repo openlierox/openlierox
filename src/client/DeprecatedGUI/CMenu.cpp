@@ -311,7 +311,7 @@ void CMenu::MoveMouseToCurrentItem()
 			return true;
 		}
 	};
-	doActionInMainThread( new RepositionMouse(m_nPosY + 2, y - 1) );
+	doActionInMainThread( new RepositionMouse(m_nPosX + 2, y - 1) );
 }
 
 }; // namespace DeprecatedGUI
