@@ -1845,7 +1845,7 @@ void Menu_HostActionsPopupMenuInitialize( CGuiLayout & layout, int id_PopupMenu,
 							layout.Add(info, id_PopupPlayerInfo, 0, 0, 640, 480 );
 						else
 							layout.Add(info, id_PopupPlayerInfo, info->getMenuX(), info->getMenuY(), 200, 200 );
-
+						
 						NetworkAddr addr = w->getClient()->getChannel()->getAddress();
 						std::string addrStr;
 						NetAddrToString(addr, addrStr);

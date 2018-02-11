@@ -138,7 +138,7 @@ void CMenu::Draw(SDL_Surface * bmpDest)
 	if (Y+H > bmpDest->h)
 		Y = Y-H;
 	if (X+W > bmpDest->w)
-		X = X-W;
+		X = 3;
 
     Menu_redrawBufferRect(X+1, Y+1, W-1,H-1);
 

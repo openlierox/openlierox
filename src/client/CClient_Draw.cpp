@@ -1484,8 +1484,8 @@ void CClient::InitializeGameMenu()
 
 	Left->setDrawBorder(false);
 	Right->setDrawBorder(false);
-	Left->setShowSelect(false);
-	Right->setShowSelect(false);
+	Left->setShowSelect(DeprecatedGUI::Menu_IsKeyboardNavigationUsed());
+	Right->setShowSelect(DeprecatedGUI::Menu_IsKeyboardNavigationUsed());
 	Left->setRedrawMenu(false);
 	Right->setRedrawMenu(false);
 	Left->setOldStyle(true);
@@ -1612,38 +1612,45 @@ void CClient::DrawGameMenu(SDL_Surface * bmpDest)
 
 		case gm_LeftList:
 		case gm_RightList:
-			if (ev->iEventMsg == DeprecatedGUI::LV_WIDGETEVENT)  {
-				ev = ((DeprecatedGUI::CListview *)ev->cWidget)->getWidgetEvent();
+			if (ev->iEventMsg == DeprecatedGUI::LV_WIDGETEVENT) {
+				DeprecatedGUI::gui_event_t * wev = ((DeprecatedGUI::CListview *)ev->cWidget)->getWidgetEvent();
 
 				// Do not display the host menu when not hosting
 				if (game.isClient())
 					break;
 
 				// Click on the command button
-				if (ev->cWidget->getType() == DeprecatedGUI::wid_Button && ev->iEventMsg == DeprecatedGUI::BTN_CLICKED)  {
-					iSelectedPlayer = ev->cWidget->getID();
-					DeprecatedGUI::Menu_HostActionsPopupMenuInitialize(cGameMenuLayout, gm_PopupMenu, gm_PopupPlayerInfo, iSelectedPlayer );
+				if (wev->cWidget->getType() == DeprecatedGUI::wid_Button && wev->iEventMsg == DeprecatedGUI::BTN_CLICKED) {
+					iSelectedPlayer = wev->cWidget->getID();
+					DeprecatedGUI::Menu_HostActionsPopupMenuInitialize(cGameMenuLayout, gm_PopupMenu, gm_PopupPlayerInfo, iSelectedPlayer);
 				}
 			}
 		break;
 
-		case gm_PopupMenu:  {
-			DeprecatedGUI::Menu_HostActionsPopupMenuClick(cGameMenuLayout, gm_PopupMenu, gm_PopupPlayerInfo, iSelectedPlayer, ev->iEventMsg);
+		case gm_PopupMenu:
+			if (ev->iEventMsg >= DeprecatedGUI::MNU_USER) {
+				DeprecatedGUI::Menu_HostActionsPopupMenuClick(cGameMenuLayout, gm_PopupMenu, gm_PopupPlayerInfo, iSelectedPlayer, ev->iEventMsg);
 			} 
 			break;
 			
-		case gm_PopupPlayerInfo:  {
-			DeprecatedGUI::Menu_HostActionsPopupPlayerInfoClick(cGameMenuLayout, gm_PopupMenu, gm_PopupPlayerInfo, iSelectedPlayer, ev->iEventMsg);
+		case gm_PopupPlayerInfo:
+			if (ev->iEventMsg >= DeprecatedGUI::MNU_USER) {
+				DeprecatedGUI::Menu_HostActionsPopupPlayerInfoClick(cGameMenuLayout, gm_PopupMenu, gm_PopupPlayerInfo, iSelectedPlayer, ev->iEventMsg);
 			} 
 			break;
 		}
 	}
 
+	if (DeprecatedGUI::Menu_IsKeyboardNavigationUsed() && (!cGameMenuLayout.getFocusedWidget() || cGameMenuLayout.getFocusedWidget()->getID() != gm_PopupMenu)) {
+		// If popup menu not focused, remove it
+		cGameMenuLayout.removeWidget(gm_PopupMenu);
+		cGameMenuLayout.removeWidget(gm_PopupPlayerInfo);
+	}
+
 	// TODO: why is processing events in a draw-function? move it out here
 	// Process the keyboard
 	if (!bChat_Typing && !DeprecatedGUI::bShowFloatingOptions)  {
-
-		if (WasKeyboardEventHappening(SDLK_RETURN,false) || WasKeyboardEventHappening(SDLK_KP_ENTER,false) || WasKeyboardEventHappening(SDLK_ESCAPE,false))  {
+		if (WasKeyboardEventHappening(SDLK_ESCAPE,false))  {
 			if (game.isLocalGame() && game.gameOver)  {
 				GotoLocalMenu();
 			} else if (!game.gameOver)  {
