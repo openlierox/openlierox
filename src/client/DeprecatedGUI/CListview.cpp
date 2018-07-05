@@ -1509,19 +1509,7 @@ void CListview::MoveMouseToCurrentItem()
 			return;
 
 		if (item == tSelected) {
-			struct RepositionMouse: public Action
-			{
-				int x, y;
-				RepositionMouse(int _x, int _y): x(_x), y(_y)
-				{
-				}
-				Result handle()
-				{
-					SDL_WarpMouseInWindow(NULL, x, y);
-					return true;
-				}
-			};
-			doActionInMainThread( new RepositionMouse(iX + 3, y - 1) );
+			Menu_WarpMouse(iX + 3, y - 1);
 			return;
 		}
 	}

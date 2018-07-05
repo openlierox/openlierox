@@ -140,6 +140,7 @@ public:
 	void		setTooltip(const SDL_Rect& keepArea, VectorD2<int> pos, const std::string& msg);
 
 	static bool isKeyboardNavigationUsed() { return bKeyboardNavigation; }
+	static void setKeyboardNavigationUsed(bool used) { bKeyboardNavigation = used; }
 };
 
 } // namespace DeprecatedGUI

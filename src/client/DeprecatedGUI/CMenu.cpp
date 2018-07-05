@@ -299,19 +299,7 @@ void CMenu::MoveMouseToCurrentItem()
 
 	int y = m_nPosY + 2 + (m_nSelectedIndex + 1) * (tLX->cFont.GetHeight() * 3 / 2);
 
-	struct RepositionMouse: public Action
-	{
-		int x, y;
-		RepositionMouse(int _x, int _y): x(_x), y(_y)
-		{
-		}
-		int handle()
-		{
-			SDL_WarpMouse(x, y);
-			return true;
-		}
-	};
-	doActionInMainThread( new RepositionMouse(m_nPosX + 2, y - 1) );
+	Menu_WarpMouse(m_nPosX + 2, y - 1);
 }
 
 }; // namespace DeprecatedGUI

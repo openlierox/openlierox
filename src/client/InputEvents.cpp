@@ -300,7 +300,7 @@ static void EvHndl_KeyDownUp(SDL_Event* ev) {
 
 static void EvHndl_TextInput(SDL_Event* _ev) {
 	SDL_TextInputEvent& ev = _ev->text;
-	
+
 	auto p = ev.text; // 0-terminated utf8
 	auto end = p + sizeof(ev.text);
 	while(p != end) {
@@ -326,6 +326,8 @@ static void EvHndl_MouseMotion(SDL_Event* ev) {
 	mouseY = CLAMP(mouseY, 0, VideoPostProcessor::get()->screenHeight());*/
 	mouseX = ev->motion.x;
 	mouseY = ev->motion.y;
+	// If the mouse really moved (not warped by keyboard navigation), leave keyboard navigation mode
+	DeprecatedGUI::Menu_ProcessMouseMotion(ev->motion.x, ev->motion.y);
 }
 
 static void EvHndl_MouseButtonDown(SDL_Event* ev) {}

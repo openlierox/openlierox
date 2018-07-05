@@ -404,19 +404,7 @@ gui_event_t *CGuiLayout::Process()
 
 	if (cFocused && widgetSelectedWithKeyboard) {
 		cFocused->setFocused(true);
-		struct RepositionMouse: public Action
-		{
-			int x, y;
-			RepositionMouse(int _x, int _y): x(_x), y(_y)
-			{
-			}
-			Result handle()
-			{
-				SDL_WarpMouseInWindow(NULL, x, y);
-				return true;
-			}
-		};
-		doActionInMainThread( new RepositionMouse(cFocused->getX() + 1, cFocused->getY() + cFocused->getHeight() - 2) );
+		Menu_WarpMouse(cFocused->getX() + 1, cFocused->getY() + cFocused->getHeight() - 2);
 		PlaySoundSample(sfxGeneral.smpClick);
 	}
 

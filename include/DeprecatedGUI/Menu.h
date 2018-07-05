@@ -382,6 +382,8 @@ void    Menu_redrawBufferRect(int x, int y, int w, int h);
 void	Menu_DisableNetEvents();
 void	Menu_EnableNetEvents();
 bool	Menu_IsKeyboardNavigationUsed();
+void	Menu_WarpMouse(int x, int y);
+void	Menu_ProcessMouseMotion(int x, int y);
 
 void    Menu_SvrList_DrawInfo(const std::string& szAddress, int w, int h);
 	

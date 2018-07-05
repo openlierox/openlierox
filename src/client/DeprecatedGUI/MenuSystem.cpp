@@ -99,6 +99,9 @@ static bool Menu_InitSockets() {
 
 menu_t::menu_t() : cSkin(CGameSkin::WormSkin(), true) {}
 
+static int Menu_MouseWarpedX = 0;
+static int Menu_MouseWarpedY = 0;
+
 ///////////////////
 // Initialize the menu system
 bool Menu_Initialize()
@@ -1015,6 +1018,31 @@ bool Menu_IsKeyboardNavigationUsed()
 	return CGuiLayout::isKeyboardNavigationUsed();
 }
 
+void Menu_WarpMouse(int x, int y)
+{
+	struct RepositionMouse: public Action
+	{
+		int x, y;
+		RepositionMouse(int _x, int _y): x(_x), y(_y)
+		{
+		}
+		Result handle()
+		{
+			SDL_WarpMouseInWindow(NULL, x, y);
+			return true;
+		}
+	};
+	Menu_MouseWarpedX = x;
+	Menu_MouseWarpedY = y;
+	doActionInMainThread( new RepositionMouse(x, y) );
+}
+
+void Menu_ProcessMouseMotion(int x, int y)
+{
+	if (x != Menu_MouseWarpedX || y != Menu_MouseWarpedY) {
+		CGuiLayout::setKeyboardNavigationUsed(false);
+	}
+}
 	
 	
 bool bGotDetails = false;
