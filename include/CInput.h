@@ -21,6 +21,7 @@
 #define __CINPUT_H__
 
 #include <string>
+#include "InputEvents.h"
 
 
 // Input variable types
@@ -61,6 +62,7 @@ private:
 	int		Data;
 	int		Extra;
 	std::string m_EventName;
+	ModifiersState m_modifiers; // required modifier keys for keyboard bindings
 	bool	resetEachFrame;
 
 	// HINT: currently these are only used for keyboard exept nDownOnce

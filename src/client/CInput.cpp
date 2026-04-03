@@ -445,7 +445,27 @@ int CInput::Wait(std::string& strText)
 	for(int i = 0; i < kb->queueLength; ++i) {
 		if(kb->keyQueue[i].down) continue;
 		if(kb->keyQueue[i].sym == 0) continue;
-		
+
+		// Skip bare modifier key releases — they are not useful as standalone bindings
+		// when combined with other modifiers (e.g. releasing Alt after Alt+Enter).
+		// Pure modifier presses (Alt alone) still work since the state will show no other mods.
+		SDL_Keycode sym = kb->keyQueue[i].sym;
+		bool isModifierKey = (sym == SDLK_LALT || sym == SDLK_RALT ||
+		                      sym == SDLK_LCTRL || sym == SDLK_RCTRL ||
+		                      sym == SDLK_LSHIFT || sym == SDLK_RSHIFT ||
+		                      sym == SDLK_LGUI || sym == SDLK_RGUI);
+		const ModifiersState& evMods = kb->keyQueue[i].state;
+		bool anyModHeld = evMods.bAlt || evMods.bCtrl || evMods.bShift || evMods.bGui;
+		if(isModifierKey && anyModHeld)
+			continue;
+
+		// Build modifier prefix string from the event's modifier state
+		std::string modPrefix;
+		if(evMods.bAlt)   modPrefix += "alt+";
+		if(evMods.bCtrl)  modPrefix += "ctrl+";
+		if(evMods.bShift) modPrefix += "shift+";
+		if(evMods.bGui)   modPrefix += "gui+";
+
 		for(uint n = 0; n<sizeof(Keys) / sizeof(keys_t); n++) {
 			if(kb->keyQueue[i].sym == Keys[n].value) {
 #ifdef WIN32
@@ -460,7 +480,7 @@ int CInput::Wait(std::string& strText)
 				}
 #endif
 
-				strText = Keys[n].text;
+				strText = modPrefix + Keys[n].text;
 				return true;
 			}
 		}
@@ -468,7 +488,7 @@ int CInput::Wait(std::string& strText)
 		// Our description is not enough, let's call SDL for help
 		// We use SDL only for the left unknown keys to stay backward and forward compatible.
 		if (kb->keyQueue[i].sym != SDLK_ESCAPE)  {
-			strText = SDL_GetKeyName(kb->keyQueue[i].sym);
+			strText = modPrefix + SDL_GetKeyName(kb->keyQueue[i].sym);
 			return true;
 		}
 	}
@@ -497,11 +517,38 @@ int CInput::Setup(const std::string& string)
 {
 	m_EventName = string;
 	resetEachFrame = true;
+	m_modifiers.clear();
+
+	// Parse optional modifier prefixes: "alt+", "ctrl+", "shift+"
+	std::string remaining = string;
+	bool foundModifier = true;
+	while(foundModifier && remaining.size() >= 4) {
+		foundModifier = false;
+		std::string lower = remaining.substr(0, 6);
+		for(char& c : lower) c = tolower(c);
+		if(lower.substr(0, 4) == "alt+") {
+			m_modifiers.bAlt = true;
+			remaining = remaining.substr(4);
+			foundModifier = true;
+		} else if(lower.substr(0, 5) == "ctrl+") {
+			m_modifiers.bCtrl = true;
+			remaining = remaining.substr(5);
+			foundModifier = true;
+		} else if(lower.substr(0, 6) == "shift+") {
+			m_modifiers.bShift = true;
+			remaining = remaining.substr(6);
+			foundModifier = true;
+		} else if(lower.substr(0, 4) == "gui+") {
+			m_modifiers.bGui = true;
+			remaining = remaining.substr(4);
+			foundModifier = true;
+		}
+	}
 
 	// Check if it's a mouse
-	if(string.substr(0,2) == "ms") {
+	if(remaining.substr(0,2) == "ms") {
 		Type = INP_MOUSE;
-		Data = atoi(string.substr(2).c_str());
+		Data = atoi(remaining.substr(2).c_str());
 		if( Data == 3 ) Data = 2;
 		else if( Data == 2 ) Data = 3;
 		if(Data < 1 || Data > MAX_MOUSEBUTTONS) {
@@ -514,18 +561,18 @@ int CInput::Setup(const std::string& string)
 	}
 	
 	{
-		SDL_Keycode key = SDL_GetKeyFromName(string.c_str());
+		SDL_Keycode key = SDL_GetKeyFromName(remaining.c_str());
 		if(key != SDLK_UNKNOWN) {
 			Type = INP_KEYBOARD;
 			Data = key;
 			return true;
 		}
 	}
-	
+
 #ifdef HAVE_JOYSTICK
 	// Check if it's a joystick #1
 	// TODO: allow more joysticks
-	if(string.substr(0,5) == "joy1_") {
+	if(remaining.substr(0,5) == "joy1_") {
 		Type = INP_JOYSTICK1;
 		Data = 0;
 
@@ -540,16 +587,16 @@ int CInput::Setup(const std::string& string)
 
 		// Go through the joystick list
 		for(uint32_t n=0; n<sizeof(Joysticks) / sizeof(joystick_t); n++) {
-			if(strcasecmp(Joysticks[n].text, string.c_str()) == 0) {
+			if(strcasecmp(Joysticks[n].text, remaining.c_str()) == 0) {
 				Data = Joysticks[n].value;
 				Extra = Joysticks[n].extra;
 				return true;
 			}
 		}
 	}
-	
+
 	// Check if it's a joystick #2
-	if(string.substr(0,5) == "joy2_") {
+	if(remaining.substr(0,5) == "joy2_") {
 		Type = INP_JOYSTICK2;
 		Data = 0;
 
@@ -562,7 +609,7 @@ int CInput::Setup(const std::string& string)
 
 		// Go through the joystick list
 		for(uint32_t n=0; n < sizeof(Joysticks) / sizeof(joystick_t); n++) {
-			if(strcasecmp(Joysticks[n].text, string.c_str()) == 0) {
+			if(strcasecmp(Joysticks[n].text, remaining.c_str()) == 0) {
 				Data = Joysticks[n].value;
 				Extra = Joysticks[n].extra;
 				return true;
@@ -578,7 +625,7 @@ int CInput::Setup(const std::string& string)
 
 	// Go through the key list checking with piece of text it was
 	for(uint32_t n=0; n < sizeof(Keys) / sizeof(keys_t); n++) {
-		if(strcasecmp(Keys[n].text, string.c_str()) == 0) {
+		if(strcasecmp(Keys[n].text, remaining.c_str()) == 0) {
 			Data = Keys[n].value;
 			return true;
 		}

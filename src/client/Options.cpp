@@ -49,7 +49,7 @@ const std::string    ply_def1[] =
 #endif
 const std::string    ply_def2[] = {"kp 8",  "kp 5",    "kp 4",    "kp 6",     "kp +", "kp enter", "kp 0", "kp -", "kp .", "6", "7", "8", "9", "0" };
 const std::string    gen_keys[] = {"Chat", "ShowScore", "ShowHealth", "ShowSettings",  "TakeScreenshot",  "ViewportManager", "SwitchMode", "ToggleTopBar", "TeamChat",	"IrcChat", "Console"};
-const std::string    gen_def[]  = {"i",    "tab",		"h",		  "space",	       "F12",				"F2",				 "F5",		   "F8",		   "o",			"F4",	"F3"};
+const std::string    gen_def[]  = {"i",    "tab",		"h",		  "space",	       "F12",				"F2",				 "alt+enter", "F8",		   "o",			"F4",	"F3"};
 
 static_assert( sizeof(ply_keys) / sizeof(std::string) == __SIN_PLY_BOTTOM, "ply_keys__sizecheck" );
 static_assert( sizeof(ply_def1) / sizeof(std::string) == __SIN_PLY_BOTTOM, "ply_def1__sizecheck" );

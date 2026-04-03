@@ -140,19 +140,29 @@ static void ResetCInputs() {
 }
 
 void HandleCInputs_KeyEvent(const KeyboardEvent& ev) {
-	for(std::set<CInput*>::iterator it = cInputs.begin(); it != cInputs.end(); it++)
-		if((*it)->isKeyboard() && (*it)->getData() == ev.sym) {
-			if(ev.down) {
-				(*it)->nDown++;
-				if(!(*it)->bDown) {
-					(*it)->nDownOnce++;
-					(*it)->bDown = true;
-				}
-			} else {
-				(*it)->bDown = false;
-				(*it)->nUp++;
-			}
+	for(std::set<CInput*>::iterator it = cInputs.begin(); it != cInputs.end(); it++) {
+		if(!(*it)->isKeyboard() || (*it)->getData() != ev.sym)
+			continue;
+		// If the binding requires specific modifiers, enforce an exact match.
+		// If no modifiers are required, fire regardless of modifier state (backward compat).
+		const ModifiersState& req = (*it)->m_modifiers;
+		if(req.bAlt || req.bCtrl || req.bShift || req.bGui) {
+			if(req.bAlt   != ev.state.bAlt)   continue;
+			if(req.bCtrl  != ev.state.bCtrl)  continue;
+			if(req.bShift != ev.state.bShift) continue;
+			if(req.bGui   != ev.state.bGui)   continue;
 		}
+		if(ev.down) {
+			(*it)->nDown++;
+			if(!(*it)->bDown) {
+				(*it)->nDownOnce++;
+				(*it)->bDown = true;
+			}
+		} else {
+			(*it)->bDown = false;
+			(*it)->nUp++;
+		}
+	}
 }
 
 void HandleCInputs_UpdateDownOnceForNonKeyboard() {
