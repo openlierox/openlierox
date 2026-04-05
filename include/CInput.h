@@ -42,6 +42,12 @@
 #define		JOY_TURN_RIGHT		6
 #define		JOY_THROTTLE_LEFT	7
 #define		JOY_THROTTLE_RIGHT	8
+#define		JOY_HAT_UP			9
+#define		JOY_HAT_DOWN		10
+#define		JOY_HAT_LEFT		11
+#define		JOY_HAT_RIGHT		12
+#define		JOY_TRIGGER_LEFT	13
+#define		JOY_TRIGGER_RIGHT	14
 
 struct KeyboardEvent;
 
@@ -123,7 +129,7 @@ struct keys_t {
 
 // Joystick structure
 struct joystick_t {
-	char	text[16];	// Keep string local to speed up lookup.
+	char	text[24];	// Keep string local to speed up lookup.
 	int		value;
 	int		extra;
 	int		axis;

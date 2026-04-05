@@ -148,8 +148,8 @@ bool InitializeAuxLib()
 
 #ifndef DISABLE_JOYSTICK
 	if(bJoystickSupport) {
-		if(SDL_InitSubSystem(SDL_INIT_JOYSTICK) != 0) {
-			warnings << "WARNING: couldn't init joystick subystem: " << SDL_GetError() << endl;
+		if(SDL_InitSubSystem(SDL_INIT_GAMECONTROLLER) != 0) {
+			warnings << "WARNING: couldn't init gamecontroller/joystick subystem: " << SDL_GetError() << endl;
 			bJoystickSupport = false;
 		}
 	}
