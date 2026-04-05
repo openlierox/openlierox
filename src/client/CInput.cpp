@@ -187,8 +187,7 @@ void CInput::UnInitJoysticksTemp() {}
 
 #define HAVE_JOYSTICK
 
-// Joystick axes
-// TODO: these are set up according to my joystick, are they general enough?
+// Raw joystick axis indices (for non-GameController devices)
 enum {
 	axis_None = -1,
 	axis_X = 0,
@@ -197,152 +196,268 @@ enum {
 	axis_Throttle = 2
 };
 
+// Axis deadzone for analog sticks (range: -32768 to 32767)
+static const int JOY_DEADZONE = 8000;
+// Trigger threshold: triggers range 0..32767 on GameController API, -32768..32767 on raw joystick
+// 75% of 32767 for GameController, 75% of full raw range for raw joystick
+static const int JOY_TRIGGER_THRESHOLD_GC  = 24576; // 75% of 32767
+static const int JOY_TRIGGER_THRESHOLD_RAW = 16383;  // midpoint of -32768..32767 (50% travel)
+
 joystick_t Joysticks[] = {
-	{ "joy1_up",JOY_UP,0, axis_Y},
-	{ "joy1_down",JOY_DOWN,0, axis_Y},
-	{ "joy1_left",JOY_LEFT,0, axis_X},
-	{ "joy1_right",JOY_RIGHT,0, axis_X},
-	{ "joy1_but1",JOY_BUTTON,0, axis_None},
-	{ "joy1_but2",JOY_BUTTON,1, axis_None},
-	{ "joy1_but3",JOY_BUTTON,2, axis_None},
-	{ "joy1_but4",JOY_BUTTON,3, axis_None},
-	{ "joy1_but5",JOY_BUTTON,4, axis_None},
-	{ "joy1_but6",JOY_BUTTON,5, axis_None},
-	{ "joy1_but7",JOY_BUTTON,6, axis_None},
-	{ "joy1_but8",JOY_BUTTON,7, axis_None},
-	{ "joy1_but9",JOY_BUTTON,8, axis_None},
-	{ "joy1_but10",JOY_BUTTON,9, axis_None},
-	{ "joy1_but11",JOY_BUTTON,10, axis_None},
-	{ "joy1_but12",JOY_BUTTON,11, axis_None},
-	{ "joy1_turnleft",JOY_TURN_LEFT,0, axis_Z},
-	{ "joy1_turnright",JOY_TURN_RIGHT,0, axis_Z},
-	{ "joy1_thr_up",JOY_THROTTLE_LEFT,0, axis_Throttle},
-	{ "joy1_thr_down",JOY_THROTTLE_RIGHT,0, axis_Throttle},
-	{ "joy2_up",JOY_UP,0, axis_Y},
-	{ "joy2_down",JOY_DOWN,0, axis_Y},
-	{ "joy2_left",JOY_LEFT,0, axis_X},
-	{ "joy2_right",JOY_RIGHT,0, axis_X},
-	{ "joy2_but1",JOY_BUTTON,0, axis_None},
-	{ "joy2_but2",JOY_BUTTON,1, axis_None},
-	{ "joy2_but3",JOY_BUTTON,2, axis_None},
-	{ "joy2_but4",JOY_BUTTON,3, axis_None},
-	{ "joy2_but5",JOY_BUTTON,4, axis_None},
-	{ "joy2_but6",JOY_BUTTON,5, axis_None},
-	{ "joy2_but7",JOY_BUTTON,6, axis_None},
-	{ "joy2_but8",JOY_BUTTON,7, axis_None},
-	{ "joy2_but9",JOY_BUTTON,8, axis_None},
-	{ "joy2_but10",JOY_BUTTON,9, axis_None},
-	{ "joy2_but11",JOY_BUTTON,10, axis_None},
-	{ "joy2_but12",JOY_BUTTON,11, axis_None},
-	{ "joy2_turnleft",JOY_TURN_LEFT,0, axis_Z},
-	{ "joy2_turnright",JOY_TURN_RIGHT,0, axis_Z},
-	{ "joy2_thr_up",JOY_THROTTLE_LEFT,0, axis_Throttle},
-	{ "joy2_thr_down",JOY_THROTTLE_RIGHT,0, axis_Throttle},
+	{ "joy1_up",        JOY_UP,           0,  axis_Y},
+	{ "joy1_down",      JOY_DOWN,         0,  axis_Y},
+	{ "joy1_left",      JOY_LEFT,         0,  axis_X},
+	{ "joy1_right",     JOY_RIGHT,        0,  axis_X},
+	{ "joy1_but1",      JOY_BUTTON,       0,  axis_None},
+	{ "joy1_but2",      JOY_BUTTON,       1,  axis_None},
+	{ "joy1_but3",      JOY_BUTTON,       2,  axis_None},
+	{ "joy1_but4",      JOY_BUTTON,       3,  axis_None},
+	{ "joy1_but5",      JOY_BUTTON,       4,  axis_None},
+	{ "joy1_but6",      JOY_BUTTON,       5,  axis_None},
+	{ "joy1_but7",      JOY_BUTTON,       6,  axis_None},
+	{ "joy1_but8",      JOY_BUTTON,       7,  axis_None},
+	{ "joy1_but9",      JOY_BUTTON,       8,  axis_None},
+	{ "joy1_but10",     JOY_BUTTON,       9,  axis_None},
+	{ "joy1_but11",     JOY_BUTTON,       10, axis_None},
+	{ "joy1_but12",     JOY_BUTTON,       11, axis_None},
+	{ "joy1_turnleft",  JOY_TURN_LEFT,    0,  axis_Z},
+	{ "joy1_turnright", JOY_TURN_RIGHT,   0,  axis_Z},
+	{ "joy1_thr_up",    JOY_THROTTLE_LEFT,  0, axis_Throttle},
+	{ "joy1_thr_down",  JOY_THROTTLE_RIGHT, 0, axis_Throttle},
+	{ "joy1_hat_up",    JOY_HAT_UP,       0,  axis_None},
+	{ "joy1_hat_down",  JOY_HAT_DOWN,     0,  axis_None},
+	{ "joy1_hat_left",  JOY_HAT_LEFT,     0,  axis_None},
+	{ "joy1_hat_right", JOY_HAT_RIGHT,    0,  axis_None},
+	{ "joy1_trigger_l", JOY_TRIGGER_LEFT,  0, axis_None},
+	{ "joy1_trigger_r", JOY_TRIGGER_RIGHT, 0, axis_None},
+	{ "joy2_up",        JOY_UP,           0,  axis_Y},
+	{ "joy2_down",      JOY_DOWN,         0,  axis_Y},
+	{ "joy2_left",      JOY_LEFT,         0,  axis_X},
+	{ "joy2_right",     JOY_RIGHT,        0,  axis_X},
+	{ "joy2_but1",      JOY_BUTTON,       0,  axis_None},
+	{ "joy2_but2",      JOY_BUTTON,       1,  axis_None},
+	{ "joy2_but3",      JOY_BUTTON,       2,  axis_None},
+	{ "joy2_but4",      JOY_BUTTON,       3,  axis_None},
+	{ "joy2_but5",      JOY_BUTTON,       4,  axis_None},
+	{ "joy2_but6",      JOY_BUTTON,       5,  axis_None},
+	{ "joy2_but7",      JOY_BUTTON,       6,  axis_None},
+	{ "joy2_but8",      JOY_BUTTON,       7,  axis_None},
+	{ "joy2_but9",      JOY_BUTTON,       8,  axis_None},
+	{ "joy2_but10",     JOY_BUTTON,       9,  axis_None},
+	{ "joy2_but11",     JOY_BUTTON,       10, axis_None},
+	{ "joy2_but12",     JOY_BUTTON,       11, axis_None},
+	{ "joy2_turnleft",  JOY_TURN_LEFT,    0,  axis_Z},
+	{ "joy2_turnright", JOY_TURN_RIGHT,   0,  axis_Z},
+	{ "joy2_thr_up",    JOY_THROTTLE_LEFT,  0, axis_Throttle},
+	{ "joy2_thr_down",  JOY_THROTTLE_RIGHT, 0, axis_Throttle},
+	{ "joy2_hat_up",    JOY_HAT_UP,       0,  axis_None},
+	{ "joy2_hat_down",  JOY_HAT_DOWN,     0,  axis_None},
+	{ "joy2_hat_left",  JOY_HAT_LEFT,     0,  axis_None},
+	{ "joy2_hat_right", JOY_HAT_RIGHT,    0,  axis_None},
+	{ "joy2_trigger_l", JOY_TRIGGER_LEFT,  0, axis_None},
+	{ "joy2_trigger_r", JOY_TRIGGER_RIGHT, 0, axis_None},
 };
 
-static SDL_Joystick* joys[2] = {NULL, NULL};
-static short oldJoystickAxisValues[2][4]; // Used for checking if any of the joystick axes changed its value
+// joys[i] holds the raw SDL_Joystick handle (also valid for GameController devices via SDL_GameControllerGetJoystick)
+// gameControllers[i] is non-NULL when the device is recognized by SDL's GameController mapping database
+static SDL_Joystick*      joys[2]            = {NULL, NULL};
+static SDL_GameController* gameControllers[2] = {NULL, NULL};
+static short oldJoystickAxisValues[2][4]; // Used for throttle change-detection on raw joystick devices
 
 ///////////////////
-// Updates the oldJoystickAcisValues array
+// Updates the oldJoystickAxisValues array (used for raw-joystick throttle change detection)
 void updateAxisStates()
 {
 	for (size_t i = 0; i < sizeof(joys)/sizeof(SDL_Joystick *); i++)  {
-		oldJoystickAxisValues[i][axis_X] = SDL_JoystickGetAxis(joys[i], axis_X);
-		oldJoystickAxisValues[i][axis_Y] = SDL_JoystickGetAxis(joys[i], axis_Y);
-		oldJoystickAxisValues[i][axis_Z] = SDL_JoystickGetAxis(joys[i], axis_Z);
+		if(joys[i] == NULL) continue;
+		oldJoystickAxisValues[i][axis_X]        = SDL_JoystickGetAxis(joys[i], axis_X);
+		oldJoystickAxisValues[i][axis_Y]        = SDL_JoystickGetAxis(joys[i], axis_Y);
+		oldJoystickAxisValues[i][axis_Z]        = SDL_JoystickGetAxis(joys[i], axis_Z);
 		oldJoystickAxisValues[i][axis_Throttle] = SDL_JoystickGetAxis(joys[i], axis_Throttle);
 	}
 }
 
-static int getJoystickControlValue(int flag, int extra, SDL_Joystick* joy)
+// Returns the raw axis/button value for a given input flag.
+// Used by getJoystickValue() to feed analog strength to the game.
+static int getJoystickControlValue(int flag, int extra, int j_index)
 {
-	switch(flag) {
-		case JOY_UP:
-			return SDL_JoystickGetAxis(joy, axis_Y);
-		case JOY_DOWN:
-			return SDL_JoystickGetAxis(joy, axis_Y);
-		case JOY_LEFT:
-			return SDL_JoystickGetAxis(joy, axis_X);
-		case JOY_RIGHT:
-			return SDL_JoystickGetAxis(joy, axis_X);
-		case JOY_BUTTON:
-			return SDL_JoystickGetButton(joy, extra);
-		case JOY_TURN_LEFT:
-			return SDL_JoystickGetAxis(joy, axis_Z);
-		case JOY_TURN_RIGHT:
-			return SDL_JoystickGetAxis(joy, axis_Z);
-		case JOY_THROTTLE_LEFT:
-			return SDL_JoystickGetAxis(joy, axis_Throttle);
-		case JOY_THROTTLE_RIGHT:
-			return SDL_JoystickGetAxis(joy, axis_Throttle);
+	SDL_GameController *gc  = gameControllers[j_index];
+	SDL_Joystick       *joy = joys[j_index];
 
-		default:
-			warnings << "getJoystickValue: unknown flag" << endl;
+	if(gc) {
+		switch(flag) {
+			case JOY_UP:
+			case JOY_DOWN:
+				return SDL_GameControllerGetAxis(gc, SDL_CONTROLLER_AXIS_LEFTY);
+			case JOY_LEFT:
+			case JOY_RIGHT:
+				return SDL_GameControllerGetAxis(gc, SDL_CONTROLLER_AXIS_LEFTX);
+			case JOY_BUTTON:
+				return SDL_JoystickGetButton(joy, extra); // buttons stay index-based
+			case JOY_TURN_LEFT:
+			case JOY_TURN_RIGHT:
+				return SDL_GameControllerGetAxis(gc, SDL_CONTROLLER_AXIS_RIGHTX);
+			case JOY_THROTTLE_LEFT:
+			case JOY_THROTTLE_RIGHT:
+				return SDL_GameControllerGetAxis(gc, SDL_CONTROLLER_AXIS_RIGHTY);
+			case JOY_HAT_UP:
+				return SDL_GameControllerGetButton(gc, SDL_CONTROLLER_BUTTON_DPAD_UP);
+			case JOY_HAT_DOWN:
+				return SDL_GameControllerGetButton(gc, SDL_CONTROLLER_BUTTON_DPAD_DOWN);
+			case JOY_HAT_LEFT:
+				return SDL_GameControllerGetButton(gc, SDL_CONTROLLER_BUTTON_DPAD_LEFT);
+			case JOY_HAT_RIGHT:
+				return SDL_GameControllerGetButton(gc, SDL_CONTROLLER_BUTTON_DPAD_RIGHT);
+			case JOY_TRIGGER_LEFT:
+				return SDL_GameControllerGetAxis(gc, SDL_CONTROLLER_AXIS_TRIGGERLEFT);
+			case JOY_TRIGGER_RIGHT:
+				return SDL_GameControllerGetAxis(gc, SDL_CONTROLLER_AXIS_TRIGGERRIGHT);
+			default:
+				warnings << "getJoystickValue: unknown flag" << endl;
+		}
+	} else if(joy) {
+		switch(flag) {
+			case JOY_UP:
+			case JOY_DOWN:
+				return SDL_JoystickGetAxis(joy, axis_Y);
+			case JOY_LEFT:
+			case JOY_RIGHT:
+				return SDL_JoystickGetAxis(joy, axis_X);
+			case JOY_BUTTON:
+				return SDL_JoystickGetButton(joy, extra);
+			case JOY_TURN_LEFT:
+			case JOY_TURN_RIGHT:
+				return SDL_JoystickGetAxis(joy, axis_Z);
+			case JOY_THROTTLE_LEFT:
+			case JOY_THROTTLE_RIGHT:
+				return SDL_JoystickGetAxis(joy, axis_Throttle);
+			case JOY_HAT_UP:
+				return (SDL_JoystickGetHat(joy, extra) & SDL_HAT_UP) ? 1 : 0;
+			case JOY_HAT_DOWN:
+				return (SDL_JoystickGetHat(joy, extra) & SDL_HAT_DOWN) ? 1 : 0;
+			case JOY_HAT_LEFT:
+				return (SDL_JoystickGetHat(joy, extra) & SDL_HAT_LEFT) ? 1 : 0;
+			case JOY_HAT_RIGHT:
+				return (SDL_JoystickGetHat(joy, extra) & SDL_HAT_RIGHT) ? 1 : 0;
+			case JOY_TRIGGER_LEFT:
+				return SDL_JoystickGetAxis(joy, 4);
+			case JOY_TRIGGER_RIGHT:
+				return SDL_JoystickGetAxis(joy, 5);
+			default:
+				warnings << "getJoystickValue: unknown flag" << endl;
+		}
 	}
 
 	return 0;
 }
 
 static bool checkJoystickState(int flag, int extra, int j_index) {
-	SDL_Joystick *joy = joys[j_index];
 	if(!bJoystickSupport) return false;
-	if(joy == NULL) return false;
 
-	int val;
+	SDL_GameController *gc  = gameControllers[j_index];
+	SDL_Joystick       *joy = joys[j_index];
 
-	// TODO: atm these limits are hardcoded; make them constants (or perhaps also configurable)
-	switch(flag) {
-		case JOY_UP:
-			val = SDL_JoystickGetAxis(joy, axis_Y);
-			if(val < -3200)
-				return true;
-			break;
-		case JOY_DOWN:
-			val = SDL_JoystickGetAxis(joy, axis_Y);
-			if(val > 3200)
-				return true;
-			break;
-		case JOY_LEFT:
-			val = SDL_JoystickGetAxis(joy, axis_X);
-			if(val < -3200)
-				return true;
-			break;
-		case JOY_RIGHT:
-			val = SDL_JoystickGetAxis(joy, axis_X);
-			if(val > 3200)
-				return true;
-			break;
-		case JOY_BUTTON:
-			if(SDL_JoystickGetButton(joy,extra))
-				return true;
-			break;
-		case JOY_TURN_LEFT:
-			val = SDL_JoystickGetAxis(joy, axis_Z);
-			if (val < -3200)
-				return true;
-			break;
-		case JOY_TURN_RIGHT:
-			val = SDL_JoystickGetAxis(joy, axis_Z);
-			if (val > 3200)
-				return true;
-			break;
-
-		// HINT: throttle is "static", i.e. it doesn't return back to a default position
-		// Therefore we check if the value has changed instead of getting the state
-		case JOY_THROTTLE_LEFT:
-			if (SDL_JoystickGetAxis(joy, axis_Throttle) - oldJoystickAxisValues[j_index][axis_Throttle] < -50)
-				return true;
-			break;
-		case JOY_THROTTLE_RIGHT:
-			if (SDL_JoystickGetAxis(joy, axis_Throttle) - oldJoystickAxisValues[j_index][axis_Throttle] > 50)
-				return true;
-			break;
-
-		default:
-			warnings << "checkJoystickState: unknown flag" << endl;
+	if(gc) {
+		// Use the GameController API: axes are named and correctly mapped for any recognized device
+		switch(flag) {
+			case JOY_UP:
+				return SDL_GameControllerGetAxis(gc, SDL_CONTROLLER_AXIS_LEFTY) < -JOY_DEADZONE;
+			case JOY_DOWN:
+				return SDL_GameControllerGetAxis(gc, SDL_CONTROLLER_AXIS_LEFTY) > JOY_DEADZONE;
+			case JOY_LEFT:
+				return SDL_GameControllerGetAxis(gc, SDL_CONTROLLER_AXIS_LEFTX) < -JOY_DEADZONE;
+			case JOY_RIGHT:
+				return SDL_GameControllerGetAxis(gc, SDL_CONTROLLER_AXIS_LEFTX) > JOY_DEADZONE;
+			case JOY_BUTTON:
+				return SDL_JoystickGetButton(joy, extra) != 0; // buttons stay index-based
+			case JOY_TURN_LEFT:
+				return SDL_GameControllerGetAxis(gc, SDL_CONTROLLER_AXIS_RIGHTX) < -JOY_DEADZONE;
+			case JOY_TURN_RIGHT:
+				return SDL_GameControllerGetAxis(gc, SDL_CONTROLLER_AXIS_RIGHTX) > JOY_DEADZONE;
+			// On a gamepad the right stick returns to centre, so treat as a regular axis
+			case JOY_THROTTLE_LEFT:
+				return SDL_GameControllerGetAxis(gc, SDL_CONTROLLER_AXIS_RIGHTY) < -JOY_DEADZONE;
+			case JOY_THROTTLE_RIGHT:
+				return SDL_GameControllerGetAxis(gc, SDL_CONTROLLER_AXIS_RIGHTY) > JOY_DEADZONE;
+			case JOY_HAT_UP:
+				return SDL_GameControllerGetButton(gc, SDL_CONTROLLER_BUTTON_DPAD_UP) != 0;
+			case JOY_HAT_DOWN:
+				return SDL_GameControllerGetButton(gc, SDL_CONTROLLER_BUTTON_DPAD_DOWN) != 0;
+			case JOY_HAT_LEFT:
+				return SDL_GameControllerGetButton(gc, SDL_CONTROLLER_BUTTON_DPAD_LEFT) != 0;
+			case JOY_HAT_RIGHT:
+				return SDL_GameControllerGetButton(gc, SDL_CONTROLLER_BUTTON_DPAD_RIGHT) != 0;
+			// GameController triggers range 0..32767
+			case JOY_TRIGGER_LEFT:
+				return SDL_GameControllerGetAxis(gc, SDL_CONTROLLER_AXIS_TRIGGERLEFT)  > JOY_TRIGGER_THRESHOLD_GC;
+			case JOY_TRIGGER_RIGHT:
+				return SDL_GameControllerGetAxis(gc, SDL_CONTROLLER_AXIS_TRIGGERRIGHT) > JOY_TRIGGER_THRESHOLD_GC;
+			default:
+				warnings << "checkJoystickState: unknown flag" << endl;
+		}
+	} else if(joy) {
+		// Raw joystick fallback: use hardcoded axis numbers
+		int val;
+		switch(flag) {
+			case JOY_UP:
+				val = SDL_JoystickGetAxis(joy, axis_Y);
+				if(val < -JOY_DEADZONE) return true;
+				break;
+			case JOY_DOWN:
+				val = SDL_JoystickGetAxis(joy, axis_Y);
+				if(val > JOY_DEADZONE) return true;
+				break;
+			case JOY_LEFT:
+				val = SDL_JoystickGetAxis(joy, axis_X);
+				if(val < -JOY_DEADZONE) return true;
+				break;
+			case JOY_RIGHT:
+				val = SDL_JoystickGetAxis(joy, axis_X);
+				if(val > JOY_DEADZONE) return true;
+				break;
+			case JOY_BUTTON:
+				if(SDL_JoystickGetButton(joy, extra)) return true;
+				break;
+			case JOY_TURN_LEFT:
+				val = SDL_JoystickGetAxis(joy, axis_Z);
+				if(val < -JOY_DEADZONE) return true;
+				break;
+			case JOY_TURN_RIGHT:
+				val = SDL_JoystickGetAxis(joy, axis_Z);
+				if(val > JOY_DEADZONE) return true;
+				break;
+			// HINT: throttle is "static" (doesn't return to centre), so check for change
+			case JOY_THROTTLE_LEFT:
+				if(SDL_JoystickGetAxis(joy, axis_Throttle) - oldJoystickAxisValues[j_index][axis_Throttle] < -50)
+					return true;
+				break;
+			case JOY_THROTTLE_RIGHT:
+				if(SDL_JoystickGetAxis(joy, axis_Throttle) - oldJoystickAxisValues[j_index][axis_Throttle] > 50)
+					return true;
+				break;
+			case JOY_HAT_UP:
+				if(SDL_JoystickGetHat(joy, extra) & SDL_HAT_UP) return true;
+				break;
+			case JOY_HAT_DOWN:
+				if(SDL_JoystickGetHat(joy, extra) & SDL_HAT_DOWN) return true;
+				break;
+			case JOY_HAT_LEFT:
+				if(SDL_JoystickGetHat(joy, extra) & SDL_HAT_LEFT) return true;
+				break;
+			case JOY_HAT_RIGHT:
+				if(SDL_JoystickGetHat(joy, extra) & SDL_HAT_RIGHT) return true;
+				break;
+			// Raw triggers: axis 4 (left) and 5 (right), range -32768..32767
+			case JOY_TRIGGER_LEFT:
+				if(SDL_JoystickGetAxis(joy, 4) > JOY_TRIGGER_THRESHOLD_RAW) return true;
+				break;
+			case JOY_TRIGGER_RIGHT:
+				if(SDL_JoystickGetAxis(joy, 5) > JOY_TRIGGER_THRESHOLD_RAW) return true;
+				break;
+			default:
+				warnings << "checkJoystickState: unknown flag" << endl;
+		}
 	}
-
 
 	return false;
 }
@@ -354,16 +469,32 @@ static void initJoystick(int i, bool isTemp) {
 	if(!bJoystickSupport) return;
 
 	if(joys[i] == NULL && SDL_NumJoysticks() > i) {
-		notes << "opening joystick " << i << endl;
-		notes << " (\"" << SDL_JoystickNameForIndex(i) << "\")" << endl;
-		joys[i] = SDL_JoystickOpen(i);
+		notes << "opening joystick " << i << " (\"" << SDL_JoystickNameForIndex(i) << "\")" << endl;
+		if(SDL_IsGameController(i)) {
+			notes << "  Recognized as SDL GameController" << endl;
+			gameControllers[i] = SDL_GameControllerOpen(i);
+			if(gameControllers[i]) {
+				// The underlying joystick is owned by the GameController; do not close it separately
+				joys[i] = SDL_GameControllerGetJoystick(gameControllers[i]);
+				if(isTemp) joysticks_inited_temp[i] = true;
+			} else {
+				warnings << "Could not open game controller, falling back to raw joystick: " << SDL_GetError() << endl;
+				joys[i] = SDL_JoystickOpen(i);
+				if(!joys[i]) warnings << "Could not open joystick" << endl;
+				else if(isTemp) joysticks_inited_temp[i] = true;
+			}
+		} else {
+			joys[i] = SDL_JoystickOpen(i);
+			if(!joys[i]) warnings << "Could not open joystick" << endl;
+			else if(isTemp) joysticks_inited_temp[i] = true;
+		}
+
 		if(joys[i]) {
-			notes << "  Number of Axes: " << SDL_JoystickNumAxes(joys[i]) << endl;
+			notes << "  Number of Axes: "    << SDL_JoystickNumAxes(joys[i])    << endl;
 			notes << "  Number of Buttons: " << SDL_JoystickNumButtons(joys[i]) << endl;
-			notes << "  Number of Balls: " << SDL_JoystickNumBalls(joys[i]) << endl;
-			if(isTemp) joysticks_inited_temp[i] = true;
-		} else
-			warnings << "Could not open joystick" << endl;
+			notes << "  Number of Balls: "   << SDL_JoystickNumBalls(joys[i])   << endl;
+			notes << "  Number of Hats: "    << SDL_JoystickNumHats(joys[i])    << endl;
+		}
 	}
 
 	// Save the initial axis values
@@ -385,7 +516,12 @@ void CInput::InitJoysticksTemp() {
 static void uninitTempJoystick(int i) {
 	if(joysticks_inited_temp[i]) {
 		notes << "Uninit temporary loaded joystick " << i << endl;
-		SDL_JoystickClose(joys[i]);
+		if(gameControllers[i]) {
+			SDL_GameControllerClose(gameControllers[i]); // also frees the underlying joystick
+			gameControllers[i] = NULL;
+		} else if(joys[i]) {
+			SDL_JoystickClose(joys[i]);
+		}
 		joys[i] = NULL;
 		joysticks_inited_temp[i] = false;
 	}
@@ -641,9 +777,9 @@ int CInput::getJoystickValue()
 #ifdef HAVE_JOYSTICK
 	switch (Type)  {
 	case INP_JOYSTICK1:
-		return getJoystickControlValue(Data, Extra, joys[0]);
+		return getJoystickControlValue(Data, Extra, 0);
 	case INP_JOYSTICK2:
-		return getJoystickControlValue(Data, Extra, joys[1]);
+		return getJoystickControlValue(Data, Extra, 1);
 	default:
 		return 0;
 	}
@@ -657,7 +793,10 @@ bool CInput::isJoystickAxis()
 {
 #ifdef HAVE_JOYSTICK
 	if (Type == INP_JOYSTICK1 || Type == INP_JOYSTICK2)
-		return Data != JOY_BUTTON;
+		return Data != JOY_BUTTON
+		    && Data != JOY_HAT_UP && Data != JOY_HAT_DOWN
+		    && Data != JOY_HAT_LEFT && Data != JOY_HAT_RIGHT
+		    && Data != JOY_TRIGGER_LEFT && Data != JOY_TRIGGER_RIGHT;
 #endif
 	return false;
 }
