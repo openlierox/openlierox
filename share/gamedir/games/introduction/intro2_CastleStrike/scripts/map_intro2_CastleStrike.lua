@@ -1,5 +1,5 @@
 function getKey(k)
-	return settings.GameOptions.Ply1Controls[k]
+	return settings.GameOptions.Ply1Keyboard[k]
 end
 
 function bindings.gamePrepare()

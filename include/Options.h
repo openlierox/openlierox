@@ -271,6 +271,7 @@ public:
 
 	// Controls
 	std::vector<PlyControls> sPlayerControls; // sPC[playernr][controlnr]
+	std::vector<PlyControls> sGamepadControls; // sGC[playernr][controlnr]
 	GeneralControls	sGeneralControls;
 
 	// Game

@@ -256,8 +256,10 @@ bool GameOptions::Init() {
 
 	for( uint i = 0; i < sizeof(ply_keys) / sizeof(ply_keys[0]) ; i ++ )
 	{
-		CScriptableVars::RegisterVars("GameOptions.Ply1Controls") ( tLXOptions->sPlayerControls[0][i], ply_keys[i], ply_def1[i] );
-		CScriptableVars::RegisterVars("GameOptions.Ply2Controls") ( tLXOptions->sPlayerControls[1][i], ply_keys[i], ply_def2[i] );
+		CScriptableVars::RegisterVars("GameOptions.Ply1Keyboard") ( tLXOptions->sPlayerControls[0][i], ply_keys[i], ply_def1[i] );
+		CScriptableVars::RegisterVars("GameOptions.Ply2Keyboard") ( tLXOptions->sPlayerControls[1][i], ply_keys[i], ply_def2[i] );
+		CScriptableVars::RegisterVars("GameOptions.Ply1Gamepad") ( tLXOptions->sGamepadControls[0][i], ply_keys[i], "" );
+		CScriptableVars::RegisterVars("GameOptions.Ply2Gamepad") ( tLXOptions->sGamepadControls[1][i], ply_keys[i], "" );
 	}
 	for( uint i = 0; i < sizeof(gen_keys) / sizeof(gen_keys[0]) ; i ++ )
 	{
@@ -788,6 +790,7 @@ GameOptions::GameOptions() : customSettings("custom user settings") {
 	
 	// TODO: don't hardcode the size here
 	sPlayerControls.resize(2);	// Don't change array size or we'll get segfault when vector memory allocation changes
+	sGamepadControls.resize(2);
 
 	// The only place where we call this constructor is in GameOptions::Init().
 	// We init all the other variables there.
