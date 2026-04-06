@@ -117,7 +117,7 @@ void CViewport::gusRender(const SmartPointer<SDL_Surface>& bmpDest)
 			setDestination(destw, desth);
 		
 		destroy_bitmap(dest);
-		dest = create_bitmap_from_sdl(bmpDest, Left/2, Top/2, Width*2, Height*2);
+		dest = create_bitmap_from_sdl(bmpDest, Left, Top, Width*2, Height*2);
 	}
 
 	{
