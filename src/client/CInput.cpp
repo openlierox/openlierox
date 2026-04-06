@@ -384,6 +384,7 @@ CInput::CInput() {
 	Extra = 0;
 	resetEachFrame = true;
 	bDown = false;
+	m_alt = NULL;
 	reset();
 
 	RegisterCInput(this);
@@ -619,9 +620,10 @@ int CInput::getJoystickValue()
 	case INP_JOYSTICK2:
 		return getControllerValue(Data, Extra, 1);
 	default:
-		return 0;
+		break;
 	}
 #endif
+	if(m_alt) return m_alt->getJoystickValue();
 	return 0;
 }
 
@@ -636,6 +638,7 @@ bool CInput::isJoystickAxis()
 		    || Data == JOY_TURN_LEFT || Data == JOY_TURN_RIGHT
 		    || Data == JOY_THROTTLE_LEFT || Data == JOY_THROTTLE_RIGHT;
 #endif
+	if(m_alt) return m_alt->isJoystickAxis();
 	return false;
 }
 
@@ -647,6 +650,7 @@ bool CInput::isJoystickThrottle()
 	if (Type == INP_JOYSTICK1 || Type == INP_JOYSTICK2)
 		return (Data == JOY_THROTTLE_LEFT) || (Data == JOY_THROTTLE_RIGHT);
 #endif
+	if(m_alt) return m_alt->isJoystickThrottle();
 	return false;
 }
 
@@ -674,10 +678,12 @@ bool CInput::isUp()
 		// Joystick
 		case INP_JOYSTICK1:
 		case INP_JOYSTICK2:
-			return nUp > 0;
+			if(nUp > 0) return true;
+			break;
 #endif
 	}
 
+	if(m_alt && m_alt->isUp()) return true;
 	return false;
 }
 
@@ -691,7 +697,8 @@ bool CInput::isDown() const
 		// Keyboard
 		case INP_KEYBOARD:
 			if(wasDown()) return true; // in this case, we want to return true here to get it recognised at least once
-			return bDown;
+			if(bDown) return true;
+			break;
 
 		// Mouse
 		case INP_MOUSE:
@@ -702,12 +709,15 @@ bool CInput::isDown() const
 #ifdef HAVE_JOYSTICK
 		// Joystick
 		case INP_JOYSTICK1:
-			return checkControllerState(Data, Extra, 0);
+			if(checkControllerState(Data, Extra, 0)) return true;
+			break;
 		case INP_JOYSTICK2:
-			return checkControllerState(Data, Extra, 1);
+			if(checkControllerState(Data, Extra, 1)) return true;
+			break;
 #endif
 	}
 
+	if(m_alt && m_alt->isDown()) return true;
 	return false;
 }
 
@@ -716,11 +726,15 @@ bool CInput::isDown() const
 // Returns if the input was pushed down once
 bool CInput::isDownOnce()
 {
-	return nDownOnce != 0;
+	if(nDownOnce != 0) return true;
+	if(m_alt && m_alt->isDownOnce()) return true;
+	return false;
 }
 
 int CInput::wasDown_withoutRepeats() const {
-	return nDownOnce;
+	int c = nDownOnce;
+	if(m_alt) c += m_alt->wasDown_withoutRepeats();
+	return c;
 }
 
 // goes through the event-signals and searches for the event
@@ -745,6 +759,7 @@ int CInput::wasDown() const {
 #endif
 	}
 
+	if(m_alt) counter += m_alt->wasDown();
 	return counter;
 }
 
@@ -770,9 +785,11 @@ int CInput::wasUp() {
 #endif
 	}
 
+	if(m_alt) counter += m_alt->wasUp();
 	return counter;
 }
 
 void CInput::reset() {
 	nDown = nDownOnce = nUp = 0;
+	if(m_alt) m_alt->reset();
 }

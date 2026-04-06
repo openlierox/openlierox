@@ -78,6 +78,8 @@ private:
 	int		nUp;
 	bool	bDown;
 
+	CInput*	m_alt; // alternative input (e.g. gamepad alternative for a keyboard binding)
+
 private:
 	int		wasDown_withoutRepeats() const;
 
@@ -85,13 +87,15 @@ public:
 	// Methods
 
 	int		Setup(const std::string& text);
+	void	setAlternative(CInput* alt) { m_alt = alt; }
+	CInput*	getAlternative() { return m_alt; }
 	static void InitJoysticksTemp(); // call this if CInput::Wait shall recognise joystick events
 	static void UnInitJoysticksTemp();
 	static int Wait(std::string& strText); // TODO: change this name. this function doesn't realy wait, it just checks the event-state
 	bool	isUsed() { return Type >= 0; }
 	int		getData() { return Data; }
 	int		getType() { return Type; }
-	bool	isJoystick() { return Type == INP_JOYSTICK1 || Type == INP_JOYSTICK2; }
+	bool	isJoystick() { return Type == INP_JOYSTICK1 || Type == INP_JOYSTICK2 || (m_alt && m_alt->isJoystick()); }
 	bool	isKeyboard() { return Type == INP_KEYBOARD; }
 	void	setResetEachFrame(bool r)	{ resetEachFrame = r; }
 	bool	getResetEachFrame()			{ return resetEachFrame; }

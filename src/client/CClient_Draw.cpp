@@ -2326,6 +2326,22 @@ void CClient::InitializeSpectatorViewportKeys()
 	cSpectatorViewportKeys.V1Type.Setup( tLXOptions->sPlayerControls[0][SIN_SHOOT] );
 	cSpectatorViewportKeys.V2Type.Setup( tLXOptions->sPlayerControls[0][SIN_ROPE] );
 	cSpectatorViewportKeys.V2Toggle.Setup( tLXOptions->sPlayerControls[0][SIN_SELWEAP] );
+
+	cSpectatorViewportKeys.gpUp.Setup( tLXOptions->sGamepadControls[0][SIN_UP] );
+	cSpectatorViewportKeys.gpDown.Setup( tLXOptions->sGamepadControls[0][SIN_DOWN] );
+	cSpectatorViewportKeys.gpLeft.Setup( tLXOptions->sGamepadControls[0][SIN_LEFT] );
+	cSpectatorViewportKeys.gpRight.Setup( tLXOptions->sGamepadControls[0][SIN_RIGHT] );
+	cSpectatorViewportKeys.gpV1Type.Setup( tLXOptions->sGamepadControls[0][SIN_SHOOT] );
+	cSpectatorViewportKeys.gpV2Type.Setup( tLXOptions->sGamepadControls[0][SIN_ROPE] );
+	cSpectatorViewportKeys.gpV2Toggle.Setup( tLXOptions->sGamepadControls[0][SIN_SELWEAP] );
+
+	cSpectatorViewportKeys.Up.setAlternative( &cSpectatorViewportKeys.gpUp );
+	cSpectatorViewportKeys.Down.setAlternative( &cSpectatorViewportKeys.gpDown );
+	cSpectatorViewportKeys.Left.setAlternative( &cSpectatorViewportKeys.gpLeft );
+	cSpectatorViewportKeys.Right.setAlternative( &cSpectatorViewportKeys.gpRight );
+	cSpectatorViewportKeys.V1Type.setAlternative( &cSpectatorViewportKeys.gpV1Type );
+	cSpectatorViewportKeys.V2Type.setAlternative( &cSpectatorViewportKeys.gpV2Type );
+	cSpectatorViewportKeys.V2Toggle.setAlternative( &cSpectatorViewportKeys.gpV2Toggle );
 }
 
 void CClient::ProcessSpectatorViewportKeys()

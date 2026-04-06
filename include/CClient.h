@@ -368,6 +368,7 @@ private:
 	
 	struct		cSpectatorViewportKeys_t {
 				CInput Up, Down, Left, Right, V1Type, V2Type, V2Toggle;
+				CInput gpUp, gpDown, gpLeft, gpRight, gpV1Type, gpV2Type, gpV2Toggle;
 	} cSpectatorViewportKeys;
 	std::string	sSpectatorViewportMsg;
 	AbsTime		fSpectatorViewportMsgTimeout;

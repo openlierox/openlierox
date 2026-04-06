@@ -1596,8 +1596,10 @@ void CWorm::reinitInputHandler() {
 			// TODO: Later, let the handler save a rev to his sPlayerControls. This would give
 			// more flexibility to the player and he can have multiple player control sets.
 			// Then, we would call a reloadInputs() here.
-			if(w->get() == this)
+			if(w->get() == this) {
 				handler->setupInputs( tLXOptions->sPlayerControls[humanWormNum] );
+				handler->setupGamepadInputs( tLXOptions->sGamepadControls[humanWormNum] );
+			}
 			humanWormNum++;
 		}
 	}	

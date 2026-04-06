@@ -37,10 +37,15 @@ public:
 protected:
 	virtual ~CWormHumanInputHandler();
 	
-	// Input
+	// Input (keyboard)
 	CInput		cUp, cDown, cLeft, cRight,
 	cShoot, cJump, cSelWeapon, cInpRope,
 	cStrafe, cWeapons[5];
+
+	// Input (gamepad alternative)
+	CInput		gpUp, gpDown, gpLeft, gpRight,
+	gpShoot, gpJump, gpSelWeapon, gpInpRope,
+	gpStrafe, gpWeapons[5];
 	
 	// for oldschool rope handling
 	bool		bRopeDown;
@@ -64,6 +69,7 @@ public:
 	
 	// Input
 	void		setupInputs(const PlyControls& Inputs);
+	void		setupGamepadInputs(const PlyControls& Inputs);
 	void		initInputSystem();
 	void		stopInputSystem();
 	

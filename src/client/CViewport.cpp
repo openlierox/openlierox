@@ -104,11 +104,29 @@ void CViewport::setupInputs(const PlyControls& Inputs)
 	cDown = new CInput();
 	cLeft = new CInput();
 	cRight = new CInput();
-    
+
     cUp.get()->Setup(		Inputs[SIN_UP] );
 	cDown.get()->Setup(	Inputs[SIN_DOWN] );
 	cLeft.get()->Setup(	Inputs[SIN_LEFT] );
 	cRight.get()->Setup(	Inputs[SIN_RIGHT] );
+}
+
+void CViewport::setupGamepadInputs(const PlyControls& Inputs)
+{
+	gpUp = new CInput();
+	gpDown = new CInput();
+	gpLeft = new CInput();
+	gpRight = new CInput();
+
+	gpUp.get()->Setup(		Inputs[SIN_UP] );
+	gpDown.get()->Setup(	Inputs[SIN_DOWN] );
+	gpLeft.get()->Setup(	Inputs[SIN_LEFT] );
+	gpRight.get()->Setup(	Inputs[SIN_RIGHT] );
+
+	cUp.get()->setAlternative( gpUp.get() );
+	cDown.get()->setAlternative( gpDown.get() );
+	cLeft.get()->setAlternative( gpLeft.get() );
+	cRight.get()->setAlternative( gpRight.get() );
 }
 
 

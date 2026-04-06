@@ -102,6 +102,7 @@ private:
 
 	// HINT: we have to use pointers here as we have CViewport in a global variable
     SmartPointer<CInput>  cUp, cRight, cDown, cLeft;
+    SmartPointer<CInput>  gpUp, gpRight, gpDown, gpLeft;
 	
 	bool	bSmooth;
 	CVec	cSmoothVel, cSmoothAccel;
@@ -119,6 +120,7 @@ public:
 	void	Shake(int amount);
 
     void    setupInputs(const PlyControls& Inputs);
+    void    setupGamepadInputs(const PlyControls& Inputs);
 
     void    reset();
 

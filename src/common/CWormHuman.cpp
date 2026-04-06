@@ -698,6 +698,38 @@ void CWormHumanInputHandler::setupInputs(const PlyControls& Inputs)
 		cWeapons[i].Setup(Inputs[SIN_WEAPON1 + i]);
 }
 
+///////////////////
+// Setup the gamepad inputs (linked as alternatives to the keyboard inputs)
+void CWormHumanInputHandler::setupGamepadInputs(const PlyControls& Inputs)
+{
+	gpUp.Setup(		Inputs[SIN_UP] );
+	gpDown.Setup(	Inputs[SIN_DOWN] );
+	gpLeft.Setup(	Inputs[SIN_LEFT] );
+	gpRight.Setup(	Inputs[SIN_RIGHT] );
+
+	gpShoot.Setup(	Inputs[SIN_SHOOT] );
+	gpJump.Setup(	Inputs[SIN_JUMP] );
+	gpSelWeapon.Setup(Inputs[SIN_SELWEAP] );
+	gpInpRope.Setup(	Inputs[SIN_ROPE] );
+
+	gpStrafe.Setup( Inputs[SIN_STRAFE] );
+
+	for( size_t i = 0; i < sizeof(gpWeapons) / sizeof(gpWeapons[0]) ; i++  )
+		gpWeapons[i].Setup(Inputs[SIN_WEAPON1 + i]);
+
+	// Link as alternatives to the keyboard inputs
+	cUp.setAlternative(&gpUp);
+	cDown.setAlternative(&gpDown);
+	cLeft.setAlternative(&gpLeft);
+	cRight.setAlternative(&gpRight);
+	cShoot.setAlternative(&gpShoot);
+	cJump.setAlternative(&gpJump);
+	cSelWeapon.setAlternative(&gpSelWeapon);
+	cInpRope.setAlternative(&gpInpRope);
+	cStrafe.setAlternative(&gpStrafe);
+	for( size_t i = 0; i < sizeof(cWeapons) / sizeof(cWeapons[0]) ; i++  )
+		cWeapons[i].setAlternative(&gpWeapons[i]);
+}
 
 void CWormHumanInputHandler::initInputSystem() {
 	cUp.setResetEachFrame( false );
@@ -711,6 +743,17 @@ void CWormHumanInputHandler::initInputSystem() {
 	cStrafe.setResetEachFrame( false );
 	for( size_t i = 0; i < sizeof(cWeapons) / sizeof(cWeapons[0]) ; i++  )
 		cWeapons[i].setResetEachFrame( false );
+	gpUp.setResetEachFrame( false );
+	gpDown.setResetEachFrame( false );
+	gpLeft.setResetEachFrame( false );
+	gpRight.setResetEachFrame( false );
+	gpShoot.setResetEachFrame( false );
+	gpJump.setResetEachFrame( false );
+	gpSelWeapon.setResetEachFrame( false );
+	gpInpRope.setResetEachFrame( false );
+	gpStrafe.setResetEachFrame( false );
+	for( size_t i = 0; i < sizeof(gpWeapons) / sizeof(gpWeapons[0]) ; i++  )
+		gpWeapons[i].setResetEachFrame( false );
 }
 
 void CWormHumanInputHandler::stopInputSystem() {
@@ -725,6 +768,17 @@ void CWormHumanInputHandler::stopInputSystem() {
 	cStrafe.setResetEachFrame( true );
 	for( size_t i = 0; i < sizeof(cWeapons) / sizeof(cWeapons[0]) ; i++  )
 		cWeapons[i].setResetEachFrame( true );
+	gpUp.setResetEachFrame( true );
+	gpDown.setResetEachFrame( true );
+	gpLeft.setResetEachFrame( true );
+	gpRight.setResetEachFrame( true );
+	gpShoot.setResetEachFrame( true );
+	gpJump.setResetEachFrame( true );
+	gpSelWeapon.setResetEachFrame( true );
+	gpInpRope.setResetEachFrame( true );
+	gpStrafe.setResetEachFrame( true );
+	for( size_t i = 0; i < sizeof(gpWeapons) / sizeof(gpWeapons[0]) ; i++  )
+		gpWeapons[i].setResetEachFrame( true );
 }
 
 

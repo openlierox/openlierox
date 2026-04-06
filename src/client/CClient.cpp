@@ -1598,6 +1598,8 @@ void CClient::SetupViewports(CWorm *w1, CWorm *w2, int type1, int type2)
     // Setup inputs
     cViewports[0].setupInputs( tLXOptions->sPlayerControls[0] );
     cViewports[1].setupInputs( tLXOptions->sPlayerControls[1] );
+    cViewports[0].setupGamepadInputs( tLXOptions->sGamepadControls[0] );
+    cViewports[1].setupGamepadInputs( tLXOptions->sGamepadControls[1] );
 
 
 	// Setup according to top and bottom interface bars
@@ -2208,6 +2210,7 @@ void CClient::SetupGameInputs()
 			// Then, we would call a reloadInputs() here.
 			if(humanWormNum <= 1) {
 				handler->setupInputs( tLXOptions->sPlayerControls[humanWormNum] );
+				handler->setupGamepadInputs( tLXOptions->sGamepadControls[humanWormNum] );
 				humanWormNum++;
 			}
 			else
@@ -2218,6 +2221,8 @@ void CClient::SetupGameInputs()
 	// TODO: allow more viewports here
 	cViewports[0].setupInputs( tLXOptions->sPlayerControls[0] );
 	cViewports[1].setupInputs( tLXOptions->sPlayerControls[1] );
+	cViewports[0].setupGamepadInputs( tLXOptions->sGamepadControls[0] );
+	cViewports[1].setupGamepadInputs( tLXOptions->sGamepadControls[1] );
 	
 
 	// General key shortcuts
