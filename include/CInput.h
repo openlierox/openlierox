@@ -42,6 +42,9 @@
 #define		JOY_TURN_RIGHT		6
 #define		JOY_THROTTLE_LEFT	7
 #define		JOY_THROTTLE_RIGHT	8
+#define		JOY_HAT				9
+#define		JOY_TRIGGER_LEFT	10
+#define		JOY_TRIGGER_RIGHT	11
 
 struct KeyboardEvent;
 
@@ -60,7 +63,7 @@ private:
 
 	int		Type; // keyboard, mouse or joystick
 	int		Data;
-	int		Extra;
+	int		SdlIndex;
 	std::string m_EventName;
 	ModifiersState m_modifiers; // required modifier keys for keyboard bindings
 	bool	resetEachFrame;
@@ -90,7 +93,6 @@ public:
 	void	setResetEachFrame(bool r)	{ resetEachFrame = r; }
 	bool	getResetEachFrame()			{ return resetEachFrame; }
 	int		getJoystickValue();
-	bool	isJoystickAxis();
 	bool	isJoystickThrottle();
 
 	bool	isUp();
@@ -125,8 +127,7 @@ struct keys_t {
 struct joystick_t {
 	char	text[16];	// Keep string local to speed up lookup.
 	int		value;
-	int		extra;
-	int		axis;
+	int		sdl_index;
 };
 
 
