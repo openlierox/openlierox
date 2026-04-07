@@ -577,7 +577,7 @@ void ProcessEvents()
 #ifndef DEDICATED_ONLY
 #ifndef DISABLE_JOYSTICK
 		if(bJoystickSupport)  {
-			SDL_JoystickUpdate();
+			SDL_GameControllerUpdate();
 			updateAxisStates();
 		}
 #endif
