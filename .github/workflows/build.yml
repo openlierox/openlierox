@@ -45,4 +45,6 @@ jobs:
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DHAWKNL_BUILTIN=Yes
 
       - name: Build
-        run: cmake --build build -j$(nproc)
+        run: |
+          mkdir -p build/bin
+          cmake --build build -j$(nproc)
