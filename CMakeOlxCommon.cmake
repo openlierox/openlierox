@@ -284,6 +284,10 @@ IF(WIN32)
 		ADD_DEFINITIONS(-DHAVE_BOOST -DZLIB_WIN32_NODLL)
 		ADD_DEFINITIONS(-D_WIN32_WINNT=0x0601)
 		SET(OPTIMIZE_COMPILER_FLAG -O3)
+		# The legacy widget code has several "DWORD from pointer"
+		# casts that trip GCC on 64-bit builds. Demote to warnings
+		# until the widget API is ported to uintptr_t.
+		add_compile_options(-fpermissive)
 	ENDIF()
 	INCLUDE_DIRECTORIES(${OLXROOTDIR}/libs/hawknl/include
 				${OLXROOTDIR}/libs/hawknl/src
