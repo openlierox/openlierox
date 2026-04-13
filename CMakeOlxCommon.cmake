@@ -86,7 +86,9 @@ IF(UNIX)
 ELSE(UNIX)
 	IF(WIN32)
 		SET(G15 OFF)
-		SET(HAWKNL_BUILTIN OFF) # We already have prebuilt HawkNL library
+		IF(MSVC)
+			SET(HAWKNL_BUILTIN OFF) # We already have prebuilt HawkNL library
+		ENDIF()
 		SET(X11 OFF)
 	ELSE(WIN32)
 	ENDIF(WIN32)
@@ -261,13 +263,20 @@ ENDIF(MEMSTATS)
 
 # Generic defines
 IF(WIN32)
-	ADD_DEFINITIONS(-D_CRT_SECURE_NO_DEPRECATE -DHAVE_BOOST -DZLIB_WIN32_NODLL)
-	SET(OPTIMIZE_COMPILER_FLAG /Ox /Ob2 /Oi /Ot /GL)
-	IF(DEBUG)
-		ADD_DEFINITIONS(-DUSE_DEFAULT_MSC_DELEAKER)
-	ELSE(DEBUG)
-		ADD_DEFINITIONS(${OPTIMIZE_COMPILER_FLAG})
-	ENDIF(DEBUG)
+	IF(MSVC)
+		ADD_DEFINITIONS(-D_CRT_SECURE_NO_DEPRECATE -DHAVE_BOOST -DZLIB_WIN32_NODLL)
+		SET(OPTIMIZE_COMPILER_FLAG /Ox /Ob2 /Oi /Ot /GL)
+		IF(DEBUG)
+			ADD_DEFINITIONS(-DUSE_DEFAULT_MSC_DELEAKER)
+		ELSE(DEBUG)
+			ADD_DEFINITIONS(${OPTIMIZE_COMPILER_FLAG})
+		ENDIF(DEBUG)
+	ELSE()
+		# MinGW on Windows (MSYS2)
+		ADD_DEFINITIONS(-DHAVE_BOOST -DZLIB_WIN32_NODLL)
+		ADD_DEFINITIONS(-D_WIN32_WINNT=0x0601)
+		SET(OPTIMIZE_COMPILER_FLAG -O3)
+	ENDIF()
 	INCLUDE_DIRECTORIES(${OLXROOTDIR}/libs/hawknl/include
 				${OLXROOTDIR}/libs/hawknl/src
 				${OLXROOTDIR}/libs/libzip
@@ -393,7 +402,7 @@ if(APPLE)
 	SET(LIBS ${LIBS} "-framework Cocoa")
 endif(APPLE)
 
-IF(WIN32)
+IF(WIN32 AND MSVC)
 	SET(LIBS ${LIBS} SDL_mixer wsock32 wininet dbghelp
 				"${OLXROOTDIR}/build/msvc/libs/SDLmain.lib"
 				"${OLXROOTDIR}/build/msvc/libs/libxml2.lib"
@@ -401,6 +410,11 @@ IF(WIN32)
 				"${OLXROOTDIR}/build/msvc/libs/libzip.lib"
 				"${OLXROOTDIR}/build/msvc/libs/zlib.lib"
 				"${OLXROOTDIR}/build/msvc/libs/bgd.lib")
+ELSEIF(WIN32)
+	# MinGW on Windows (MSYS2 packages)
+	SET(LIBS ${LIBS} SDL2main SDL2_mixer xml2 zip gd z
+				wsock32 ws2_32 wininet dbghelp iphlpapi
+				pthread)
 ELSEIF(APPLE)
 	SET(LIBS ${LIBS} SDL2_mixer xml2 zip gd z)
 ELSEIF(MINGW_CROSS_COMPILE)
