@@ -493,4 +493,4 @@ IF(MINGW_CROSS_COMPILE)
 	SET(LIBS ${LIBS} SDLmain SDL boost_system jpeg png vorbisenc vorbis ogg dbghelp dsound dxguid wsock32 wininet wldap32 user32 gdi32 winmm version kernel32)
 ENDIF(MINGW_CROSS_COMPILE)
 
-ADD_DEFINITIONS(-DSYSTEM_DATA_DIR="${SYSTEM_DATA_DIR}")
+add_compile_definitions(SYSTEM_DATA_DIR="${SYSTEM_DATA_DIR}")
