@@ -5,7 +5,6 @@ on:
   push:
     branches:
       - 0.59
-      - master
 
 jobs:
   build-linux:
