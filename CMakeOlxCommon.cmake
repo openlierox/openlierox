@@ -121,11 +121,12 @@ EXEC_PROGRAM(mkdir ARGS -p bin OUTPUT_VARIABLE DUMMY)
 # main includes
 INCLUDE_DIRECTORIES(${OLXROOTDIR}/optional-includes/generated)
 IF(WIN32 AND NOT MSVC)
-	# On Windows NTFS is case-insensitive, so -I include/ causes the
-	# project's Process.h to shadow the system <process.h> that pthread.h
-	# pulls in. Use -iquote so the dir is only searched for quote-form
-	# includes.
-	add_compile_options(-iquote "${OLXROOTDIR}/include")
+	# On Windows NTFS is case-insensitive, so adding include/ as a
+	# normal -I causes the project's Process.h to shadow the system
+	# <process.h> that MSYS2's pthread.h pulls in. Use -isystem so
+	# that dir is searched after the system headers, which avoids
+	# the shadow while still letting source use <WeaponDesc.h> etc.
+	include_directories(SYSTEM ${OLXROOTDIR}/include)
 ELSE()
 	INCLUDE_DIRECTORIES(${OLXROOTDIR}/include)
 ENDIF()
