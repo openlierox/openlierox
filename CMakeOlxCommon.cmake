@@ -125,7 +125,15 @@ EXEC_PROGRAM(mkdir ARGS -p bin OUTPUT_VARIABLE DUMMY)
 
 # main includes
 INCLUDE_DIRECTORIES(${OLXROOTDIR}/optional-includes/generated)
-INCLUDE_DIRECTORIES(${OLXROOTDIR}/include)
+IF(WIN32 AND NOT MSVC)
+	# On Windows NTFS is case-insensitive, so -I include/ causes the
+	# project's Process.h to shadow the system <process.h> that pthread.h
+	# pulls in. Use -iquote so the dir is only searched for quote-form
+	# includes.
+	add_compile_options(-iquote "${OLXROOTDIR}/include")
+ELSE()
+	INCLUDE_DIRECTORIES(${OLXROOTDIR}/include)
+ENDIF()
 INCLUDE_DIRECTORIES(${OLXROOTDIR}/src)
 INCLUDE_DIRECTORIES(${OLXROOTDIR}/libs/pstreams)
 
