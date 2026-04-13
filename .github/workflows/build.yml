@@ -24,6 +24,7 @@ jobs:
           sudo apt-get install -y \
             cmake \
             build-essential \
+            dpkg-dev \
             libsdl2-dev \
             libsdl2-image-dev \
             libsdl2-mixer-dev \
@@ -47,3 +48,13 @@ jobs:
         run: |
           mkdir -p build/bin
           cmake --build build -j$(nproc)
+
+      - name: Package (.deb)
+        run: ./package-deb.sh
+
+      - name: Upload .deb
+        uses: actions/upload-artifact@v4
+        with:
+          name: openlierox-deb
+          path: openlierox_*.deb
+          if-no-files-found: error
