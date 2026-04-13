@@ -96,7 +96,7 @@ void Menu_MainInitialize()
 		Menu_MainShutdown();
 		Menu_CGuiSkinInitialize();
 	}
-	const char * LXALinkText = "Visit our forums at http://lxalliance.net";
+	const char * LXALinkText = "Visit our website https://openlierox.net";
 	int orig_spacing = tLX->cFont.GetVSpacing();
 	tLX->cFont.SetVSpacing(tMenu->tFrontendInfo.iCreditsSpacing);
 	cMainMenu.Add( new CTextButton(LXALinkText, tLX->clCredits2, tLX->clCredits1 ), 
@@ -206,7 +206,7 @@ void Menu_MainFrame()
             
 			case mm_LXALink:
 				if( ev->iEventMsg == TXB_MOUSEUP ) {
-					OpenLinkInExternBrowser("http://www.openlierox.net/forum");
+					OpenLinkInExternBrowser("https://openlierox.net");
 				}
 				break;
 		}
