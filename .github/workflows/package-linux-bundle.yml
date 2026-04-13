@@ -25,7 +25,6 @@ jobs:
           sudo apt-get install -y \
             cmake \
             build-essential \
-            patchelf \
             dpkg-dev \
             libsdl2-dev \
             libsdl2-image-dev \
@@ -45,6 +44,7 @@ jobs:
 
       - name: Build
         run: |
+<<<<<<< HEAD:.github/workflows/package-linux-bundle.yml
           ./.github/workflows/build.sh
 
       - name: Package
@@ -59,4 +59,17 @@ jobs:
         with:
           name: ${{ steps.bundle.outputs.name }}
           path: distrib/openlierox-*-linux-bundle*
+=======
+          mkdir -p build/bin
+          cmake --build build -j$(nproc)
+
+      - name: Package (.deb)
+        run: ./package-deb.sh
+
+      - name: Upload .deb
+        uses: actions/upload-artifact@v4
+        with:
+          name: openlierox-deb
+          path: openlierox_*.deb
+>>>>>>> 5ab0ba175 (ci: produce .deb package and upload as artifact):.github/workflows/build.yml
           if-no-files-found: error
