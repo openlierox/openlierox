@@ -8,7 +8,7 @@ include(${OLXROOTDIR}/CMakeOlxCommon.cmake)
 
 ADD_EXECUTABLE(openlierox ${OLXROOTDIR}/src/main.cpp ${ALL_SRCS})
 
-IF(WIN32)
+IF(WIN32 AND MSVC)
 	SET_TARGET_PROPERTIES(openlierox PROPERTIES OUTPUT_NAME "../../../bin/OpenLieroX")
 
 	# Add debug info to release build in linker flags
@@ -19,13 +19,9 @@ IF(WIN32)
 		/MAPINFO:EXPORTS
 		/NODEFAULTLIB:\"LIBC\"
 		/INCREMENTAL:NO")
-ELSE(WIN32)
-	IF(MINGW_CROSS_COMPILE)
-		SET_TARGET_PROPERTIES(openlierox PROPERTIES OUTPUT_NAME bin/openlierox.exe)
-	ELSE(MINGW_CROSS_COMPILE)
-		SET_TARGET_PROPERTIES(openlierox PROPERTIES OUTPUT_NAME bin/openlierox)
-	ENDIF(MINGW_CROSS_COMPILE)
-ENDIF(WIN32)
+ELSE()
+	SET_TARGET_PROPERTIES(openlierox PROPERTIES OUTPUT_NAME bin/openlierox)
+ENDIF()
 
 TARGET_LINK_LIBRARIES(openlierox ${LIBS})
 
