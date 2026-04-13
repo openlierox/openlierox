@@ -166,11 +166,11 @@ ELSE (BREAKPAD)
 	ADD_DEFINITIONS(-DNBREAKPAD)
 ENDIF (BREAKPAD)
 
-IF (LINENOISE)
+IF (LINENOISE AND NOT WIN32)
 	ADD_DEFINITIONS(-DHAVE_LINENOISE)
 	INCLUDE_DIRECTORIES(${OLXROOTDIR}/libs/linenoise)
 	SET(ALL_SRCS ${OLXROOTDIR}/libs/linenoise/linenoise.cpp ${ALL_SRCS})
-ENDIF (LINENOISE)
+ENDIF ()
 
 IF (DISABLE_JOYSTICK)
 	ADD_DEFINITIONS(-DDISABLE_JOYSTICK)
@@ -316,7 +316,7 @@ IF(OPTIM_PROJECTILES)
 ENDIF(OPTIM_PROJECTILES)
 
 # SDL libs
-IF(WIN32)
+IF(WIN32 AND MSVC)
 ELSEIF(APPLE)
 	# Modern macOS cmake build: rely on Homebrew-installed SDL2 and
 	# friends via pkg-config. The old SDL 1.x Framework layout is kept
@@ -357,7 +357,7 @@ ELSE()
 	EXEC_PROGRAM(sdl2-config ARGS --cflags OUTPUT_VARIABLE SDLCFLAGS)
 	string(REGEX REPLACE "[\r\n]" " " SDLCFLAGS "${SDLCFLAGS}")
 	ADD_DEFINITIONS(${SDLCFLAGS})
-endif(WIN32)
+endif()
 
 
 IF(X11)
@@ -478,4 +478,4 @@ IF(MINGW_CROSS_COMPILE)
 	SET(LIBS ${LIBS} SDLmain SDL boost_system jpeg png vorbisenc vorbis ogg dbghelp dsound dxguid wsock32 wininet wldap32 user32 gdi32 winmm version kernel32)
 ENDIF(MINGW_CROSS_COMPILE)
 
-ADD_DEFINITIONS('-D SYSTEM_DATA_DIR=\"${SYSTEM_DATA_DIR}\"')
+ADD_DEFINITIONS(-DSYSTEM_DATA_DIR="${SYSTEM_DATA_DIR}")
