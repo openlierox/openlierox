@@ -116,6 +116,7 @@ jobs:
       - name: Configure
         run: |
           cmake -S . -B build -G Ninja \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
             -DCMAKE_BUILD_TYPE=Release \
             -DHAWKNL_BUILTIN=Yes \
             -DLIBZIP_BUILTIN=No \
