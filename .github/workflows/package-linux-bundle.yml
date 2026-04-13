@@ -104,7 +104,7 @@ jobs:
             mingw-w64-x86_64-SDL2_image
             mingw-w64-x86_64-SDL2_mixer
             mingw-w64-x86_64-libxml2
-            mingw-w64-x86_64-gd
+            mingw-w64-x86_64-libgd
             mingw-w64-x86_64-zlib
             mingw-w64-x86_64-libzip
             mingw-w64-x86_64-curl
