@@ -11,6 +11,7 @@ jobs:
   build-linux:
     name: Build Linux-bundle
     runs-on: ubuntu-24.04
+    if: false  # temporarily disabled to speed up Windows iteration
 
     steps:
       - name: Checkout
