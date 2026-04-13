@@ -434,9 +434,16 @@ IF(WIN32 AND MSVC)
 				"${OLXROOTDIR}/build/msvc/libs/zlib.lib"
 				"${OLXROOTDIR}/build/msvc/libs/bgd.lib")
 ELSEIF(WIN32)
-	# MinGW on Windows (MSYS2 packages)
-	SET(LIBS ${LIBS} SDL2main SDL2_mixer xml2 zip gd z
+	# MinGW on Windows (MSYS2 packages).
+	# mingw32 and SDL2main must come before libmingw32's default main()
+	# in the link order. Wrap SDL2main in --whole-archive so the
+	# linker doesn't drop it before its main() overrides the default.
+	SET(LIBS mingw32
+				-Wl,--whole-archive SDL2main -Wl,--no-whole-archive
+				${LIBS}
+				SDL2_mixer xml2 zip gd z
 				wsock32 ws2_32 wininet dbghelp iphlpapi
+				version
 				pthread)
 ELSEIF(APPLE)
 	SET(LIBS ${LIBS} SDL2_mixer xml2 zip gd z)
