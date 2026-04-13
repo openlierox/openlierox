@@ -36,7 +36,7 @@
 #include "Geometry.h"
 #include "ThreadPool.h" // for struct Action
 #include "Timer.h"
-#include <WeaponDesc.h>
+#include "WeaponDesc.h"
 #include "sound/SoundsBase.h"
 #include "game/Game.h"
 
