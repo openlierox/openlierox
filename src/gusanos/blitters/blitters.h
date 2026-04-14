@@ -12,12 +12,12 @@
 #include "CodeAttributes.h"
 
 // TODO: correct check if we should include MMX/SSE code
-#if !defined(WIN32) && (SDL_BYTEORDER == SDL_LIL_ENDIAN)
+#if !defined(WIN32) && (SDL_BYTEORDER == SDL_LIL_ENDIAN) && (defined(__i386__) || defined(__x86_64__))
 #define HAS_MMX (cpu_capabilities & CPU_MMX)
 #define HAS_SSE (cpu_capabilities & CPU_SSE)
 #define HAS_MMXSSE (cpu_capabilities & CPU_MMXPLUS)
 #define BUILTIN_MMXSSE
-#else  // TODO: currently buggy on Windows
+#else  // TODO: currently buggy on Windows and unavailable on non-x86 archs
 #define HAS_MMX (false)
 #define HAS_SSE (false)
 #define HAS_MMXSSE (false)
