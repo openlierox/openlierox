@@ -82,8 +82,6 @@ modules:
         /app/share/metainfo/net.openlierox.OpenLieroX.appdata.xml
       - install -Dm644 share/OpenLieroX.svg
         /app/share/icons/hicolor/scalable/apps/net.openlierox.OpenLieroX.svg
-      - install -Dm644 share/OpenLieroX.128.png
-        /app/share/icons/hicolor/128x128/apps/net.openlierox.OpenLieroX.png
       - install -Dm644 share/OpenLieroX.64.png
         /app/share/icons/hicolor/64x64/apps/net.openlierox.OpenLieroX.png
       - install -Dm644 share/OpenLieroX.32.png
