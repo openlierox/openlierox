@@ -10,7 +10,6 @@ jobs:
   build-linux:
     name: Build (Ubuntu 24.04)
     runs-on: ubuntu-24.04
-    if: false  # temporarily disabled to iterate on the macOS pipeline
 
     steps:
       - name: Checkout
@@ -63,7 +62,6 @@ jobs:
   build-windows:
     name: Build Windows .exe (MSYS2 MinGW64)
     runs-on: windows-2022
-    if: false  # temporarily disabled to iterate on the macOS pipeline
     defaults:
       run:
         shell: msys2 {0}
