@@ -337,6 +337,7 @@ ELSEIF(APPLE)
 	pkg_check_modules(LIBZIP REQUIRED libzip)
 	pkg_check_modules(LIBGD REQUIRED gdlib)
 	pkg_check_modules(VORBISFILE REQUIRED vorbisfile)
+	pkg_check_modules(OPENAL REQUIRED openal)
 	pkg_check_modules(FREEALUT REQUIRED freealut)
 	INCLUDE_DIRECTORIES(
 		${SDL2_INCLUDE_DIRS}
@@ -346,6 +347,7 @@ ELSEIF(APPLE)
 		${LIBZIP_INCLUDE_DIRS}
 		${LIBGD_INCLUDE_DIRS}
 		${VORBISFILE_INCLUDE_DIRS}
+		${OPENAL_INCLUDE_DIRS}
 		${FREEALUT_INCLUDE_DIRS})
 	link_directories(
 		${SDL2_LIBRARY_DIRS}
@@ -355,6 +357,7 @@ ELSEIF(APPLE)
 		${LIBZIP_LIBRARY_DIRS}
 		${LIBGD_LIBRARY_DIRS}
 		${VORBISFILE_LIBRARY_DIRS}
+		${OPENAL_LIBRARY_DIRS}
 		${FREEALUT_LIBRARY_DIRS})
 ELSEIF(MINGW_CROSS_COMPILE)
 	INCLUDE_DIRECTORIES(${OLXROOTDIR}/build/mingw/include/SDL)
@@ -406,13 +409,7 @@ ELSE(BOOST_LINK_STATIC)
 	SET(LIBS ${LIBS} ${Boost_LIBRARIES})
 ENDIF(BOOST_LINK_STATIC)
 
-SET(LIBS ${LIBS} alut vorbisfile)
-IF(APPLE)
-	# OpenAL ships as a system framework on macOS.
-	SET(LIBS ${LIBS} "-framework OpenAL")
-ELSE(APPLE)
-	SET(LIBS ${LIBS} openal)
-ENDIF(APPLE)
+SET(LIBS ${LIBS} alut openal vorbisfile)
 
 SET(LIBS ${LIBS} curl)
 
