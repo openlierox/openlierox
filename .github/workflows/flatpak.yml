@@ -1,18 +1,16 @@
 name: Flatpak
 
 on:
+  pull_request:
   push:
     branches:
-      - '0.59'
-      - 'add-github-action-to-build-flatpak'
-  pull_request:
-    branches: ['0.59']
+      - 0.59
   workflow_dispatch:
 
 jobs:
   flatpak-builder:
     name: Build Flatpak bundle
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container:
       image: bilelmoussaoui/flatpak-github-actions:freedesktop-23.08
       options: --privileged

@@ -69,6 +69,9 @@ modules:
         -DLIBLUA_BUILTIN=ON
         -DDEBUG=0
         -DBREAKPAD=Off
+        -DBOOST_ROOT=/app
+        -DBoost_INCLUDE_DIR=/app/include
+        -DBoost_NO_SYSTEM_PATHS=OFF
         -DSYSTEM_DATA_DIR=/app/share/games
       - ninja -C build-flatpak
       - install -Dm755 bin/openlierox /app/bin/openlierox
