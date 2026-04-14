@@ -1,0 +1,89 @@
+app-id: net.openlierox.OpenLieroX
+runtime: org.freedesktop.Platform
+runtime-version: '23.08'
+sdk: org.freedesktop.Sdk
+command: openlierox
+
+finish-args:
+  - --share=ipc
+  - --share=network
+  - --socket=x11
+  - --socket=pulseaudio
+  - --device=all
+  - --filesystem=xdg-data/openlierox:create
+  - --persist=.openlierox
+
+cleanup:
+  - /include
+  - /lib/pkgconfig
+  - /lib/cmake
+  - /share/aclocal
+  - /share/man
+  - '*.a'
+  - '*.la'
+
+modules:
+  - name: freealut
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DBUILD_SHARED_LIBS=ON
+    sources:
+      - type: git
+        url: https://github.com/vancegroup/freealut.git
+        tag: freealut_1_1_0
+
+  - name: libgd
+    buildsystem: autotools
+    config-opts:
+      - --disable-static
+      - --with-png
+      - --with-jpeg
+      - --with-freetype
+      - --without-tiff
+      - --without-webp
+      - --without-xpm
+      - --without-x
+    sources:
+      - type: archive
+        url: https://github.com/libgd/libgd/releases/download/gd-2.3.3/libgd-2.3.3.tar.gz
+        sha256: dd3f1f0bb016edcc0b2d082e8229c822ad1d02223511997c80461481759b1ed2
+
+  - name: openlierox
+    buildsystem: simple
+    build-commands:
+      - cmake -G Ninja -B build-flatpak
+        -DCMAKE_BUILD_TYPE=Release
+        -DHAWKNL_BUILTIN=ON
+        -DLIBZIP_BUILTIN=ON
+        -DLIBLUA_BUILTIN=ON
+        -DDEBUG=0
+        -DBREAKPAD=Off
+        -DSYSTEM_DATA_DIR=/app/share/games
+      - ninja -C build-flatpak
+      - install -Dm755 bin/openlierox /app/bin/openlierox
+      - mkdir -p /app/share/games/OpenLieroX
+      - cp -r share/gamedir/. /app/share/games/OpenLieroX/
+      - install -Dm644 share/net.openlierox.OpenLieroX.appdata.xml
+        /app/share/metainfo/net.openlierox.OpenLieroX.appdata.xml
+      - install -Dm644 share/OpenLieroX.svg
+        /app/share/icons/hicolor/scalable/apps/net.openlierox.OpenLieroX.svg
+      - install -Dm644 share/OpenLieroX.128.png
+        /app/share/icons/hicolor/128x128/apps/net.openlierox.OpenLieroX.png
+      - install -Dm644 share/OpenLieroX.64.png
+        /app/share/icons/hicolor/64x64/apps/net.openlierox.OpenLieroX.png
+      - install -Dm644 share/OpenLieroX.32.png
+        /app/share/icons/hicolor/32x32/apps/net.openlierox.OpenLieroX.png
+      - install -Dm644 share/OpenLieroX.16.png
+        /app/share/icons/hicolor/16x16/apps/net.openlierox.OpenLieroX.png
+      - sed -e 's|^Icon=.*|Icon=net.openlierox.OpenLieroX|'
+        share/net.openlierox.OpenLieroX.desktop > net.openlierox.OpenLieroX.desktop
+      - install -Dm644 net.openlierox.OpenLieroX.desktop
+        /app/share/applications/net.openlierox.OpenLieroX.desktop
+    sources:
+      - type: dir
+        path: ..
+        skip:
+          - .git
+          - flatpak
+          - build
