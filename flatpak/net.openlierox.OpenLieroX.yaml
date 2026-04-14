@@ -75,7 +75,7 @@ modules:
         -DBoost_NO_SYSTEM_PATHS=OFF
         -DSYSTEM_DATA_DIR=/app/share/games
       - ninja -C build-flatpak
-      - install -Dm755 bin/openlierox /app/bin/openlierox
+      - install -Dm755 build-flatpak/bin/openlierox /app/bin/openlierox
       - mkdir -p /app/share/games/OpenLieroX
       - cp -r share/gamedir/. /app/share/games/OpenLieroX/
       - install -Dm644 share/net.openlierox.OpenLieroX.appdata.xml
