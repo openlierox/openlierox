@@ -126,3 +126,62 @@ jobs:
           name: openlierox-windows
           path: openlierox_*_win64.zip
           if-no-files-found: error
+
+  build-macos:
+    name: Build macOS .app (Homebrew)
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Install dependencies
+        run: |
+          brew update
+          brew install \
+            cmake \
+            ninja \
+            pkg-config \
+            sdl2 \
+            sdl2_image \
+            sdl2_mixer \
+            libzip \
+            gd \
+            libvorbis \
+            freealut \
+            boost \
+            dylibbundler
+
+      - name: Configure
+        run: |
+          # Homebrew keeps libxml2 keg-only because macOS ships its own,
+          # so expose its .pc file to pkg-config.
+          LIBXML2_PREFIX="$(brew --prefix libxml2)"
+          export PKG_CONFIG_PATH="${LIBXML2_PREFIX}/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DHAWKNL_BUILTIN=Yes \
+            -DLIBZIP_BUILTIN=No \
+            -DLIBLUA_BUILTIN=Yes \
+            -DBREAKPAD=No \
+            -DHASBFD=No \
+            -DDEBUG=No
+
+      - name: Build
+        run: |
+          mkdir -p build/bin
+          cmake --build build -j$(sysctl -n hw.ncpu)
+
+      - name: Package (.app)
+        run: ./package-macos.sh
+
+      - name: Upload .app
+        uses: actions/upload-artifact@v4
+        with:
+          name: openlierox-macos
+          path: openlierox_*_macos.zip
+          if-no-files-found: error
