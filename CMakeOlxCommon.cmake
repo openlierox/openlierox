@@ -292,7 +292,8 @@ IF(WIN32)
 				${OLXROOTDIR}/libs/boost_process)
 ELSE(WIN32)
 	ADD_DEFINITIONS(-Wall)
-	ADD_DEFINITIONS("-std=c++0x")
+	# -std= belongs to CXX only — AppleClang rejects it for C sources.
+	add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:-std=c++0x>")
 
 	EXEC_PROGRAM(sh ARGS ${CMAKE_CURRENT_SOURCE_DIR}/get_version.sh OUTPUT_VARIABLE OLXVER)
 	string(REGEX REPLACE "[\r\n]" " " OLXVER "${OLXVER}")
