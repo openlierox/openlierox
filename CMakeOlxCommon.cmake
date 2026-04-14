@@ -153,8 +153,13 @@ ENDIF(NOT WIN32 AND NOT MINGW_CROSS_COMPILE)
 file(GLOB_RECURSE ALL_SRCS ${OLXROOTDIR}/src/*.c*)
 
 # The legacy src/MacMain.m is SDL 1.x specific and only used by the
-# old build/Xcode project. The cmake build uses SDL2, so we define our
-# own main() in main.cpp via OLX_USE_STD_MAIN instead.
+# old build/Xcode project. The cmake build uses SDL2 and provides its
+# own main() via OLX_USE_STD_MAIN, plus a trimmed Cocoa helper file
+# (src/MacHelpers.m) for clipboard and user-attention shims.
+IF(APPLE)
+	enable_language(OBJC)
+	SET(ALL_SRCS ${OLXROOTDIR}/src/MacHelpers.m ${ALL_SRCS})
+ENDIF(APPLE)
 
 IF (BREAKPAD)
 	INCLUDE_DIRECTORIES(${OLXROOTDIR}/libs/breakpad/src)
@@ -414,11 +419,10 @@ SET(LIBS ${LIBS} alut openal vorbisfile)
 
 SET(LIBS ${LIBS} curl)
 
+SET(LIBS ${LIBS} SDL2 SDL2_image)
 if(APPLE)
-	SET(LIBS ${LIBS} SDL2 SDL2_image)
+	# Needed by src/MacHelpers.m (clipboard + user-attention shims).
 	SET(LIBS ${LIBS} "-framework Cocoa")
-else(APPLE)
-	SET(LIBS ${LIBS} SDL2 SDL2_image)
 endif(APPLE)
 
 IF(WIN32 AND MSVC)
