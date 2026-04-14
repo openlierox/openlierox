@@ -69,6 +69,7 @@ modules:
         -DLIBLUA_BUILTIN=ON
         -DDEBUG=0
         -DBREAKPAD=Off
+        -DHASBFD=Off
         -DBOOST_ROOT=/app
         -DBoost_INCLUDE_DIR=/app/include
         -DBoost_NO_SYSTEM_PATHS=OFF
