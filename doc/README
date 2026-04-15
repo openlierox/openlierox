@@ -72,6 +72,18 @@ Compiling OLX under Windows is only suggested if you want to develop on OpenLier
 There is also a forum-thread about this topic:
 http://lxalliance.net/forum/index.php?topic=6444.0
 
+Android:
+
+Install Android SDK and Android NDK.
+Put directory with ndk-build command and NDK build-tools directory into your PATH.
+Then run:
+
+	git clone https://github.com/pelya/commandergenius
+
+	git submodule update --init --recursive
+
+	build.sh -s -b openlierox
+
 
 	Game search paths
 	=================
