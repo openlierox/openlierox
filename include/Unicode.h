@@ -14,7 +14,7 @@
 #include <SDL.h> // for Uint32
 #include <string>
 
-typedef Uint32 UnicodeChar;
+typedef char32_t UnicodeChar;
 typedef std::basic_string<UnicodeChar> Unicode32String;
 #ifdef WIN32
 typedef wchar_t Utf16Char;
