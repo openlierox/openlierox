@@ -20,7 +20,7 @@ typedef std::basic_string<UnicodeChar> Unicode32String;
 typedef wchar_t Utf16Char;
 typedef std::wstring Utf16String;
 #else
-typedef Uint16 Utf16Char;
+typedef char16_t Utf16Char;
 typedef std::basic_string<Utf16Char> Utf16String;
 #endif
 
