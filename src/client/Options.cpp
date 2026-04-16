@@ -200,7 +200,7 @@ bool GameOptions::Init() {
 		( tLXOptions->bAimLikeLX56, "Game.AimLikeLX56", false, "Aim friction like LX56", "aim speed friction behaves like LX56", GIG_Other, ALT_OnlyViaConfig )
 		( tLXOptions->bTouchscreenTapCycleWeaponsBackwards, "Game.TouchscreenTapCycleWeaponsBackwards", true )
 		( tLXOptions->iTouchscreenSensitivity, "Game.TouchscreenSensitivity", 5 )
-		( tLXOptions->bDigWithJumpButtonMidAir, "Game.DigWithJumpButtonMidAir", false )
+		( tLXOptions->bDigWithJumpButtonMidAir, "Game.DigWithJumpButtonMidAir", true )
 		
 		// Killing spree thresholds
 		( tLXOptions->iSpreeThreshold1, "Game.SpreeThreshold1", 3 )
