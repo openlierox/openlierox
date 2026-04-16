@@ -1,4 +1,4 @@
-#!/usr/bin/python -u
+#!/usr/bin/env python2 -u
 # Dedicated Control handler script for OpenLieroX
 # (http://openlierox.sourceforge.net)
 

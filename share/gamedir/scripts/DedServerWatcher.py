@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python2 -u
 
 # Simple script that will restard ded server if it hung
 # You do not need that script on Windows - we have ded server installed as system service there
