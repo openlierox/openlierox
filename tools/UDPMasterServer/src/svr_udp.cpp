@@ -260,7 +260,6 @@ int main(int argc, char ** argv)
 			if( it == hosts.end() )
 			{
 				hosts.push_back( HostInfo( srcAddr, lastping, name, maxworms, numplayers, state ) );
-				it == hosts.end();
 				it --; // End of list
 				//printf("Host db updated: added: %s %s %u/%u %u\n", srcAddr.c_str(), name.c_str(), numplayers, maxworms, state );
 			};
