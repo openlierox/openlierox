@@ -29,7 +29,7 @@ cp "$BINARY" "$APP/Contents/MacOS/openlierox"
 chmod +x "$APP/Contents/MacOS/openlierox"
 
 # Game data — everything OLX searches for at ./ at runtime.
-cp -R share/gamedir/. "$APP/Contents/Resources/"
+cp -R share/gamedir/. "$APP/Contents/Resources/gamedir/"
 
 # Docs and licence
 mkdir -p "$APP/Contents/Resources/doc"
