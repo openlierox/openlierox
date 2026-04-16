@@ -232,7 +232,7 @@ typedef void (*EventHandlerFct) (SDL_Event* ev);
 
 
 static void EvHndl_ActiveEvent(SDL_Event* ev) {
-	if(ev->active.state & ~SDL_APPMOUSEFOCUS)  {
+	if(ev && ev->active.state & ~SDL_APPMOUSEFOCUS)  {
 		bool hadFocusBefore = nFocus;
 		nFocus = sdl_event.active.gain != 0;
 		bActivated = nFocus != 0;
@@ -445,7 +445,7 @@ void ShutdownEventSystem()
 // TODO: though the whole architecture has to be changed later
 // but then also GetEvent() has to be changed or removed
 void HandleNextEvent() {
-	if (tLX == NULL)
+	if (tLX == NULL || sdl_event.type >= SDL_NUMEVENTS)
 		return;
 
 	sdlEvents[sdl_event.type].occurred(&sdl_event);
