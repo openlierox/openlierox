@@ -1,0 +1,62 @@
+name: Build
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+      - 0.59
+
+jobs:
+  build-linux:
+    name: Build Linux-bundle
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake \
+            build-essential \
+            patchelf \
+            dpkg-dev \
+            libsdl2-dev \
+            libsdl2-image-dev \
+            libsdl2-mixer-dev \
+            libxml2-dev \
+            libgd-dev \
+            zlib1g-dev \
+            libzip-dev \
+            libx11-dev \
+            libcurl4-openssl-dev \
+            libboost-dev \
+            libopenal-dev \
+            libalut-dev \
+            libvorbis-dev \
+            binutils-dev \
+            libiberty-dev
+
+      - name: Build
+        run: |
+          ./.github/workflows/build.sh
+
+      - name: Package
+        run: ./.github/workflows/package-linux-bundle.sh
+
+      - name: Detect bundle filename
+        id: bundle
+        run: echo "name=$(basename distrib/openlierox-*-linux-bundle*)" >> "$GITHUB_OUTPUT"
+
+      - name: Upload openlierox-linux-bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.bundle.outputs.name }}
+          path: distrib/openlierox-*-linux-bundle*
+          if-no-files-found: error

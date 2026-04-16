@@ -484,6 +484,7 @@ void InitBaseSearchPaths() {
 	AddToFileList(&basesearchpaths, "${HOME}/.OpenLieroX");
 	AddToFileList(&basesearchpaths, ".");
 	AddToFileList(&basesearchpaths, SYSTEM_DATA_DIR"/OpenLieroX"); // no use of ${SYSTEM_DATA}, because it is uncommon and could cause confusion to the user
+	AddToFileList(&basesearchpaths, "${BIN}/gamedir");
 #endif
 }
 
