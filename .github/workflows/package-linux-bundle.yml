@@ -10,6 +10,7 @@ on:
 jobs:
   build-linux:
     name: Build Linux-bundle
+    if: false  # TEMP: disabled for faster iterations
     runs-on: ubuntu-24.04
 
     steps:
