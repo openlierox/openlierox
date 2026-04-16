@@ -1,0 +1,84 @@
+name: Build
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+      - 0.59
+
+jobs:
+  build-macos:
+    name: Build macOS .app (Homebrew)
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Install dependencies
+        run: |
+          brew update
+          brew install \
+            ninja \
+            pkg-config \
+            sdl2 \
+            sdl2_image \
+            sdl2_mixer \
+            libzip \
+            gd \
+            libvorbis \
+            freealut \
+            openal-soft \
+            boost \
+            dylibbundler
+
+      - name: Install CMake 3.x
+        # The repo's CMakeLists use cmake_policy(SET CMP0003 OLD) etc.,
+        # which CMake 4.x no longer supports. Pin to the last 3.x release.
+        run: |
+          CMAKE_VERSION=3.31.6
+          curl -fsSL "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-macos-universal.tar.gz" -o /tmp/cmake.tgz
+          mkdir -p /tmp/cmake
+          tar -xzf /tmp/cmake.tgz -C /tmp/cmake --strip-components=1
+          echo "/tmp/cmake/CMake.app/Contents/bin" >> "$GITHUB_PATH"
+
+      - name: Configure
+        run: |
+          # Homebrew keeps libxml2 and openal-soft keg-only because macOS
+          # ships its own/legacy versions, so expose their .pc files to
+          # pkg-config.
+          LIBXML2_PREFIX="$(brew --prefix libxml2)"
+          OPENAL_PREFIX="$(brew --prefix openal-soft)"
+          export PKG_CONFIG_PATH="${LIBXML2_PREFIX}/lib/pkgconfig:${OPENAL_PREFIX}/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
+          cmake --version
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DHAWKNL_BUILTIN=Yes \
+            -DLIBZIP_BUILTIN=No \
+            -DLIBLUA_BUILTIN=Yes \
+            -DBREAKPAD=No \
+            -DHASBFD=No \
+            -DDEBUG=No
+
+      - name: Build
+        run: |
+          mkdir -p build/bin
+          cmake --build build -j$(sysctl -n hw.ncpu)
+
+      - name: Package (.app)
+        run: ./package-macos.sh
+
+      - name: Detect bundle filename
+        id: bundle
+        run: echo "name=$(basename openlierox_*_macos.zip)" >> "$GITHUB_OUTPUT"
+
+      - name: Upload openlierox-macos
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.bundle.outputs.name }}
+          path: openlierox_*_macos.zip
+          if-no-files-found: error

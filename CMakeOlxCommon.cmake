@@ -61,6 +61,11 @@ IF(UNIX)
 		SET(LIBLUA_BUILTIN ON)
 		SET(X11 OFF)
 		#SET(BOOST_LINK_STATIC ON)
+		# libbfd isn't available by default on macOS.
+		SET(HASBFD OFF)
+		# Use the plain int main() from src/main.cpp — the legacy
+		# src/MacMain.m SDL1 entry point is not part of the cmake build.
+		ADD_DEFINITIONS(-DOLX_USE_STD_MAIN)
 	ENDIF(APPLE)
 
 	IF (CYGWIN)
@@ -135,9 +140,13 @@ ENDIF(NOT WIN32 AND NOT MINGW_CROSS_COMPILE)
 
 file(GLOB_RECURSE ALL_SRCS ${OLXROOTDIR}/src/*.c*)
 
+# The legacy src/MacMain.m is SDL 1.x specific and only used by the
+# old build/Xcode project. The cmake build uses SDL2 and provides its
+# own main() via OLX_USE_STD_MAIN, plus a trimmed Cocoa helper file
+# (src/MacHelpers.m) for clipboard and user-attention shims.
 IF(APPLE)
-	file(GLOB_RECURSE MAC_SRCS ${OLXROOTDIR}/src/*.m*)
-	SET(ALL_SRCS ${MAC_SRCS} ${ALL_SRCS})
+	enable_language(OBJC)
+	SET(ALL_SRCS ${OLXROOTDIR}/src/MacHelpers.m ${ALL_SRCS})
 ENDIF(APPLE)
 
 IF (BREAKPAD)
@@ -265,7 +274,8 @@ IF(WIN32)
 				${OLXROOTDIR}/libs/boost_process)
 ELSE(WIN32)
 	ADD_DEFINITIONS(-Wall)
-	ADD_DEFINITIONS("-std=c++0x")
+	# -std= belongs to CXX only — AppleClang rejects it for C sources.
+	add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:-std=c++0x>")
 
 	EXEC_PROGRAM(sh ARGS ${CMAKE_CURRENT_SOURCE_DIR}/get_version.sh OUTPUT_VARIABLE OLXVER)
 	string(REGEX REPLACE "[\r\n]" " " OLXVER "${OLXVER}")
@@ -299,13 +309,39 @@ ENDIF(OPTIM_PROJECTILES)
 # SDL libs
 IF(WIN32)
 ELSEIF(APPLE)
-	INCLUDE_DIRECTORIES(${OLXROOTDIR}/build/Xcode/include)
-	INCLUDE_DIRECTORIES(${OLXROOTDIR}/build/Xcode/freealut/include)
-	INCLUDE_DIRECTORIES(/Library/Frameworks/SDL.framework/Headers)
-	INCLUDE_DIRECTORIES(/Library/Frameworks/SDL_image.framework/Headers)
-	INCLUDE_DIRECTORIES(/Library/Frameworks/SDL_mixer.framework/Headers)
-	INCLUDE_DIRECTORIES(/Library/Frameworks/UnixImageIO.framework/Headers)
-	INCLUDE_DIRECTORIES(/Library/Frameworks/GD.framework/Headers)
+	# Modern macOS cmake build: rely on Homebrew-installed SDL2 and
+	# friends via pkg-config. The old SDL 1.x Framework layout is kept
+	# alive only by the build/Xcode project, not by cmake.
+	find_package(PkgConfig REQUIRED)
+	pkg_check_modules(SDL2 REQUIRED sdl2)
+	pkg_check_modules(SDL2_IMAGE REQUIRED SDL2_image)
+	pkg_check_modules(SDL2_MIXER REQUIRED SDL2_mixer)
+	pkg_check_modules(LIBXML2 REQUIRED libxml-2.0)
+	pkg_check_modules(LIBZIP REQUIRED libzip)
+	pkg_check_modules(LIBGD REQUIRED gdlib)
+	pkg_check_modules(VORBISFILE REQUIRED vorbisfile)
+	pkg_check_modules(OPENAL REQUIRED openal)
+	pkg_check_modules(FREEALUT REQUIRED freealut)
+	INCLUDE_DIRECTORIES(
+		${SDL2_INCLUDE_DIRS}
+		${SDL2_IMAGE_INCLUDE_DIRS}
+		${SDL2_MIXER_INCLUDE_DIRS}
+		${LIBXML2_INCLUDE_DIRS}
+		${LIBZIP_INCLUDE_DIRS}
+		${LIBGD_INCLUDE_DIRS}
+		${VORBISFILE_INCLUDE_DIRS}
+		${OPENAL_INCLUDE_DIRS}
+		${FREEALUT_INCLUDE_DIRS})
+	link_directories(
+		${SDL2_LIBRARY_DIRS}
+		${SDL2_IMAGE_LIBRARY_DIRS}
+		${SDL2_MIXER_LIBRARY_DIRS}
+		${LIBXML2_LIBRARY_DIRS}
+		${LIBZIP_LIBRARY_DIRS}
+		${LIBGD_LIBRARY_DIRS}
+		${VORBISFILE_LIBRARY_DIRS}
+		${OPENAL_LIBRARY_DIRS}
+		${FREEALUT_LIBRARY_DIRS})
 ELSEIF(MINGW_CROSS_COMPILE)
 	INCLUDE_DIRECTORIES(${OLXROOTDIR}/build/mingw/include/SDL)
 ELSE()
@@ -347,34 +383,14 @@ ELSE(BOOST_LINK_STATIC)
 	SET(LIBS ${LIBS} ${Boost_LIBRARIES})
 ENDIF(BOOST_LINK_STATIC)
 
-IF(APPLE)
-	SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/build/Xcode/freealut/src/alutBufferData.c)
-	SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/build/Xcode/freealut/src/alutCodec.c)
-	SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/build/Xcode/freealut/src/alutError.c)
-	SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/build/Xcode/freealut/src/alutInit.c)
-	SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/build/Xcode/freealut/src/alutInputStream.c)
-	SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/build/Xcode/freealut/src/alutLoader.c)
-	SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/build/Xcode/freealut/src/alutOutputStream.c)
-	SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/build/Xcode/freealut/src/alutUtil.c)
-	SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/build/Xcode/freealut/src/alutVersion.c)
-	SET(ALL_SRCS ${ALL_SRCS} ${OLXROOTDIR}/build/Xcode/freealut/src/alutWaveform.c)
-	ADD_DEFINITIONS("-F ${OLXROOTDIR}/build/Xcode")
-ELSE(APPLE)
-	SET(LIBS ${LIBS} alut openal vorbisfile)
-ENDIF(APPLE)
+SET(LIBS ${LIBS} alut openal vorbisfile)
 
 SET(LIBS ${LIBS} curl)
 
+SET(LIBS ${LIBS} SDL2 SDL2_image)
 if(APPLE)
-	FIND_PACKAGE(SDL REQUIRED)
-	FIND_PACKAGE(SDL_image REQUIRED)
-	SET(LIBS ${LIBS} ${SDL_LIBRARY} ${SDLIMAGE_LIBRARY})
-	SET(LIBS ${LIBS} "-framework Cocoa" "-framework Carbon")
-	SET(LIBS ${LIBS} crypto)
-	SET(LIBS ${LIBS} "-framework OpenAL")
-	SET(LIBS ${LIBS} "-logg" "-lvorbis" "-lvorbisfile")
-else(APPLE)
-	SET(LIBS ${LIBS} SDL2 SDL2_image)
+	# Needed by src/MacHelpers.m (clipboard + user-attention shims).
+	SET(LIBS ${LIBS} "-framework Cocoa")
 endif(APPLE)
 
 IF(WIN32)
@@ -386,8 +402,7 @@ IF(WIN32)
 				"${OLXROOTDIR}/build/msvc/libs/zlib.lib"
 				"${OLXROOTDIR}/build/msvc/libs/bgd.lib")
 ELSEIF(APPLE)
-	link_directories(/Library/Frameworks/SDL_mixer.framework)
-	link_directories(/Library/Frameworks/SDL_image.framework)
+	SET(LIBS ${LIBS} SDL2_mixer xml2 zip gd z)
 ELSEIF(MINGW_CROSS_COMPILE)
 
 ELSE()

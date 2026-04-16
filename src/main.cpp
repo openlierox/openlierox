@@ -198,7 +198,7 @@ static bool afterCrashInformedUser = false;
 
 extern "C" int real_main(int argc, char *argv[]);
 
-#ifndef __APPLE__
+#if !defined(__APPLE__) || defined(OLX_USE_STD_MAIN)
 int main(int argc, char *argv[]) {
 	return real_main(argc, argv);
 }
