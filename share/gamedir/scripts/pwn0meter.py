@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env -S python2 -u
 
 import sys, time, cgi, os, random, traceback, re
 

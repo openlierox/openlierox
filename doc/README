@@ -122,6 +122,23 @@ Another way is similar to Unix, just call it via console (e.g. with the /Applica
 For Windows, there should be a file stdout.txt in the OpenLieroX directory containing all the output.
 
 
+	Dedicated server
+	================
+
+Compile OpenLieroX with -DDEDICATED_ONLY=1 flag on your server.
+
+Install Python 2.7.18 using pyenv. Put it into your PATH.
+
+Edit crontab to run UDP masterserver and dedicated server:
+
+	crontab -e
+
+Add following lines:
+
+	@reboot while true; do $HOME/openlierox/tools/UDPMasterServer/bin/udpmasterserver; sleep 1; done
+	@reboot while true; do $HOME/openlierox/tools/UDPMasterServer/bin/udpmasterserver -6; sleep 1; done
+	@reboot export PATH=$HOME/.pyenv/versions/2.7.18/bin:$PATH; cd $HOME/openlierox/share/gamedir; while true; do ../../bin/openlierox 2>&1 | logger --tag openlierox; sleep 1; done
+
 
 
 	Thanks for all the fish
