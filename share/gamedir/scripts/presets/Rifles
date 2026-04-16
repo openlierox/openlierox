@@ -1,3 +1,4 @@
+#!/usr/bin/env -S python2 -u
 
 setvar( "GameOptions.GameInfo.ModName", "Classic" )
 

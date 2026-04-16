@@ -1,3 +1,4 @@
+#!/usr/bin/env -S python2 -u
 
 global worms, io
 

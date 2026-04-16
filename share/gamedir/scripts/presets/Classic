@@ -1,3 +1,4 @@
+#!/usr/bin/env -S python2 -u
 
 #setvar( "GameOptions.GameInfo.LevelName", "LieroFactory(Revisited).lxl" )
 

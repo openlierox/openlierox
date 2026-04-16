@@ -1,3 +1,5 @@
+#!/usr/bin/env -S python2 -u
+
 # The Python presets are detected from non-Python ones by first line which shouild contain "python" string
 # This file contains default settings for all presets, 
 # it will be executed before any preset to clean up after previous preset
