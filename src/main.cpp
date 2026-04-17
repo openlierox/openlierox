@@ -166,6 +166,7 @@ static SDL_Event QuitEventThreadEvent() {
 
 
 static void startMainLockDetector() {
+#if 0 // This crashes on Android TV
 	struct MainLockDetector : Action {
 		bool wait(Uint32 time) {
 			if(!tLX) return false;
@@ -234,6 +235,7 @@ static void startMainLockDetector() {
 		}
 	};
 	threadPool->start(new MainLockDetector(), "main lock detector", true);
+#endif
 }
 
 
