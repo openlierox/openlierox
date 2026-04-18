@@ -86,8 +86,13 @@ IF(UNIX)
 ELSE(UNIX)
 	IF(WIN32)
 		SET(G15 OFF)
-		SET(HAWKNL_BUILTIN OFF) # We already have prebuilt HawkNL library
+		# The legacy prebuilt build/msvc/libs/NLstatic.lib is x86-only
+		# and predates modern MSVC. Build HawkNL from libs/hawknl/src/*.c
+		# instead so the MSVC ci build can produce an x64 binary.
+		SET(HAWKNL_BUILTIN ON)
+		SET(LIBLUA_BUILTIN ON)
 		SET(X11 OFF)
+		SET(HASBFD OFF)
 	ELSE(WIN32)
 	ENDIF(WIN32)
 ENDIF(UNIX)
@@ -262,15 +267,16 @@ ENDIF(MEMSTATS)
 # Generic defines
 IF(WIN32)
 	ADD_DEFINITIONS(-D_CRT_SECURE_NO_DEPRECATE -DHAVE_BOOST -DZLIB_WIN32_NODLL)
-	SET(OPTIMIZE_COMPILER_FLAG /Ox /Ob2 /Oi /Ot /GL)
+	# Modern Windows headers default to NTDDI_WIN10; some legacy code in
+	# this tree expects WinXP-era APIs, so don't tighten further.
+	SET(OPTIMIZE_COMPILER_FLAG /Ox /Ob2 /Oi /Ot)
 	IF(DEBUG)
 		ADD_DEFINITIONS(-DUSE_DEFAULT_MSC_DELEAKER)
 	ELSE(DEBUG)
-		ADD_DEFINITIONS(${OPTIMIZE_COMPILER_FLAG})
+		add_compile_options(${OPTIMIZE_COMPILER_FLAG})
 	ENDIF(DEBUG)
 	INCLUDE_DIRECTORIES(${OLXROOTDIR}/libs/hawknl/include
 				${OLXROOTDIR}/libs/hawknl/src
-				${OLXROOTDIR}/libs/libzip
 				${OLXROOTDIR}/libs/boost_process)
 ELSE(WIN32)
 	ADD_DEFINITIONS(-Wall)
@@ -308,6 +314,25 @@ ENDIF(OPTIM_PROJECTILES)
 
 # SDL libs
 IF(WIN32)
+	# Modern Windows MSVC build: rely on vcpkg-installed packages via
+	# find_package. The legacy build/msvc/libs/*.lib blobs are 32-bit,
+	# pre-2010 era and aren't usable from MSVC 2022 x64.
+	find_package(SDL2 CONFIG REQUIRED)
+	find_package(SDL2_image CONFIG REQUIRED)
+	find_package(SDL2_mixer CONFIG REQUIRED)
+	find_package(LibXml2 REQUIRED)
+	find_package(libzip CONFIG REQUIRED)
+	find_package(ZLIB REQUIRED)
+	find_package(CURL REQUIRED)
+	find_package(OpenAL CONFIG REQUIRED)
+	find_package(Vorbis CONFIG REQUIRED)
+	# vcpkg ships freealut without a CMake config; locate manually.
+	find_path(ALUT_INCLUDE_DIR AL/alut.h)
+	find_library(ALUT_LIBRARY NAMES alut)
+	# vcpkg ships libgd without a CMake config; locate manually.
+	find_path(LIBGD_INCLUDE_DIR gd.h)
+	find_library(LIBGD_LIBRARY NAMES gd libgd)
+	INCLUDE_DIRECTORIES(${ALUT_INCLUDE_DIR} ${LIBGD_INCLUDE_DIR})
 ELSEIF(APPLE)
 	# Modern macOS cmake build: rely on Homebrew-installed SDL2 and
 	# friends via pkg-config. The old SDL 1.x Framework layout is kept
@@ -383,24 +408,31 @@ ELSE(BOOST_LINK_STATIC)
 	SET(LIBS ${LIBS} ${Boost_LIBRARIES})
 ENDIF(BOOST_LINK_STATIC)
 
-SET(LIBS ${LIBS} alut openal vorbisfile)
+IF(NOT WIN32)
+	SET(LIBS ${LIBS} alut openal vorbisfile)
+	SET(LIBS ${LIBS} curl)
+	SET(LIBS ${LIBS} SDL2 SDL2_image)
+ENDIF(NOT WIN32)
 
-SET(LIBS ${LIBS} curl)
-
-SET(LIBS ${LIBS} SDL2 SDL2_image)
 if(APPLE)
 	# Needed by src/MacHelpers.m (clipboard + user-attention shims).
 	SET(LIBS ${LIBS} "-framework Cocoa")
 endif(APPLE)
 
 IF(WIN32)
-	SET(LIBS ${LIBS} SDL_mixer wsock32 wininet dbghelp
-				"${OLXROOTDIR}/build/msvc/libs/SDLmain.lib"
-				"${OLXROOTDIR}/build/msvc/libs/libxml2.lib"
-				"${OLXROOTDIR}/build/msvc/libs/NLstatic.lib"
-				"${OLXROOTDIR}/build/msvc/libs/libzip.lib"
-				"${OLXROOTDIR}/build/msvc/libs/zlib.lib"
-				"${OLXROOTDIR}/build/msvc/libs/bgd.lib")
+	SET(LIBS ${LIBS}
+				SDL2::SDL2 SDL2::SDL2main
+				$<IF:$<TARGET_EXISTS:SDL2_image::SDL2_image>,SDL2_image::SDL2_image,SDL2_image::SDL2_image-static>
+				$<IF:$<TARGET_EXISTS:SDL2_mixer::SDL2_mixer>,SDL2_mixer::SDL2_mixer,SDL2_mixer::SDL2_mixer-static>
+				LibXml2::LibXml2
+				libzip::zip
+				ZLIB::ZLIB
+				CURL::libcurl
+				OpenAL::OpenAL
+				Vorbis::vorbis Vorbis::vorbisfile
+				${LIBGD_LIBRARY}
+				${ALUT_LIBRARY}
+				wsock32 wininet dbghelp)
 ELSEIF(APPLE)
 	SET(LIBS ${LIBS} SDL2_mixer xml2 zip gd z)
 ELSEIF(MINGW_CROSS_COMPILE)

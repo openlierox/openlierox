@@ -19,9 +19,10 @@ IF(WIN32)
 		RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}/bin"
 		RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}/bin")
 
-	# Add debug info to release build in linker flags
+	# Add debug info to release build in linker flags. /LTCG is dropped
+	# along with /GL on the compile side - link-time-codegen with vcpkg
+	# objects produced without /GL emits LNK4075 spam.
 	SET_TARGET_PROPERTIES(openlierox PROPERTIES LINK_FLAGS "${LINK_FLAGS}
-		/LTCG
 		/DEBUG
 		/MAP:\"${CMAKE_BINARY_DIR}/bin/OpenLieroX.map\"
 		/MAPINFO:EXPORTS
