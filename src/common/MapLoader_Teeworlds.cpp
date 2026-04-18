@@ -1104,7 +1104,9 @@ Result TWGroup::read(ML_Teeworlds* l, char* p, char* end) {
 	else
 		name = "";
 
-	if(p > end) return "group item data is invalid, read behind end by " + itoa(p - end) + " bytes";
+	// ptrdiff_t is 64-bit on LLP64 Windows, where neither itoa(long)
+	// nor itoa(int) is preferred — cast explicitly to long.
+	if(p > end) return "group item data is invalid, read behind end by " + itoa((long)(p - end)) + " bytes";
 	return true;
 }
 
