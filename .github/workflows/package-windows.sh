@@ -14,8 +14,8 @@ BUILD_DIR="${BUILD_DIR:-build}"
 cd "$(dirname "$0")/../.."
 REPO_ROOT="$(pwd)"
 
-# The cmake target writes to bin/OpenLieroX.exe (see CMakeLists.txt).
-BINARY="$REPO_ROOT/bin/OpenLieroX.exe"
+# The cmake target writes to <build>/bin/OpenLieroX.exe (see CMakeLists.txt).
+BINARY="$REPO_ROOT/$BUILD_DIR/bin/OpenLieroX.exe"
 if [ ! -f "$BINARY" ]; then
     echo "ERROR: $BINARY not found - build the project first" >&2
     exit 1
@@ -38,7 +38,7 @@ cp README.md COPYING.LIB "$PACKAGE_DIR/doc/" 2>/dev/null || true
 # deployment is invoked automatically by cmake when the toolchain file
 # is used, so the DLLs end up next to the .exe in the build tree.
 shopt -s nullglob
-for dll in "$REPO_ROOT"/bin/*.dll; do
+for dll in "$REPO_ROOT/$BUILD_DIR/bin"/*.dll; do
     cp "$dll" "$PACKAGE_DIR/"
 done
 shopt -u nullglob
