@@ -54,10 +54,11 @@ jobs:
             'openal-soft',
             'freealut',
             'curl',
-            'boost-signals2',
-            'boost-function',
-            'boost-system',
-            'boost-thread'
+            # The codebase uses many boost subprojects (signals2, function,
+            # bind, lambda, random, pool, crc, algorithm, lexical_cast, ...)
+            # so just install the boost meta-package. Slower one-off, but
+            # avoids whack-a-mole "missing boost/X.hpp" errors.
+            'boost'
           )
           $maxAttempts = 4
           for ($i = 1; $i -le $maxAttempts; $i++) {

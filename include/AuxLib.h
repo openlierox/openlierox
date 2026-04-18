@@ -100,6 +100,7 @@ public:
 
 	static const SmartPointer<SDL_Surface>& videoSurface() { return get()->m_videoSurface; }
 	static const SmartPointer<SDL_Surface>& videoBufferSurface() { return get()->m_videoBufferSurface; }
+	static const SmartPointer<SDL_Window>& window() { return get()->m_window; }
 	
 };
 
