@@ -17,6 +17,7 @@
 
 #include <string>
 #include <libxml/xmlmemory.h>
+#include <libxml/tree.h>
 #include "Color.h"
 #include "CodeAttributes.h"
 

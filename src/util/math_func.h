@@ -39,15 +39,18 @@ struct ctpow { static unsigned int const value = ctpow<B*B, E>::value * ((E & 1)
 template<unsigned int B>
 struct ctpow<B, 0> { static unsigned int const value = 1; };
 
-// MSVC lrintf implementation, taken from http://www.dpvreony.co.uk/blog/post/63
-#ifdef _MSC_VER
+// MSVC 2013+ ships lrintf as an intrinsic in <cmath>, so defining
+// another one trips C2169 ("intrinsic function, cannot be defined").
+// Keep the inline replacement only for older toolchains that still
+// need it.
+#if defined(_MSC_VER) && _MSC_VER < 1800
 INLINE long lrintf(float f){
 
 #ifdef _M_X64
 	//x64 fix
 	//http://groups.google.com/group/openjpeg/browse_thread/thread/64b89cdb1a44bb3b
-	return (long)((f > 0.0f) ? (f + 0.5f) : (f - 0.5f)); 
-#else 
+	return (long)((f > 0.0f) ? (f + 0.5f) : (f - 0.5f));
+#else
 
 	int i;
 	_asm{

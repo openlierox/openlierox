@@ -638,9 +638,11 @@ void CClient::FinishModDownloads()
 			if( fileInZip == NULL || fileWrite == NULL )
 				continue;
 			char buf[4096];
-			ssize_t readed;
+			// zip_fread returns zip_int64_t (signed) — -1 on error, else
+			// bytes read. ssize_t is POSIX-only and not declared by MSVC.
+			zip_int64_t readed;
 			while( ( readed = zip_fread(fileInZip, buf, sizeof(buf)) ) > 0 )
-				fwrite( buf, 1, readed, fileWrite );
+				fwrite( buf, 1, (size_t)readed, fileWrite );
 			fclose(fileWrite);
 			zip_fclose(fileInZip);
 		};
