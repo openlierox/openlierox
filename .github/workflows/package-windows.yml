@@ -38,23 +38,38 @@ jobs:
       - name: Install dependencies (vcpkg)
         shell: pwsh
         run: |
-          & "$env:VCPKG_INSTALLATION_ROOT/vcpkg.exe" install `
-            sdl2 `
-            sdl2-image `
-            sdl2-mixer `
-            libxml2 `
-            libzip `
-            zlib `
-            libgd `
-            libvorbis `
-            openal-soft `
-            freealut `
-            curl `
-            boost-signals2 `
-            boost-function `
-            boost-system `
-            boost-thread `
-            --triplet x64-windows
+          # vcpkg downloads boost sub-libraries individually from
+          # github.com/boostorg, which intermittently 504s. Retry the
+          # whole install a few times so transient failures don't fail
+          # the whole job.
+          $packages = @(
+            'sdl2',
+            'sdl2-image',
+            'sdl2-mixer',
+            'libxml2',
+            'libzip',
+            'zlib',
+            'libgd',
+            'libvorbis',
+            'openal-soft',
+            'freealut',
+            'curl',
+            'boost-signals2',
+            'boost-function',
+            'boost-system',
+            'boost-thread'
+          )
+          $maxAttempts = 4
+          for ($i = 1; $i -le $maxAttempts; $i++) {
+            Write-Host "vcpkg install attempt $i/$maxAttempts"
+            & "$env:VCPKG_INSTALLATION_ROOT/vcpkg.exe" install @packages --triplet x64-windows
+            if ($LASTEXITCODE -eq 0) { break }
+            if ($i -eq $maxAttempts) {
+              Write-Host "vcpkg install failed after $maxAttempts attempts"
+              exit 1
+            }
+            Start-Sleep -Seconds 30
+          }
 
       - name: Configure
         shell: pwsh
