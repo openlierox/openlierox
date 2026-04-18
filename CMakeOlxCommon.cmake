@@ -93,6 +93,9 @@ ELSE(UNIX)
 		SET(LIBLUA_BUILTIN ON)
 		SET(X11 OFF)
 		SET(HASBFD OFF)
+		# linenoise needs termios.h (POSIX terminal API) which doesn't
+		# exist on Windows.
+		SET(LINENOISE OFF)
 	ELSE(WIN32)
 	ENDIF(WIN32)
 ENDIF(UNIX)
@@ -496,4 +499,7 @@ IF(MINGW_CROSS_COMPILE)
 	SET(LIBS ${LIBS} SDLmain SDL boost_system jpeg png vorbisenc vorbis ogg dbghelp dsound dxguid wsock32 wininet wldap32 user32 gdi32 winmm version kernel32)
 ENDIF(MINGW_CROSS_COMPILE)
 
-ADD_DEFINITIONS('-D SYSTEM_DATA_DIR=\"${SYSTEM_DATA_DIR}\"')
+# Plain cmake form (the legacy single-quoted '-D ...' relied on a unix
+# shell to strip the quotes; MSVC/cl just sees them as part of the
+# source file name and fails with "cannot open source file '-D'").
+add_compile_definitions(SYSTEM_DATA_DIR="${SYSTEM_DATA_DIR}")

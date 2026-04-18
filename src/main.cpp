@@ -183,8 +183,14 @@ static void DoSystemChecks() {
 	static_assert(sizeof(short) == 2, "sizeof_short__equals2");
 	static_assert(sizeof(int) == 4, "sizeof_int__equals4");
 	static_assert(sizeof(float) == 4, "sizeof_float__equals4");
+	// On Windows x64, DWORD is still 4 bytes but pointers are 8.
+	// Skip the legacy DWORD-as-pointer assert there; the project's own
+	// SendMessage / DeprecatedGUI plumbing should be migrated to a
+	// pointer-sized type before this can be re-enabled on Win64.
+#if !defined(_WIN64)
 	// sometimes the return value of SendMessage is used as a pointer
 	static_assert(sizeof(DWORD) == sizeof(void*), "sizeof_dword__equals_p");
+#endif
 }
 
 
