@@ -1,0 +1,93 @@
+name: Build
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+      - 0.59
+
+jobs:
+  build-windows:
+    name: Build Windows (MSVC)
+    runs-on: windows-2022
+
+    env:
+      VCPKG_DEFAULT_TRIPLET: x64-windows
+      VCPKG_BINARY_SOURCES: clear;x-gha,readwrite
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Export GitHub Actions cache env (vcpkg)
+        uses: actions/github-script@v7
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - name: Set up MSVC environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Install dependencies (vcpkg)
+        shell: pwsh
+        run: |
+          & "$env:VCPKG_INSTALLATION_ROOT/vcpkg.exe" install `
+            sdl2 `
+            sdl2-image `
+            sdl2-mixer `
+            libxml2 `
+            libzip `
+            zlib `
+            libgd `
+            libvorbis `
+            openal-soft `
+            freealut `
+            curl `
+            boost-signals2 `
+            boost-function `
+            boost-system `
+            boost-thread `
+            --triplet x64-windows
+
+      - name: Configure
+        shell: pwsh
+        run: |
+          cmake -S . -B build -G Ninja `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" `
+            -DVCPKG_TARGET_TRIPLET=x64-windows `
+            -DHAWKNL_BUILTIN=Yes `
+            -DLIBZIP_BUILTIN=No `
+            -DLIBLUA_BUILTIN=Yes `
+            -DBREAKPAD=No `
+            -DHASBFD=No `
+            -DDEBUG=No
+
+      - name: Build
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path build/bin | Out-Null
+          cmake --build build --config Release -j
+
+      - name: Package (.zip)
+        shell: bash
+        run: ./.github/workflows/package-windows.sh
+
+      - name: Detect bundle filename
+        id: bundle
+        shell: bash
+        run: echo "name=$(basename openlierox_*_windows.zip)" >> "$GITHUB_OUTPUT"
+
+      - name: Upload openlierox-windows
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.bundle.outputs.name }}
+          path: openlierox_*_windows.zip
+          if-no-files-found: error
