@@ -9,11 +9,15 @@ include(${OLXROOTDIR}/CMakeOlxCommon.cmake)
 ADD_EXECUTABLE(openlierox ${OLXROOTDIR}/src/main.cpp ${ALL_SRCS})
 
 IF(WIN32)
-	# OUTPUT_NAME with "../" path components confuses the Ninja generator
-	# ("multiple rules generate" error), so just emit the binary into
-	# build/bin/ like the Linux/Mac branches do and let the package step
-	# pick it up from there.
-	SET_TARGET_PROPERTIES(openlierox PROPERTIES OUTPUT_NAME "bin/OpenLieroX")
+	# Embedding a path in OUTPUT_NAME confuses the Ninja generator
+	# (Ninja emits both the implicit target rule and the OUTPUT_NAME
+	# rule, which collide). Use RUNTIME_OUTPUT_DIRECTORY for the
+	# location and keep OUTPUT_NAME as just the executable name.
+	SET_TARGET_PROPERTIES(openlierox PROPERTIES
+		OUTPUT_NAME "OpenLieroX"
+		RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+		RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}/bin"
+		RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}/bin")
 
 	# Add debug info to release build in linker flags
 	SET_TARGET_PROPERTIES(openlierox PROPERTIES LINK_FLAGS "${LINK_FLAGS}
