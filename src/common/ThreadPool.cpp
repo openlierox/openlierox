@@ -9,8 +9,12 @@
 
 #ifdef _WIN32
 // SDL2's SDL_CreateThread is a macro that expands to a call carrying
-// the runtime's _beginthreadex/_endthreadex; <process.h> provides them.
+// the caller-side _beginthreadex/_endthreadex symbols. Pull <process.h>
+// in first for the declarations, and ALSO expose the legacy
+// SDL_CreateThread function symbol directly so we don't depend on the
+// macro form even if vcpkg's headers gate it differently.
 #include <process.h>
+#define SDL_DISABLE_PASSED_BEGINTHREAD_ENDTHREAD 1
 #endif
 #include <SDL_thread.h>
 #include "ThreadPool.h"
