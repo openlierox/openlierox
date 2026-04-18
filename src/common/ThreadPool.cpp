@@ -7,6 +7,11 @@
  *
  */
 
+#ifdef _WIN32
+// SDL2's SDL_CreateThread is a macro that expands to a call carrying
+// the runtime's _beginthreadex/_endthreadex; <process.h> provides them.
+#include <process.h>
+#endif
 #include <SDL_thread.h>
 #include "ThreadPool.h"
 #include "Debug.h"
