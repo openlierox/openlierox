@@ -1032,74 +1032,19 @@ std::string JoinPaths(const std::string& path1, const std::string& path2)
 
 //////////////////////////////
 // Creating SDL_RWops structure from a file pointer
-// We cannot use SDL's function for this under WIN32 because it doesn't allow
-// passing file pointers to a dll
 
 #include <SDL.h>
 
-// These are taken from SDL_rwops.c
-#ifdef WIN32
-static int stdio_seek(SDL_RWops *context, int offset, int whence)
-{
-	if ( fseek(context->hidden.stdio.fp, offset, whence) == 0 ) {
-		return(ftell(context->hidden.stdio.fp));
-	} else {
-		SDL_Error(SDL_EFSEEK);
-		return(-1);
-	}
-}
-static int stdio_read(SDL_RWops *context, void *ptr, int size, int maxnum)
-{
-	size_t nread;
-
-	nread = fread(ptr, size, maxnum, context->hidden.stdio.fp);
-	if ( nread == 0 && ferror(context->hidden.stdio.fp) ) {
-		SDL_Error(SDL_EFREAD);
-	}
-	return (int)(nread);
-}
-static int stdio_write(SDL_RWops *context, const void *ptr, int size, int num)
-{
-	size_t nwrote;
-
-	nwrote = fwrite(ptr, size, num, context->hidden.stdio.fp);
-	if ( nwrote == 0 && ferror(context->hidden.stdio.fp) ) {
-		SDL_Error(SDL_EFWRITE);
-	}
-	return (int)(nwrote);
-}
-static int stdio_close(SDL_RWops *context)
-{
-	if ( context ) {
-		if ( context->hidden.stdio.autoclose ) {
-			/* WARNING:  Check the return value here! */
-			fclose(context->hidden.stdio.fp);
-		}
-		free(context);
-	}
-	return(0);
-}
-#endif
-
 ////////////////
 // Creates SDL_RWops from a file pointer
+//
+// The old WIN32 special case re-implemented stdio_seek/read/write/close
+// because the SDL 1.x DLL couldn't accept FILE* across the CRT boundary
+// and the SDL 2 callback signatures (Sint64 / size_t / SDL_bool) don't
+// match the legacy `int` signatures anyway. With vcpkg's SDL2 we use
+// the same CRT (/MD), so SDL_RWFromFP works directly.
 SDL_RWops *RWopsFromFP(FILE *fp, bool autoclose)  {
-#ifdef WIN32
-	// Taken from SDL code
-	SDL_RWops *rwops = SDL_AllocRW();
-	if ( rwops != NULL ) {
-		rwops->seek = stdio_seek;
-		rwops->read = stdio_read;
-		rwops->write = stdio_write;
-		rwops->close = stdio_close;
-		rwops->hidden.stdio.fp = fp;
-		rwops->hidden.stdio.autoclose = (int)autoclose;
-	}
-	return(rwops);
-
-#else
-	return SDL_RWFromFP(fp, (SDL_bool)autoclose);
-#endif
+	return SDL_RWFromFP(fp, autoclose ? SDL_TRUE : SDL_FALSE);
 }
 
 
