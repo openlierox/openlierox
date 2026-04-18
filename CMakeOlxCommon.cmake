@@ -309,7 +309,7 @@ ENDIF(WIN32)
 IF(OPTIM_PROJECTILES)
 	#Always optimize these files - they make debug build unusable otherwise
 	SET_SOURCE_FILES_PROPERTIES(	${OLXROOTDIR}/src/common/PhysicsLX56_Projectiles.cpp
-						PROPERTIES COMPILE_FLAGS ${OPTIMIZE_COMPILER_FLAG})
+						PROPERTIES COMPILE_FLAGS "${OPTIMIZE_COMPILER_FLAG}")
 ENDIF(OPTIM_PROJECTILES)
 
 # SDL libs
