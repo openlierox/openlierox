@@ -816,7 +816,9 @@ std::string StripHtmlTags( const std::string & src )
 	handler.characters = & charactersParsed;
 
 	/* GCS: override structuredErrorFunc to mine so I can ignore errors */
-	xmlSetStructuredErrorFunc(NULL, &xmlErrorHandlerDummy);
+	/* libxml2 2.12 changed the second arg to const xmlError*, so cast
+	 * via the typedef to keep both old and new headers happy. */
+	xmlSetStructuredErrorFunc(NULL, (xmlStructuredErrorFunc)&xmlErrorHandlerDummy);
 
 	std::string tmp = Replace(HtmlEntityUnpairedBrackets(src), "<br>", "\n" );
 
