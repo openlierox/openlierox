@@ -39,6 +39,9 @@ libopenlierox_pch_dephelp.a
 *-build
 build-*
 
+# Avoids fasle matches with the "build-*" rule
+!.github/workflows/build-*.sh # 
+
 # this one is automatically created by CMake
 gamedecompiler.xcodeproj
 

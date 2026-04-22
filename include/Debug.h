@@ -46,9 +46,10 @@ struct Logger {
 	std::string prefix;
 	std::string buffer;
 	bool lastWasNewline;
+	bool useStderr;
 	SDL_mutex* mutex;
-	
-	Logger(int o, int ingame, int callst, const std::string& p);
+
+	Logger(int o, int ingame, int callst, const std::string& p, bool stderrOut = false);
 	~Logger();
 	void lock(); void unlock();
 

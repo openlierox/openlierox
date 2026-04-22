@@ -3,17 +3,17 @@
 
 cmake_minimum_required(VERSION 2.4)
 IF (${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION} GREATER 2.4)
-	if(COMMAND CMAKE_POLICY)
+	# These CMP000{3,5,11} OLD settings were needed for the 2.4->2.6 transition
+	# but the OLD behaviors were removed in CMake 4.0. Only apply them on
+	# CMake < 3.0 where they still exist.
+	if(COMMAND CMAKE_POLICY AND CMAKE_VERSION VERSION_LESS 3.0)
 		cmake_policy(VERSION 2.4)
 		cmake_policy(SET CMP0005 OLD)
 		cmake_policy(SET CMP0003 OLD)
-		# Policy CMP0011 was introduced in 2.6.3.
-		# We cannot do if(POLCY CMP0011) as a check because 2.4 would fail then.
 		if(${CMAKE_MAJOR_VERSION} GREATER 2 OR ${CMAKE_MINOR_VERSION} GREATER 6 OR ${CMAKE_PATCH_VERSION} GREATER 2)
-			# We explicitly want to export variables here.
 			cmake_policy(SET CMP0011 OLD)
-		endif(${CMAKE_MAJOR_VERSION} GREATER 2 OR ${CMAKE_MINOR_VERSION} GREATER 6 OR ${CMAKE_PATCH_VERSION} GREATER 2)
-	endif(COMMAND CMAKE_POLICY)
+		endif()
+	endif()
 	include(${OLXROOTDIR}/PCHSupport_26.cmake)
 ENDIF (${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION} GREATER 2.4)
 
@@ -86,7 +86,9 @@ IF(UNIX)
 ELSE(UNIX)
 	IF(WIN32)
 		SET(G15 OFF)
-		SET(HAWKNL_BUILTIN OFF) # We already have prebuilt HawkNL library
+		IF(MSVC)
+			SET(HAWKNL_BUILTIN OFF) # We already have prebuilt HawkNL library
+		ENDIF()
 		SET(X11 OFF)
 	ELSE(WIN32)
 	ENDIF(WIN32)
@@ -123,7 +125,17 @@ EXEC_PROGRAM(mkdir ARGS -p bin OUTPUT_VARIABLE DUMMY)
 
 # main includes
 INCLUDE_DIRECTORIES(${OLXROOTDIR}/optional-includes/generated)
-INCLUDE_DIRECTORIES(${OLXROOTDIR}/include)
+IF(WIN32 AND NOT MSVC)
+	# On Windows NTFS is case-insensitive, so adding include/ as a
+	# regular -I dir causes project headers like Process.h and
+	# CChannel.h to shadow Windows system headers (process.h,
+	# cchannel.h). Use -iquote so the dir is only searched for
+	# quote-form includes, which keeps project "#include \"Foo.h\""
+	# working while letting system <process.h> resolve correctly.
+	add_compile_options(-iquote "${OLXROOTDIR}/include")
+ELSE()
+	INCLUDE_DIRECTORIES(${OLXROOTDIR}/include)
+ENDIF()
 INCLUDE_DIRECTORIES(${OLXROOTDIR}/src)
 INCLUDE_DIRECTORIES(${OLXROOTDIR}/libs/pstreams)
 
@@ -164,11 +176,11 @@ ELSE (BREAKPAD)
 	ADD_DEFINITIONS(-DNBREAKPAD)
 ENDIF (BREAKPAD)
 
-IF (LINENOISE)
+IF (LINENOISE AND NOT WIN32)
 	ADD_DEFINITIONS(-DHAVE_LINENOISE)
 	INCLUDE_DIRECTORIES(${OLXROOTDIR}/libs/linenoise)
 	SET(ALL_SRCS ${OLXROOTDIR}/libs/linenoise/linenoise.cpp ${ALL_SRCS})
-ENDIF (LINENOISE)
+ENDIF ()
 
 IF (DISABLE_JOYSTICK)
 	ADD_DEFINITIONS(-DDISABLE_JOYSTICK)
@@ -261,13 +273,24 @@ ENDIF(MEMSTATS)
 
 # Generic defines
 IF(WIN32)
-	ADD_DEFINITIONS(-D_CRT_SECURE_NO_DEPRECATE -DHAVE_BOOST -DZLIB_WIN32_NODLL)
-	SET(OPTIMIZE_COMPILER_FLAG /Ox /Ob2 /Oi /Ot /GL)
-	IF(DEBUG)
-		ADD_DEFINITIONS(-DUSE_DEFAULT_MSC_DELEAKER)
-	ELSE(DEBUG)
-		ADD_DEFINITIONS(${OPTIMIZE_COMPILER_FLAG})
-	ENDIF(DEBUG)
+	IF(MSVC)
+		ADD_DEFINITIONS(-D_CRT_SECURE_NO_DEPRECATE -DHAVE_BOOST -DZLIB_WIN32_NODLL)
+		SET(OPTIMIZE_COMPILER_FLAG /Ox /Ob2 /Oi /Ot /GL)
+		IF(DEBUG)
+			ADD_DEFINITIONS(-DUSE_DEFAULT_MSC_DELEAKER)
+		ELSE(DEBUG)
+			ADD_DEFINITIONS(${OPTIMIZE_COMPILER_FLAG})
+		ENDIF(DEBUG)
+	ELSE()
+		# MinGW on Windows (MSYS2)
+		ADD_DEFINITIONS(-DHAVE_BOOST -DZLIB_WIN32_NODLL)
+		ADD_DEFINITIONS(-D_WIN32_WINNT=0x0601)
+		SET(OPTIMIZE_COMPILER_FLAG -O3)
+		# The legacy widget code has several "DWORD from pointer"
+		# casts that trip GCC on 64-bit builds. Demote to warnings
+		# until the widget API is ported to uintptr_t.
+		add_compile_options(-fpermissive)
+	ENDIF()
 	INCLUDE_DIRECTORIES(${OLXROOTDIR}/libs/hawknl/include
 				${OLXROOTDIR}/libs/hawknl/src
 				${OLXROOTDIR}/libs/libzip
@@ -307,7 +330,7 @@ IF(OPTIM_PROJECTILES)
 ENDIF(OPTIM_PROJECTILES)
 
 # SDL libs
-IF(WIN32)
+IF(WIN32 AND MSVC)
 ELSEIF(APPLE)
 	# Modern macOS cmake build: rely on Homebrew-installed SDL2 and
 	# friends via pkg-config. The old SDL 1.x Framework layout is kept
@@ -344,11 +367,20 @@ ELSEIF(APPLE)
 		${FREEALUT_LIBRARY_DIRS})
 ELSEIF(MINGW_CROSS_COMPILE)
 	INCLUDE_DIRECTORIES(${OLXROOTDIR}/build/mingw/include/SDL)
+ELSEIF(WIN32)
+	# MSYS2 MinGW: use pkg-config (sdl2-config isn't shipped)
+	find_package(PkgConfig REQUIRED)
+	pkg_check_modules(SDL2 REQUIRED sdl2)
+	pkg_check_modules(SDL2_IMAGE REQUIRED SDL2_image)
+	pkg_check_modules(SDL2_MIXER REQUIRED SDL2_mixer)
+	pkg_check_modules(LIBXML2 REQUIRED libxml-2.0)
+	INCLUDE_DIRECTORIES(${SDL2_INCLUDE_DIRS} ${SDL2_IMAGE_INCLUDE_DIRS}
+				${SDL2_MIXER_INCLUDE_DIRS} ${LIBXML2_INCLUDE_DIRS})
 ELSE()
 	EXEC_PROGRAM(sdl2-config ARGS --cflags OUTPUT_VARIABLE SDLCFLAGS)
 	string(REGEX REPLACE "[\r\n]" " " SDLCFLAGS "${SDLCFLAGS}")
 	ADD_DEFINITIONS(${SDLCFLAGS})
-endif(WIN32)
+endif()
 
 
 IF(X11)
@@ -393,7 +425,7 @@ if(APPLE)
 	SET(LIBS ${LIBS} "-framework Cocoa")
 endif(APPLE)
 
-IF(WIN32)
+IF(WIN32 AND MSVC)
 	SET(LIBS ${LIBS} SDL_mixer wsock32 wininet dbghelp
 				"${OLXROOTDIR}/build/msvc/libs/SDLmain.lib"
 				"${OLXROOTDIR}/build/msvc/libs/libxml2.lib"
@@ -401,6 +433,18 @@ IF(WIN32)
 				"${OLXROOTDIR}/build/msvc/libs/libzip.lib"
 				"${OLXROOTDIR}/build/msvc/libs/zlib.lib"
 				"${OLXROOTDIR}/build/msvc/libs/bgd.lib")
+ELSEIF(WIN32)
+	# MinGW on Windows (MSYS2 packages).
+	# mingw32 and SDL2main must come before libmingw32's default main()
+	# in the link order. Wrap SDL2main in --whole-archive so the
+	# linker doesn't drop it before its main() overrides the default.
+	SET(LIBS mingw32
+				-Wl,--whole-archive SDL2main -Wl,--no-whole-archive
+				${LIBS}
+				SDL2_mixer xml2 zip gd z
+				wsock32 ws2_32 wininet dbghelp iphlpapi
+				version
+				pthread)
 ELSEIF(APPLE)
 	SET(LIBS ${LIBS} SDL2_mixer xml2 zip gd z)
 ELSEIF(MINGW_CROSS_COMPILE)
@@ -464,4 +508,4 @@ IF(MINGW_CROSS_COMPILE)
 	SET(LIBS ${LIBS} SDLmain SDL boost_system jpeg png vorbisenc vorbis ogg dbghelp dsound dxguid wsock32 wininet wldap32 user32 gdi32 winmm version kernel32)
 ENDIF(MINGW_CROSS_COMPILE)
 
-ADD_DEFINITIONS('-D SYSTEM_DATA_DIR=\"${SYSTEM_DATA_DIR}\"')
+add_compile_definitions(SYSTEM_DATA_DIR="${SYSTEM_DATA_DIR}")
