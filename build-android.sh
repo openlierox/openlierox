@@ -187,6 +187,22 @@ if [ "$SYNC_DATA" = 1 ]; then
     echo ">>> data.zip.xz: $(stat -c %s "$PORT_APP/AndroidData/data.zip.xz") bytes"
 fi
 
+# --- 4a. Patch port's wavpack Android.mk for arm64-v8a --------------------
+#
+# The port's jni/sdl2_mixer/external/wavpack/Android.mk only handles
+# armeabi, armeabi-v7a, x86, x86_64 — when building arm64-v8a, PLATFORM_SRC
+# from the previous armeabi-v7a iteration persists (it's set with := rather
+# than explicit per-arch reset) and the build tries to assemble the ARM32
+# unpack_armv7.S with aarch64, which fails on the @ comment syntax.
+# Guarantee PLATFORM_SRC is empty on arm64-v8a.
+
+WAVPACK_MK="$PORT_DIR/project/jni/sdl2_mixer/external/wavpack/Android.mk"
+if [ -f "$WAVPACK_MK" ] && ! grep -q 'TARGET_ARCH_ABI),arm64-v8a' "$WAVPACK_MK"; then
+    echo ">>> patching $WAVPACK_MK for arm64-v8a"
+    sed -i '/^ifeq ($(TARGET_ARCH_ABI),x86_64)/i\ifeq ($(TARGET_ARCH_ABI),arm64-v8a)\nPLATFORM_CFLAGS :=\nPLATFORM_SRC :=\nendif\n' \
+        "$WAVPACK_MK"
+fi
+
 # --- 4. Add INTERNET permission to the SDL2 manifest ----------------------
 #
 # With LibSdlVersion=2 the port uses its SDL2 Android template manifest
