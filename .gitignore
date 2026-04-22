@@ -38,6 +38,9 @@ bin
 libopenlierox_pch_dephelp.a
 *-build
 build-*
+!build-android.sh
+!build-output/
+!build/android/
 
 # this one is automatically created by CMake
 gamedecompiler.xcodeproj
