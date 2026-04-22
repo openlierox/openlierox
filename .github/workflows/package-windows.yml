@@ -1,0 +1,67 @@
+name: Build
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+      - 0.59
+
+jobs:
+  build-windows:
+    name: Build Windows .exe (MSYS2 MinGW64)
+    runs-on: windows-2022
+    defaults:
+      run:
+        shell: msys2 {0}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            base-devel
+            git
+            mingw-w64-x86_64-toolchain
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-ninja
+            mingw-w64-x86_64-pkgconf
+            mingw-w64-x86_64-SDL2
+            mingw-w64-x86_64-SDL2_image
+            mingw-w64-x86_64-SDL2_mixer
+            mingw-w64-x86_64-libxml2
+            mingw-w64-x86_64-libgd
+            mingw-w64-x86_64-zlib
+            mingw-w64-x86_64-libzip
+            mingw-w64-x86_64-curl
+            mingw-w64-x86_64-boost
+            mingw-w64-x86_64-openal
+            mingw-w64-x86_64-freealut
+            mingw-w64-x86_64-libvorbis
+            mingw-w64-x86_64-ntldd-git
+            zip
+
+      - name: Build
+        run: ./.github/workflows/build-windows.sh
+
+      - name: Package
+        run: ./.github/workflows/package-windows.sh
+
+      - name: Detect bundle filename
+        id: bundle
+        run: echo "name=$(basename distrib/openlierox-*-win64*)" >> "$GITHUB_OUTPUT"
+
+      - name: Upload openlierox-win64
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.bundle.outputs.name }}
+          path: distrib/openlierox-*-win64*
+          if-no-files-found: error

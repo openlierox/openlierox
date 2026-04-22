@@ -110,11 +110,11 @@ void SystemError(const std::string& text)
 		if (game.state != Game::S_Quit)
 			ShutdownLieroX();
 
-#ifdef WIN32
-	if (text.size() != 0)
-		MessageBox(NULL,text.c_str(), GetGameName(),MB_OK | MB_ICONEXCLAMATION);
-#endif
-
+	// Dump to stderr so it is visible from the terminal instead of a blocking popup.
+	if (text.size() != 0) {
+		fprintf(stderr, "SystemError: %s\n", text.c_str());
+		fflush(stderr);
+	}
 
 	// Shutdown the game
 	exit(-1);

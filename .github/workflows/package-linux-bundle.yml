@@ -45,7 +45,7 @@ jobs:
 
       - name: Build
         run: |
-          ./.github/workflows/build.sh
+          ./.github/workflows/build-linux.sh
 
       - name: Package
         run: ./.github/workflows/package-linux-bundle.sh

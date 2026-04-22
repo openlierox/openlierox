@@ -40,8 +40,8 @@ std::string GetLogTimeStamp()
 
 Logger notes(0,2,1000, "n: ");
 Logger hints(0,1,100, "H: ");
-Logger warnings(0,0,10, "W: ");
-Logger errors(-1,-1,1, "E: ");
+Logger warnings(0,0,10, "W: ", true);
+Logger errors(-1,-1,1, "E: ", true);
 
 #include <iostream>
 #include <sstream>
@@ -52,8 +52,8 @@ Logger errors(-1,-1,1, "E: ");
 
 static SDL_mutex* globalCoutMutex = NULL;
 
-Logger::Logger(int o, int ingame, int callst, const std::string& p)
-: minCoutVerb(o), minIngameConVerb(ingame), minCallstackVerb(callst), prefix(p), lastWasNewline(true), mutex(NULL) {
+Logger::Logger(int o, int ingame, int callst, const std::string& p, bool stderrOut)
+: minCoutVerb(o), minIngameConVerb(ingame), minCallstackVerb(callst), prefix(p), lastWasNewline(true), useStderr(stderrOut), mutex(NULL) {
 	mutex = SDL_CreateMutex();
 	if(!globalCoutMutex)
 		globalCoutMutex = SDL_CreateMutex();
@@ -96,7 +96,10 @@ static bool logger_output(Logger& log, const std::string& buf) {
 	if((tLXOptions ? tLXOptions->iVerbosity : 0) >= log.minCoutVerb) {
 		SDL_mutexP(globalCoutMutex);
 		StdinCLI_StdoutScope stdoutScope;
-		ret = PrettyPrint(prefix, buf, StdoutPrintFct(), log.lastWasNewline);
+		if(log.useStderr)
+			ret = PrettyPrint(prefix, buf, StderrPrintFct(), log.lastWasNewline);
+		else
+			ret = PrettyPrint(prefix, buf, StdoutPrintFct(), log.lastWasNewline);
 		//std::cout.flush();
 		SDL_mutexV(globalCoutMutex);
 	}
@@ -135,4 +138,9 @@ Logger& Logger::flush() {
 
 void StdoutPrintFct::print(const std::string &s) const {
 	printf("%s", s.c_str());
+}
+
+void StderrPrintFct::print(const std::string &s) const {
+	fprintf(stderr, "%s", s.c_str());
+	fflush(stderr);
 }

@@ -471,20 +471,19 @@ bool GetExactFileName(const std::string& abs_searchname, std::string& filename) 
 searchpathlist	basesearchpaths;
 void InitBaseSearchPaths() {
 	basesearchpaths.clear();
+	// Search path to add regardless of platform
+	AddToFileList(&basesearchpaths, ".");
+	AddToFileList(&basesearchpaths, "${BIN}");
+	AddToFileList(&basesearchpaths, "${BIN}/gamedir");
 #if defined(__APPLE__)
 	AddToFileList(&basesearchpaths, "${HOME}/Library/Application Support/OpenLieroX");
-	AddToFileList(&basesearchpaths, ".");
 	AddToFileList(&basesearchpaths, "${BIN}/../Resources/gamedir");
 	AddToFileList(&basesearchpaths, SYSTEM_DATA_DIR"/OpenLieroX");
 #elif defined(WIN32)
 	AddToFileList(&basesearchpaths, "${HOME}/OpenLieroX");
-	AddToFileList(&basesearchpaths, ".");
-	AddToFileList(&basesearchpaths, "${BIN}");
 #else // all other systems (Linux, *BSD, OS/2, ...)
 	AddToFileList(&basesearchpaths, "${HOME}/.OpenLieroX");
-	AddToFileList(&basesearchpaths, ".");
 	AddToFileList(&basesearchpaths, SYSTEM_DATA_DIR"/OpenLieroX"); // no use of ${SYSTEM_DATA}, because it is uncommon and could cause confusion to the user
-	AddToFileList(&basesearchpaths, "${BIN}/gamedir");
 #endif
 }
 

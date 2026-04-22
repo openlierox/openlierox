@@ -6,9 +6,18 @@ cmake_minimum_required(VERSION 2.4)
 SET(OLXROOTDIR ${Project_SOURCE_DIR})
 include(${OLXROOTDIR}/CMakeOlxCommon.cmake)
 
-ADD_EXECUTABLE(openlierox ${OLXROOTDIR}/src/main.cpp ${ALL_SRCS})
-
 IF(WIN32)
+	SET(OLX_ICON_PATH "${OLXROOTDIR}/share/OpenLieroX.ico")
+	configure_file(
+		"${OLXROOTDIR}/OpenLieroX.rc.in"
+		"${CMAKE_BINARY_DIR}/OpenLieroX.rc"
+		@ONLY)
+	SET(OLX_WIN_RESOURCES "${CMAKE_BINARY_DIR}/OpenLieroX.rc")
+ENDIF()
+
+ADD_EXECUTABLE(openlierox ${OLXROOTDIR}/src/main.cpp ${ALL_SRCS} ${OLX_WIN_RESOURCES})
+
+IF(WIN32 AND MSVC)
 	SET_TARGET_PROPERTIES(openlierox PROPERTIES OUTPUT_NAME "../../../bin/OpenLieroX")
 
 	# Add debug info to release build in linker flags
@@ -19,13 +28,11 @@ IF(WIN32)
 		/MAPINFO:EXPORTS
 		/NODEFAULTLIB:\"LIBC\"
 		/INCREMENTAL:NO")
-ELSE(WIN32)
-	IF(MINGW_CROSS_COMPILE)
-		SET_TARGET_PROPERTIES(openlierox PROPERTIES OUTPUT_NAME bin/openlierox.exe)
-	ELSE(MINGW_CROSS_COMPILE)
-		SET_TARGET_PROPERTIES(openlierox PROPERTIES OUTPUT_NAME bin/openlierox)
-	ENDIF(MINGW_CROSS_COMPILE)
-ENDIF(WIN32)
+ELSE()
+	SET_TARGET_PROPERTIES(openlierox PROPERTIES
+		RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+		OUTPUT_NAME openlierox)
+ENDIF()
 
 TARGET_LINK_LIBRARIES(openlierox ${LIBS})
 
