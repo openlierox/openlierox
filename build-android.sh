@@ -219,6 +219,20 @@ if [ -f "$SDL2_MANIFEST" ] && ! grep -q 'android.permission.INTERNET' "$SDL2_MAN
         "$SDL2_MANIFEST"
 fi
 
+# changeAppSettings only patches versionCode/versionName in the SDL 1.2
+# manifest (project/AndroidManifest.xml), not the SDL2 one that gradle
+# actually uses. Keep them in sync from AndroidAppSettings.cfg.
+if [ -f "$SDL2_MANIFEST" ]; then
+    APP_VC="$(grep -Po 'AppVersionCode=\K[0-9]+' "$ANDROID_META/AndroidAppSettings.cfg" || true)"
+    APP_VN="$(grep -Po 'AppVersionName="\K[^"]+' "$ANDROID_META/AndroidAppSettings.cfg" || true)"
+    if [ -n "$APP_VC" ]; then
+        sed -i "s^android:versionCode=\"[^\"]*\"^android:versionCode=\"$APP_VC\"^" "$SDL2_MANIFEST"
+    fi
+    if [ -n "$APP_VN" ]; then
+        sed -i "s^android:versionName=\"[^\"]*\"^android:versionName=\"$APP_VN\"^" "$SDL2_MANIFEST"
+    fi
+fi
+
 # --- 5. Drop stale application object files ------------------------------
 #
 # rsync -a preserves mtimes, so a file refreshed from this repo often has an
