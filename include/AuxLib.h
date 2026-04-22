@@ -92,6 +92,8 @@ public:
 	static VideoPostProcessor* get() { return &instance; }
 	static void uninit();
 
+	SDL_Window* sdl_window() const { return m_window.get(); }
+
 	bool initWindow();
 	bool resetVideo(); // this is called from SetVideoMode
 	

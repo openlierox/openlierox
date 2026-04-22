@@ -10,6 +10,8 @@
 #         containing OpenLieroX.app/.
 set -euo pipefail
 
+cd $(dirname $0)"/../.."
+
 BUILD_DIR="${BUILD_DIR:-build}"
 BINARY="$BUILD_DIR/bin/openlierox"
 
@@ -18,8 +20,7 @@ if [ ! -x "$BINARY" ]; then
     exit 1
 fi
 
-REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
-cd "$REPO_ROOT"
+REPO_ROOT="$(pwd)"
 
 APP="$REPO_ROOT/mac-stage/OpenLieroX.app"
 rm -rf "$REPO_ROOT/mac-stage"

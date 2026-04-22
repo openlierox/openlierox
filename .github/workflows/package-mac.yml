@@ -70,7 +70,7 @@ jobs:
           cmake --build build -j$(sysctl -n hw.ncpu)
 
       - name: Package (.app)
-        run: ./package-macos.sh
+        run: ./.github/workflows/package-macos.sh
 
       - name: Detect bundle filename
         id: bundle
