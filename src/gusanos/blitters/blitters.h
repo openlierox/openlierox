@@ -12,7 +12,10 @@
 #include "CodeAttributes.h"
 
 // TODO: correct check if we should include MMX/SSE code
-#if !defined(WIN32) && (SDL_BYTEORDER == SDL_LIL_ENDIAN) && (defined(__i386__) || defined(__x86_64__))
+// Android's NDK clang uses LLVM's integrated assembler, which rejects the
+// GAS-style MMX register macros in mmx.h, so force the non-SIMD fallback
+// regardless of target arch.
+#if !defined(WIN32) && !defined(__ANDROID__) && (SDL_BYTEORDER == SDL_LIL_ENDIAN) && (defined(__i386__) || defined(__x86_64__))
 #define HAS_MMX (cpu_capabilities & CPU_MMX)
 #define HAS_SSE (cpu_capabilities & CPU_SSE)
 #define HAS_MMXSSE (cpu_capabilities & CPU_MMXPLUS)
