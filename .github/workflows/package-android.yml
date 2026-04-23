@@ -41,8 +41,12 @@ jobs:
 
       - name: Install NDK and build-tools via sdkmanager
         run: |
-          set -euo pipefail
-          yes | sdkmanager --licenses >/dev/null
+          set -eu
+          # `yes | sdkmanager --licenses` exits non-zero under
+          # `set -o pipefail` because sdkmanager closes stdin after
+          # consuming enough y's and `yes` gets SIGPIPE. Run it in a
+          # subshell without pipefail and ignore its exit code.
+          (yes || true) | sdkmanager --licenses >/dev/null 2>&1 || true
           sdkmanager \
             "platform-tools" \
             "platforms;android-36" \
