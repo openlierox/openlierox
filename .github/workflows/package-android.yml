@@ -73,7 +73,11 @@ jobs:
           git config --global url."https://github.com/".insteadOf "git@github.com:"
           mapfile -t NEEDED < <(git submodule status | awk '{print $2}' | grep '^project/jni/' | grep -v '^project/jni/application/')
           echo "Initialising ${#NEEDED[@]} port submodules…"
-          git submodule update --init --depth 1 -- "${NEEDED[@]}"
+          # --recursive so sdl2_image's own submodules (external/jpeg,
+          # external/libpng, etc.) are also fetched; without them the
+          # ndk-build step fails with 'Module SDL2_image depends on
+          # undefined modules: jpeg png'.
+          git submodule update --init --recursive --depth 1 -- "${NEEDED[@]}"
           echo "PORT_DIR=$HOME/commandergenius" >> "$GITHUB_ENV"
 
       - name: Build APK
