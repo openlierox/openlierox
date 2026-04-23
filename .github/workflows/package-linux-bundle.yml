@@ -10,6 +10,7 @@ on:
 jobs:
   build-linux:
     name: Build Linux-bundle
+    if: false # temporarily disabled while iterating on the Android workflow
     runs-on: ubuntu-24.04
 
     steps:
