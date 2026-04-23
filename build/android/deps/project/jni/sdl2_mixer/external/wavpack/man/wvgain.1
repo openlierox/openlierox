@@ -1,0 +1,52 @@
+.Dd January 2, 2023
+.Dt WVGAIN 1
+.Os
+.Sh NAME
+.Nm wvgain
+.Nd add ReplayGain information to wavpack files
+.Sh SYNOPSIS
+.Nm wvgain
+.Op Fl acdinqsvz
+.Ar
+.Sh DESCRIPTION
+.Nm wvgain
+perceptually analyzes WavPack audio files for volume,
+calculates ReplayGain information based on this,
+and adds the appropriate APEv2 tag fields.
+ReplayGain-enabled players will use this information
+to produce the same perceived loudness on all tracks.
+Both individual track and whole album ReplayGain information
+can be calculated.
+.Ss OPTIONS
+.Bl -tag -width Ds
+.It Fl a
+album mode (all files scanned are considered an album)
+.It Fl c
+clean ReplayGain values from all files
+.It Fl d
+display calculated values only (no files are modified)
+.It Fl i
+ignore .wvc file (forces hybrid lossy)
+.It Fl n
+new files only (skip files with track info,
+or album info if album mode specified)
+.It Fl q
+quiet (keep console output to a minimum)
+.It Fl s
+show stored values only (no analysis)
+.It Fl v
+write program version to
+.Pa stdout
+.It Fl z[ Ns Ar n ]
+don't set (n = 0 or omitted) or set (n = 1)
+console title to indicate progress (leaves "WvGain Completed")
+.El
+.Sh SEE ALSO
+.Xr wavpack 1 ,
+.Xr wvtag 1 ,
+.Xr wvunpack 1 ,
+.Lk www.wavpack.com
+.Sh AUTHORS
+.An David Bryant Aq Mt david@wavpack.com
+.An Sebastian Dröge Aq Mt slomo@debian.org
+.An Jan Starý Aq Mt hans@stare.cz

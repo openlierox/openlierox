@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!-- values-es/string.xml string resource in spanish languaje -->
+
+<resources>
+    <string name="init">Inicializando</string>
+    <string name="please_wait">Por favor espere mientras se descargan los datos</string>
+
+    <string name="device_config">Configuración del dispositivo</string>
+    <string name="device_change_cfg">Cambiar la configuración del dispositivo</string>
+
+    <string name="download_unneeded">No se necesita descarga</string>
+    <string name="connecting_to">Conectándose a %s</string>
+    <string name="failed_connecting_to">Fallo al conectarse a %s</string>
+    <string name="error_connecting_to">Error al conectarse a %s</string>
+    <string name="dl_from">Descargándose datos desde %s</string>
+    <string name="error_dl_from">Error al descargarse los datos desde %s</string>
+    <string name="error_write">Error al escribir en %s</string>
+    <string name="dl_progress">%1$.0f%% hecho: archivo %2$s</string>
+    <string name="dl_finished">Finalizado</string>
+
+    <string name="storage_phone">Almacenamiento interno - %d MB libres</string>
+    <string name="storage_sd">Almacenamiento SD card - %d MB libres</string>
+    <string name="storage_custom">Especifique el directorio</string>
+    <string name="storage_commandline">Especifique los parámetros de la línea de comandos, one argument per line</string>
+    <string name="storage_question">Lugar donde guardar los datos de la instalación</string>
+    <string name="optional_downloads">Descargas</string>
+    <string name="downloads">Descargas</string>
+    <string name="ok">Aceptar</string>
+    <string name="cancel">Cancelar</string>
+
+    <string name="controls_arrows">Flechas / Joystick / Cruceta mando video consola</string>
+    <string name="controls_trackball">Bola de control (Trackball)</string>
+    <string name="controls_accel">Acelerómetro</string>
+    <string name="controls_touch">Sólo Tocando la pantalla</string>
+    <string name="controls_question">¿ Qué clase de teclas de navegación tiene su dispositivo ?</string>
+
+    <string name="controls_additional">Controles adicionales</string>
+    <string name="controls_screenkb">Teclado virtual en pantalla</string>
+    <string name="controls_accelnav">Acelerómetro</string>
+
+    <string name="controls_screenkb_size">Tamaño del teclado virtual en pantalla</string>
+    <string name="controls_screenkb_drawsize">Tamaño de las imágenes de los botones</string>
+    <string name="controls_screenkb_large">Grande</string>
+    <string name="controls_screenkb_medium">Mediano</string>
+    <string name="controls_screenkb_small">Pequeño</string>
+    <string name="controls_screenkb_tiny">Diminuto</string>
+    <string name="controls_screenkb_custom">Personalizado</string>
+    <string name="controls_screenkb_theme">Tema del teclado virtual en pantalla</string>
+    <string name="controls_screenkb_by">%1$s x %2$s</string>
+    <string name="controls_screenkb_transparency">Teclado virtual en pantalla transparente</string>
+    <string name="controls_screenkb_trans_0">Invisible</string>
+    <string name="controls_screenkb_trans_1">Semi invisible</string>
+    <string name="controls_screenkb_trans_2">Transparente</string>
+    <string name="controls_screenkb_trans_3">Semi transparente</string>
+    <string name="controls_screenkb_trans_4">Opaco</string>
+
+    <string name="trackball_no_dampening">Sin retardo (muy rápido)</string>
+    <string name="trackball_fast">Rápido</string>
+    <string name="trackball_medium">Mediano</string>
+    <string name="trackball_slow">Lento</string>
+    <string name="trackball_question">Retardo de la Bola control(Trackball)</string>
+
+    <string name="accel_veryfast">Muy rápido</string>
+    <string name="accel_fast">Rápido</string>
+    <string name="accel_medium">Mediano</string>
+    <string name="accel_slow">Lento</string>
+    <string name="accel_veryslow">Muy lento</string>
+    <string name="accel_question">Determinar velocidad accelerómetro</string>
+
+    <string name="accel_floating">Flotante</string>
+    <string name="accel_fixed_start">Fijo cuando la aplicación comienza</string>
+    <string name="accel_fixed_horiz">Fijar la orientación de la tablet</string>
+    <string name="accel_question_center">Centrar la posición del acelerómetro</string>
+
+    <string name="mouse_emulation">Emulación del ratón</string>
+    <string name="rightclick_question">Botón derecho del ratón</string>
+    <string name="rightclick_menu">Tecla de menú</string>
+    <string name="rightclick_key">Tecla física</string>
+    <string name="rightclick_multitouch">Tocar la pantalla con un segundo dedo</string>
+    <string name="rightclick_pressure">Tocar la pantalla durante un tiempo prolongado</string>
+    <string name="rightclick_none">Desabilitar el botón derecho del ratón</string>
+
+    <string name="leftclick_question">Botón izquierdo del ratón</string>
+    <string name="leftclick_normal">Normal</string>
+    <string name="leftclick_near_cursor">Tocar cerca del cursor del ratón</string>
+    <string name="leftclick_multitouch">Tocar la pantalla con un segundo dedo</string>
+    <string name="leftclick_pressure">Tocar la pantalla durante un tiempo prolongado</string>
+    <string name="leftclick_dpadcenter">Botón del Trackball / centrar joystick</string>
+    <string name="leftclick_timeout">Dejar de tocar y tocar la pantalla durante ...</string>
+    <string name="leftclick_tap">Un toque rápido (no tocar, tocar, y no tocar)</string>
+    <string name="leftclick_tap_or_timeout">Tocar o dejar de tocar</string>
+    <string name="leftclick_timeout_time">Mantener toque durante ...</string>
+    <string name="leftclick_timeout_time_0">0.3 sec</string>
+    <string name="leftclick_timeout_time_1">0.5 sec</string>
+    <string name="leftclick_timeout_time_2">0.7 sec</string>
+    <string name="leftclick_timeout_time_3">1 sec</string>
+    <string name="leftclick_timeout_time_4">1.5 sec</string>
+    <string name="click_with_dpadcenter">Botón izquierdo del ratón mediante: Bola(trackball)/centrar joystick</string>
+
+    <string name="advanced">Características avanzadas</string>
+    <string name="mouse_keepaspectratio">Mantenr proporción de la pantalla 4:3</string>
+    <string name="mouse_showcreenunderfinger">Mostrar la pantalla debajo del dedo en una ventana por separado</string>
+    <string name="mouse_showcreenunderfinger2">Mostrar lente de aumento sobre la pantalla</string>
+    <string name="mouse_joystickmouse">Mover el ratón mediante joystick o bola(trackball)</string>
+    <string name="mouse_joystickmousespeed">Mover el ratón mediante un joystick de velocidad</string>
+    <string name="mouse_joystickmouseaccel">Mover el ratón mediante un joystick de aceleración</string>
+    <string name="mouse_relative">Movimiento relativo del ratón (laptop mode)</string>
+    <string name="mouse_relative_speed">Velocidad relativa del movimiento del ratón</string>
+    <string name="mouse_relative_accel">Aceleración relativa del movimiento del ratón</string>
+    <string name="mouse_hover_jitter_filter">Filtro elimina nerviosismo al escribir/dedo flotante</string>
+    <string name="mouse_gyroscope_mouse">Controlar el ratón mediante el giroscopio</string>
+    <string name="mouse_gyroscope_mouse_sensitivity">Sensibilidad del giroscopio</string>
+    <string name="mouse_finger_hover">Dedo flotante deslizante</string>
+    <string name="mouse_subframe_touch_events">Múltiples eventos de toque por fotograma</string>
+
+    <string name="none">Nada</string>
+
+    <string name="measurepressure">Calibrar la presión del toque</string>
+    <string name="measurepressure_touchplease">Por favor deslice el dedo por la pantalla durante dos segundos</string>
+    <string name="measurepressure_response">Presión %1$03d radio %2$03d</string>
+
+    <string name="audiobuf_verysmall">Muy pequeña (dispositivos rápidos, menos retraso)</string>
+    <string name="audiobuf_small">Pequeña</string>
+    <string name="audiobuf_medium">Media</string>
+    <string name="audiobuf_large">Grande (dispositivos antiguos, si el sonido se entrecorta)</string>
+    <string name="audiobuf_question">Tamaño de la memoria de almacenamiento de audio</string>
+
+    <string name="remap_hwkeys">Cambiar teclas físicas</string>
+    <string name="remap_hwkeys_press">Presione una tecla excepto Botón central(HOME) y Botón encendido, puede usar las teclas de volumen</string>
+    <string name="remap_hwkeys_select">Seleccionar código de la tecla SDL</string>
+    <string name="remap_hwkeys_select_simple">Seleccionar acción</string>
+    <string name="remap_hwkeys_select_more_keys">Mostrar todos los códigos de teclas</string>
+
+    <string name="remap_screenkb">Cambiar controles de pulsación pantalla</string>
+    <string name="remap_screenkb_joystick">Joystick</string>
+    <string name="remap_screenkb_button">Botón</string>
+    <string name="remap_screenkb_button_text">Bótón para introducir texto</string>
+    <string name="remap_screenkb_button_gestures">Gestos con dos dedos</string>
+    <string name="remap_screenkb_button_gestures_sensitivity">Sensibilidad de gestos con dos dedos</string>
+    <string name="remap_screenkb_button_zoomin">Gesto para Zoom de aumento con dos dedos</string>
+    <string name="remap_screenkb_button_zoomout">Gesto prara Zoom de disminución con dos dedos</string>
+    <string name="remap_screenkb_button_rotateleft">Gesto para rotar a la izquierda con dos dedos</string>
+    <string name="remap_screenkb_button_rotateright">Gesto para rotar a la derecha con dos dedos</string>
+
+    <string name="screenkb_custom_layout">Pesonalizar la presentación del teclado virtual en pantalla</string>
+    <string name="screenkb_custom_layout_help">Presione botón Atras para finalizar. Cambiar tamaño botones deslizando sobre el espacio vacío.</string>
+    <string name="screenkb_floating_joystick">Joystick flotante</string>
+
+    <string name="calibrate_touchscreen">Calibrar el toque sobre la pantalla</string>
+    <string name="calibrate_touchscreen_touch">Toque todas las esquinas de la pantalla, puse botón Atras para finalizar</string>
+
+    <string name="video">Configuración de Video</string>
+    <string name="video_smooth">Filtro de lineas</string>
+    <string name="video_separatethread">Hebra/proceso separado para video, puede incrementar FPS, puede colgar la APP</string>
+    <string name="video_orientation_vertical">Orientación Horizontal/Vertical de la pantalla</string>
+    <string name="video_bpp_24">24 bits profundidad del color</string>
+    <string name="video_immersive">Ocultar botones de navegación(botones pantalla) / modo inmersión</string>
+
+    <string name="text_edit_click_here">Toque y suelte para empezar a teclear, presione botón Atras para finalizar</string>
+
+    <string name="display_size_mouse">Modo de emulación del ratón</string>
+    <string name="display_size">Tamaño de la pantalla para la emulación del ratón</string>
+    <string name="display_size_large">Grande (tablets)</string>
+    <string name="display_size_small">Pequeña, lupa de aumento</string>
+    <string name="display_size_small_touchpad">Pequeña, modo touchpad</string>
+    <string name="display_size_tiny">Diminuta</string>
+    <string name="display_size_tiny_touchpad">Diminuta, modo touchpad</string>
+
+    <string name="show_more_options">Mostrar más opciones</string>
+
+    <string name="hardware_mouse_detected">Detección del ratón real, desabilita emulación del ratón</string>
+
+    <string name="not_enough_ram">No hay suficiente memoria RAM</string>
+    <string name="not_enough_ram_size">Esta APP necesita %1$d Mb RAM, su dispositivo tiene %2$d Mb</string>
+    <string name="ignore">Ignorar</string>
+
+    <string name="calibrate_gyroscope">Calibrar giroscopio</string>
+    <string name="calibrate_gyroscope_text">Mantenga quieta la pantalla en una superficie plana, que no vibre</string>
+    <string name="calibrate_gyroscope_not_supported">Su dispositivo no tiene giroscopio</string>
+
+    <string name="reset_config">Resetear configuración a valores por defecto</string>
+    <string name="reset_config_ask">¿ Resetear todas las opciones a valores por defecto ?</string>
+
+    <string name="cancel_download">¿ Cancelar descarga de datos ?</string>
+    <string name="cancel_download_resume">Usted puede continuar después, los datos ya guardados no se descargarán otra vez.</string>
+    <string name="yes">Si</string>
+    <string name="no">No</string>
+
+    <!-- Play Game Services strings -->
+    <string name="gamehelper_sign_in_failed">Fallo al conectarse a la cuenta. Por favor chequee la conexión de la red e inténtelo de nuevo.</string>
+    <string name="gamehelper_app_misconfigured">La aplicacion esta incorrectamente configurada. Chequee que el nombre del paquete y certificado coincide con el ID de cliente creado en la Consola de Desarrollo. También, si la aplicación no esta todavía publicada, chequee que la cuenta que usted esta intentando acceder esta listada como cuenta de testeador. Vea registro de errores(logs) para más información.</string>
+    <string name="gamehelper_license_failed">Chequeo de licencia fallido.</string>
+    <string name="gamehelper_unknown_error">Error desconocido.</string>
+    <string name="accessing_network">Accediendo a la red, por favor espere</string>
+</resources>

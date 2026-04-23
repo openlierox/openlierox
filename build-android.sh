@@ -34,7 +34,8 @@
 #   -h           Show this help
 #
 # Env:
-#   PORT_DIR            commandergenius checkout (default: ~/git/commandergenius)
+#   PORT_DIR            commandergenius checkout (default: build/android/deps/
+#                       vendored into this repo; override for a local source clone)
 #   ANDROID_NDK_HOME    Android NDK path (required; inferred from ndk-build)
 #   ANDROID_SDK_ROOT    Android SDK path (required; ANDROID_HOME accepted)
 #
@@ -43,7 +44,7 @@
 set -euo pipefail
 
 OLX_DIR="$(cd "$(dirname "$0")" && pwd)"
-PORT_DIR="${PORT_DIR:-$HOME/git/commandergenius}"
+PORT_DIR="${PORT_DIR:-$(cd "$(dirname "$0")" && pwd)/build/android/deps}"
 BUILD_TYPE="release"
 SYNC_DATA=0
 FORWARD_FLAGS=()
@@ -86,13 +87,23 @@ if [ -z "${ANDROID_SDK_ROOT:-}" ]; then
     exit 1
 fi
 export ANDROID_HOME="$ANDROID_SDK_ROOT"
-export PATH="$ANDROID_SDK_ROOT/platform-tools:$ANDROID_SDK_ROOT/build-tools/$(ls -1 "$ANDROID_SDK_ROOT/build-tools" 2>/dev/null | sort -V | tail -n1):$PATH"
+# Put the real NDK dir on PATH ahead of anything else (e.g. a
+# ~/.local/bin/ndk-build symlink) so the port's openssl compile.sh can
+# find the real NDK root via `dirname $(which ndk-build)` instead of the
+# symlink's containing dir.
+export PATH="$ANDROID_NDK_HOME:$ANDROID_SDK_ROOT/platform-tools:$ANDROID_SDK_ROOT/build-tools/$(ls -1 "$ANDROID_SDK_ROOT/build-tools" 2>/dev/null | sort -V | tail -n1):$PATH"
 
-if [ ! -d "$PORT_DIR/project/jni/application/openlierox" ]; then
+if [ ! -d "$PORT_DIR/project/jni" ]; then
     echo "ERROR: commandergenius port not found at $PORT_DIR." >&2
-    echo "       Clone https://github.com/pelya/commandergenius and set PORT_DIR." >&2
+    echo "       Expected build/android/deps/ to exist. If you relocated the" >&2
+    echo "       vendored tree, set PORT_DIR to its path." >&2
     exit 1
 fi
+# The openlierox application dir is created by this repo's overlay step
+# below (rsync of src/ include/ libs/ into $PORT_DIR/project/jni/application/
+# openlierox/src/). On a fresh deps/ tree it doesn't exist yet, so make
+# the parent directory so the copies have a target.
+mkdir -p "$PORT_DIR/project/jni/application/openlierox/AndroidData"
 
 for tool in java zipalign apksigner; do
     if ! command -v "$tool" >/dev/null 2>&1; then
@@ -173,6 +184,12 @@ cp -f "$OLX_DIR/VERSION" "$PORT_SRC/VERSION"
 for f in android-icon.png tv-banner.png; do
     [ -f "$OLX_DIR/share/$f" ] && cp -f "$OLX_DIR/share/$f" "$PORT_SRC/share/$f"
 done
+# Create the icon.png / banner.png symlinks that
+# project/res/drawable/icon.png expects. changeAppSettings.sh runs
+# `convert project/res/drawable/icon.png ...` and aborts if this link
+# dangles.
+ln -sfn src/share/android-icon.png "$PORT_APP/icon.png"
+ln -sfn src/share/tv-banner.png    "$PORT_APP/banner.png"
 # share/gamedir is handled separately via --sync-data below (big; slow).
 # The port needs *some* gamedir dir for AndroidPreBuild.sh / symlink targets,
 # so if it doesn't already exist, drop an empty stub.

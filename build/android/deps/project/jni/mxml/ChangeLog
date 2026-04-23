@@ -1,0 +1,96 @@
+/*
+   Minimal XML library project changelog
+
+   $Id: ChangeLog,v 1.7 2003/08/09 16:46:30 jonnymind Exp $
+*/
+
+2003-08-09 18:47 UTC+0200 Giancarlo Niccolai
+   * include/mxml_defs.h
+   * src/mxml_node.c
+      + Added element last_child in node structrure for faster mxml_add_below()
+        execution. In documents with thousands of node this is a real boost.
+
+   * src/mxml_attribute.c
+      ! Fixed an error in reading last quote character
+
+   * test/Makefile.am
+   + test/testattrib.c
+      + added a test for reading just an attribute and check it.
+
+2003-08-07 12:00 UTC+0200 Giancarlo Niccolai
+   * src/mxml_attribute.c
+      ! fixed a possible error in escape parsing for attribute values.
+
+2003-08-06 15:52 UTC+0200 Giancarlo Niccolai
+   * configure.in
+   + ltlib/Makefile.am
+   + lib/Makefile.am
+      ! Separate directories for shared and static library compilation
+
+   * Added some missing file, and removed useless ones.
+   
+2003-07-24 22:24 UTC+0200 Giancarlo Niccolai
+   * INSTALL
+      ! Fixed some typos (thanks to Florian Schmidt)
+   * include/mxml_defs.h
+      ! Added macro for file read block (thanks to Florian Schmidt)
+
+   * src/mxml_attribute.c
+   * src/mxml_document.c
+   * src/mxml_file.c
+   * src/mxml_iterator.c
+   * src/mxml_output.c
+   * src/mxml_refil.c
+      ! Fixed some typos and added check against NULL params in DEALLOCATOR
+        macro calls (thanks to Florian Schmidt).
+
+   * src/mxml_node.c
+      ! Fixed some typos and mxml_node_insert_before/after (were not behaving
+         correctly) (thanks to Florian Schmidt).
+
+2003-07-09 00:51 UTC+0200 Giancarlo Niccolai
+   + doc/Makefile.am
+   - doc/Makefile.in
+   * Makefile.am
+     ! fixed MAKE DIST for doc files.
+
+2003-06-30 20:20 UTC+0200 Giancarlo Niccolai
+   ! INSTALL
+      ! added automake -a to the compilation steps
+
+   * include/mxml_defs.h
+      + Added MXML_STYLE_NOESCAPE and MXML_ERROR_UNBALANCEDENTITY
+
+   * include/mxml.h
+   * include/mxml_file.h
+   * src/mxml_attribute.c
+   * src/mxml_error.c
+   * src/mxml_file.c
+   * src/mxml_node.c
+   * src/mxml_output.c
+      + Added support for escaping XML standard entities. This has required
+        atting style parameter to many read functions; an output_string_escaped
+        has been added to output module. Unescaping input is done inline while
+        reading the file and parsing, making this operation lighter and faster,
+        but a little more tricky to take as it is burned in the code.
+
+   * test/mxml_test.c
+   * test/test.xml
+      + added tests for escaping chars.
+
+2003-06-30 20:13 UTC+0200 Giancarlo Niccolai
+   - Makefile.in
+   - config.h.in
+      ! removed this files that went in by error
+
+2003-06-30 20:03 UTC+0200 Giancarlo Niccolai
+   - install-sh
+   - missing
+   - mkinstalldirs
+      ! letting users to create this files with automake -a
+
+2003-06-27 00:55 UTC+0200 Giancarlo Niccolai
+  * Changelog
+    Changelog started
+
+

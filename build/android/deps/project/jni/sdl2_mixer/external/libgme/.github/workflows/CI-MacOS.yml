@@ -1,0 +1,44 @@
+name: CI macOS
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    name: macOS (${{ matrix.configuration }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        configuration: [Debug, Release]
+        include:
+          - generator: Xcode
+            os: macos-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install dependencies
+      env:
+        HOMEBREW_NO_ANALYTICS: 1
+        HOMEBREW_NO_INSTALL_CLEANUP: 1
+      run: |
+        unset HOMEBREW_NO_INSTALL_FROM_API
+        brew update
+        brew upgrade || true
+        brew install sdl2
+    - name: Build Shared
+      run: |
+        mkdir build
+        cd build
+        cmake -G ${{ matrix.generator }} -DCMAKE_BUILD_TYPE=${{ matrix.configuration }} ..
+        cmake --build .
+        cmake --build . --target demo
+        cmake --build . --target demo_mem
+        cmake --build . --target gme_player
+    - name: Build Static
+      run: |
+        mkdir build-static
+        cd build-static
+        cmake -G ${{ matrix.generator }} -DCMAKE_BUILD_TYPE=${{ matrix.configuration }} -DBUILD_SHARED_LIBS=OFF ..
+        cmake --build .
+        cmake --build . --target demo
+        cmake --build . --target demo_mem
+        cmake --build . --target gme_player

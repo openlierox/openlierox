@@ -1,0 +1,4 @@
+<resources>
+    <dimen name="screen_border_horizontal">48dp</dimen>
+    <dimen name="screen_border_vertical">27dp</dimen>
+</resources>

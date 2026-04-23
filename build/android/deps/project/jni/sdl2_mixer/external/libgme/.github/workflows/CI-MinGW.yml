@@ -1,0 +1,47 @@
+name: CI MinGW
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    name: MinGW-w64 (${{ matrix.configuration }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        configuration: [Debug, Release]
+        include:
+          - generator: MSYS Makefiles
+            os: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+
+    steps:
+    - uses: msys2/setup-msys2@v2
+      with:
+        update: true
+        install: >-
+          git
+          base-devel
+          mingw-w64-x86_64-toolchain
+          mingw-w64-x86_64-cmake
+          mingw-w64-x86_64-SDL2
+    - uses: actions/checkout@v3
+    - name: Build Shared
+      run: |
+        mkdir build
+        cd build
+        cmake -G "${{ matrix.generator }}" -DCMAKE_BUILD_TYPE=${{ matrix.configuration }} ..
+        cmake --build .
+        cmake --build . --target demo
+        cmake --build . --target demo_mem
+        cmake --build . --target gme_player
+    - name: Build Static
+      run: |
+        mkdir build-static
+        cd build-static
+        cmake -G "${{ matrix.generator }}" -DCMAKE_BUILD_TYPE=${{ matrix.configuration }} -DBUILD_SHARED_LIBS=OFF ..
+        cmake --build .
+        cmake --build . --target demo
+        cmake --build . --target demo_mem
+        cmake --build . --target gme_player

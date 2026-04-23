@@ -1,0 +1,23 @@
+LOCAL_PATH := $(call my-dir)
+
+include $(CLEAR_VARS)
+
+LOCAL_MODULE := xml2
+
+LOCAL_SRC_FILES := dummy.c
+
+include $(BUILD_SHARED_LIBRARY)
+
+LOCAL_PATH_CUSTOM_BUILD := $(LOCAL_PATH)
+
+$(LOCAL_PATH)/src/lib$(LOCAL_MODULE).so: $(LOCAL_PATH)/src/AndroidBuild.sh
+	cd $(LOCAL_PATH_CUSTOM_BUILD)/src && ./AndroidBuild.sh
+
+$(realpath $(LOCAL_PATH)/../../obj/local/armeabi/lib$(LOCAL_MODULE).so): $(LOCAL_PATH)/src/lib$(LOCAL_MODULE).so OVERRIDE_CUSTOM_LIB
+	cp -f $< $@
+#	$(patsubst %-gcc,%-strip,$(TARGET_CC)) -g $@
+
+.PHONY: OVERRIDE_CUSTOM_LIB
+
+OVERRIDE_CUSTOM_LIB:
+

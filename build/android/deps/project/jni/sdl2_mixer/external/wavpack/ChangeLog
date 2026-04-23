@@ -1,0 +1,830 @@
+2022-11-24  Anonymous Maarten <anonymous.maarten@gmail.com>
+
+  * CMakeList.txt:
+    - too many semicolons in libwavpack.map + escape string
+
+2022-11-23  David Bryant  <david@wavpack.com>
+
+  * cli/aiff.c, cli/caff.c, cli/riff.c, cli/wave64.c, cli/wavpack.c, include/wavpack.h:
+    - add --force-even-byte-depth option for rounding up bit depths
+    - detect and report PCM files having non-zero padding bits
+
+  * cli/wavpack.c:
+    - add new input format (AIFF) to "--help"
+    - delete unused static variable
+
+  * cli/wvunpack.c:
+    - fix AIFF format name typo
+
+2022-11-21  David Bryant  <david@wavpack.com>
+
+  * CMakeLists.txt, wavpackdll/wavpackdll.rc, cli/utils.h, configure.ac, src/wavpack_version.h:
+    bump versions to 5.6.0
+
+  * winamp/in_wv.c:
+    bring in mingw+ftelli64() fix and remove tabs
+
+2022-11-21  Ozkan Sezer <sezeroz@gmail.com>
+
+  * winamp/in_wv.c, winamp/wa_ipc.h:
+    - use prototyped function ptrs instead of an opaque FARPROC
+    - replace UNREFERENCED_PARAMETER(item) with (void)(item)
+    - Watcom clib support for truncate_here()
+
+  * audition/Makefile.wat:
+    - add OpenWatcom makefile to build Win32 CoolEdit plugin
+
+2022-11-20  David Bryant <david@wavpack.com>
+
+  * cli/aiff.c:
+    simplify conversion from extended precision to double and squash MSVC warning
+
+  * CMakeList.txt:
+    - suppress __stdcall fixup warnings when building Cooledit filter on mingw
+    - add static libgcc and wavpack library to Audition/Cooledit filter
+    - add winamp/wavpack.rc to in_wv.dll to enable dialogs and text
+    - revert to linking plugins with static libwavpack
+
+2022-11-19  Anonymous Maarten <anonymous.maarten@gmail.com>
+
+  * CMakeList.txt:
+    - Build winamp plugin with static libgcc and libstdc++ runtime
+    - need to set OUTPUT_NAME on MODULE target
+    - add objects of wavpack to in_wv.dll
+
+  * wavpackdll/wavpackdll.vcxproj:
+    - WavpackFloatNormalize was not exported for all MSVC build configurations
+
+  * wavpackdll/wavpackdll.rc:
+    - Include winresrc.h instead of afxres.h to allow building without MFC installed
+
+2022-11-17  David Bryant <david@wavpack.com>
+
+  * CMakeList.txt:
+    - Add -mwindows to the link options to change (console) into (GUI) for Audition & Winamp plugins
+    - if we aren't building shared libs, don't check if the compiler supports symbol maps
+
+2022-11-17  Anonymous Maarten <anonymous.maarten@gmail.com>
+
+  * CMakeList.txt:
+    - build winamp and cooledit libraries as module
+    - Create a WavPack::WavPack when exporting + used as subproject
+    - Cannot run an executable when cross compiling
+    - version script cannot contain "\;"
+
+2022-11-16  David Bryant <david@wavpack.com>
+
+  * cli/aiff.c:
+    - improve handling of nonintegral sample rates in AIF and CAF files; squash warnings 
+    - allow command-line specification of channel assignments for AIFF files
+
+  * cli/wvtest.c, cli/wvunpack.c, src/unpack3_open.c, audition/cool_wv4.c:
+    fix warnings
+
+2022-11-15  Ozkan Sezer <sezeroz@gmail.com>
+
+  * src/open_filename.c:
+    check presence of DosSetFileSizeL before use (OS/2)
+
+  * Makefile.am:
+    add resource.h to EXTRA_DIST (needed by wavpackdll.rc)
+
+2022-11-12  Ozkan Sezer <sezeroz@gmail.com>
+
+  * CMakeLists.txt, winamp/in_wv.c:
+    Cmake fixes to winamp build (still untested!)
+
+2022-11-10  Ozkan Sezer <sezeroz@gmail.com>
+
+  * src/read_words.c, src/wavpack_local.h:
+    enable clz and ctz optimizations for watcom builds
+
+  * cli/utils.c:
+    - use prototyped function pointers instead of an opaque FARPROC
+    - fixed success check for SHGetSpecialFolderPathA()
+
+2022-11-09  David Bryant <david@wavpack.com>
+
+  * cli/wvunpack.c:
+    don't error out completely just because a header can't be formatted correctly
+
+  * cli/aiff[_write].c:
+    fix some undefined behavior in AIFF extended numerical processing
+
+2022-11-09  Ozkan Sezer <sezeroz@gmail.com>
+
+  * cli/wavpack.c, cli/wvunpack.c, src/open_filename.c, src/tag_utils.c, src/wavpack_local.h:
+    Watcom fixes
+
+2022-11-07  David Bryant <david@wavpack.com>
+
+  * cli/aiff[_write].c, cli/wavpack.c, cli/wvunpack.c:
+    add import/export support for uncompressed Apple AIFF files
+
+2022-11-07  Ozkan Sezer <sezeroz@gmail.com>
+
+  * extra[12].c, pack.c, unpack.c, wavpack_local.h:
+    mark x86 asm functions as __cdecl for Watcom compiler
+
+  * CMakeLists.txt, wavpack_local.h, winamp/*:
+    cmake and windows build fixes (mostly winamp plugin, which is untested!)
+
+2022-11-05  Ozkan Sezer <sezeroz@gmail.com>
+
+  * extra[12].c, tag_utils.c, wavpack_local.h:
+    eliminate use of '&' address-of operator on arrays (Watcom warning)
+
+2022-11-01  David Bryant <david@wavpack.com>
+
+  * cli/wvunpack.c:
+    several fixes for edge-case file format behavior bugs
+    - big-endian-sourced "raw" files give big-endian "wav"s (unless --wav added)
+    - future "unknown" big-endian formats don't properly verify MD5 hashes
+    - stop allowing verification mode (-v) with skip/until specifiers
+
+2022-11-01  evpobr <evpobr@gmail.com>
+
+  * CMakeLists.txt:
+    make the names of features and options match
+
+2022-08-16  David Bryant <david@wavpack.com>
+
+  * cli/wvunpack.c:
+    avoid string overflow when displaying channel assignments
+
+  * cli/wvtest.c:
+    issue #127: make sure that target WavPack file for "seektest" is not longer than its header claims
+
+2022-07-13  Ben Brown <ben@demerara.io>
+
+  * autogen.sh:
+    Honour NOCONFIGURE=1
+
+2022-07-11  Daniel Engberg <daniel.engberg.lists@pyret.net>
+
+  * CMakeLists.txt:
+    Install header in same location as GNU Autotools
+
+2022-07-10  David Bryant <david@wavpack.com>
+
+  * cli/wvtest.c:
+    don't print pthread_join() result b/c we're not setting it anyway
+
+2022-07-07  David Bryant <david@wavpack.com>
+
+  * src/pack_utils.c:
+    fix length update in library-generated WAV headers on big-endian machines
+
+2022-07-05  David Bryant <david@wavpack.com>
+
+  * cli/wvunpack.c, src/open_utils.c:
+    issue #121: fix NULL deference in wvunpack.c and sanitize custom extensions
+
+2022-07-03  David Bryant <david@wavpack.com>
+
+  * src/pack_utils.c:
+    fix an undefined behavior (UB) in pack_streams()
+
+  * cli/wvtest.c:
+    fix a warning about attempting to print the termination value of pthread_join()
+
+2022-07-02  David Bryant <david@wavpack.com>
+
+  * cli/wavpack.c:
+    - add --raw-pcm-ex option increasing maximum available channel count (4096 vs 256)
+    - add -g option (general/normal) to cancel previously specified -f or -h
+    - failure to rewind stdout to update header no longer generates an error
+
+2022-06-28  David Bryant <david@wavpack.com>
+
+  * cli/wavpack.c, cli/wvunpack.c:
+    include "--drop" option more explicitly in the "help" displays
+
+2022-06-27  David Bryant <david@wavpack.com>
+
+  * cli/wavpack.c, cli/wvunpack.c:
+    minor improvements, especially regarding filename-specified options
+    - allow -y to override restrictions around using pipes for input and output
+    - allow -x0 to cancel previously specified -x values (and means no extra)
+    - allow -f and -h to override each other instead of generating an error
+
+  * cli/utils.c, cli/utils.h, cli/wavpack.c, cli/wvunpack.c, cli/wvtag.c:
+    - new "--drop" option allows multiple input files for "drag and drop" operations
+    - for "--pause", try to detect if it's doable first, and don't peg a core if it is
+
+2022-06-26  David Bryant <david@wavpack.com>
+
+  * cli/wvunpack.c:
+    add brace-delimited options to wvunpack also
+
+2022-06-23  David Bryant <david@wavpack.com>
+
+  * Makefile.am, man/wavpack.xml, man/wvunpack.xml, man/wvgain.xml, man/wvtag.xml:
+    update the man pages and fix Makefile.am to put the converted man pages in man/
+
+  * src/pack_utils.c:
+    sanitize total sample count in WavpackSetConfiguration64()
+
+2022-06-23  David Bryant <david@wavpack.com>
+
+  * cli/wavpack.c, cli/wvunpack.c:
+    clear up a few minor issues related to use of piped I/O, updated --help
+
+2022-06-22  David Bryant <david@wavpack.com>
+
+  * cli/wvunpack.c:
+    add --raw-pcm option and add information about concatenating files to --help
+
+2022-06-20  David Bryant <david@wavpack.com>
+
+  * cli/wavpack.c, cli/riff.c:
+    two improvements related to the -i option (ignore header length)
+    - when we error on invalid WAV file lengths, message the user about -i option
+    - always attempt to correct the stored headers of WAV files encoded with -i
+
+2022-06-19  David Bryant <david@wavpack.com>
+
+  * cli/wavpack.c:
+    for security, only allow options to be included in filename (no filenames, etc.)
+
+2022-06-19  David Bryant <david@wavpack.com>
+
+  * src/unpack_dsd.c:
+    fix two minor issues with the DSD to PCM decimation
+    - eliminate sometimes audible clicks at the start of files
+    - eliminate a very small DC offset
+
+2022-06-06  David Bryant <david@wavpack.com>
+
+  * cli/wavpack.c:
+    add --no-overwrite option to silently skip when the destination file already exists
+
+  * cli/utils.c, src/open_filename.c:
+    mingw32's _fseeki64() / _ftelli64() are broken on i686; use fseeko64() and ftello64() instead
+
+2022-06-05  David Bryant <david@wavpack.com>
+
+  * cli/wavpack.c:
+    allow CLI options to be added to filename in braces to modify Windows drag-and-drop (e.g., wavpack{-hxvm}{--pause}.exe)
+
+2022-06-01  David Bryant <david@wavpack.com>
+
+  * cli/wavpack.c:
+    - fixed issue of not detecting an incorrect length when transcoding a WavPack file
+    - fixed issue where raw DSD audio from pipes failed if length was unknown
+
+2022-05-29  David Bryant <david@wavpack.com>
+
+  * Makefile.am:
+    issue #116: include wavpackdll.rc in tarball for building on MSVC
+
+2022-05-12  David Bryant <david@wavpack.com>
+
+  * cli/caff.c, cli/dsdiff.c, cli/riff.c, cli/wave64.c, cli/wavpack.c, include/wavpack.h, src/pack_utils.c:
+    issue #117: clarify and enforce channel count limits in library and CLI utilities
+    - add WAVPACK_MAX_CHANS (4096) and WAVPACK_MAX_CLI_CHANS (256) constants to wavpack.h
+    - fix issue where an invalid 4096+ channel file could be created (should not be allowed)
+
+2021-11-23  David Bryant <david@wavpack.com>
+
+  * cli/dsdiff.c, cli/dsf.c:
+    issue #110: sanitize DSD file types for invalid lengths (CVE-2021-44269)
+
+2021-07-30  evpobr <evpobr@gmail.com>
+
+  * CMakeLists.txt:
+    - use OpenSSL::Crypto target if possible
+    - use target_link_options() for CMake >= 3.13 only
+
+2021-05-16  David Seifert <soap@gentoo.org>
+
+  * configure.ac:
+    avoid obsolescent `test -a` constructs
+
+2021-05-10  David Bryant <david@wavpack.com>
+
+  * configure.ac:
+    iconv is not used in Windows builds, so don't require in configure
+
+2021-05-09  Colugo <colugomusic@gmail.com>
+
+  * CMakeLists.txt:
+    - use target_link_options() to add exported symbol lists
+    - fix exported symbol list linker options
+    - removed single quotes around file paths for exported symbol lists
+
+2021-05-09  David Seifert <soap@gentoo.org>
+
+  * Makefile.am, cli/Makefile.am, cli/all-tests, cli/fast-tests, configure.ac,
+    include/Makefile.am, man/Makefile.am, src/Makefile.am:
+    make buildsystem non-recursive
+
+2021-05-08  David Bryant <david@wavpack.com>
+
+  * src/common_utils.h:
+    fix possible strict aliasing violations
+
+2021-04-25  David Seifert <soap@gentoo.org>
+
+  * configure.ac, Makefile.am, autogen.sh, build-regressors.sh, cli/Makefile.am:
+    clean up Autotools
+
+2021-04-25  David Seifert <soap@gentoo.org>
+
+  * configure.ac, cli/Makefile.am, cli/all-tests, cli/fast_tests:
+    use canonical Automake test harness
+
+2021-04-25  David Seifert <soap@gentoo.org>
+
+  * configure.ac, Makefile.am, man/Makefile.am:
+    various POSIX-compatability fixes including bug: https://bugs.gentoo.org/773955
+
+2021-03-12  David Bryant  <david@wavpack.com>
+
+  * cli/utils.c:
+    issue #99: stack buffer overflow in command-line programs with pathological filename
+
+2021-01-04  David Bryant  <david@wavpack.com>
+
+  * wavpack.sln, *.vcxproj:
+    update Visual Studio project files to 2019 version
+
+2020-12-31  David Bryant  <david@wavpack.com>
+
+  * configure.ac:
+    disable assembly code for ARM64 (which does not exist yet) for Apple silicon build
+
+2020-12-29  David Bryant  <david@wavpack.com>
+
+  * src/pack_utils.c:
+    - issue #91: fix integer overflows resulting in buffer overruns (CVE-2020-35738)
+    - sanitize configuration parameters better (improves clarity and aids debugging)
+
+2020-12-22  David Bryant  <david@wavpack.com>
+
+  * cli/wavpack.c:
+    fix memory leaks when errors are encountered creating WavPack files
+
+2020-06-06  David Bryant  <david@wavpack.com>
+
+  * src/common_utils.c:
+    always have WavpackGetFloatNormExp() report normalized audio when OPEN_NORMALIZE
+    is specified in open call (which makes more sense than reporting what's in file)
+
+2020-06-06  David Bryant  <david@wavpack.com>
+
+  * cli/caff_write.c, cli/riff.c, cli/riff_write.c, cli/wave64_write.c, cli/wvunpack.c:
+    - add --normalize-floats switch to enable writing Adobe floating-point files to
+      standard formats that don't support un-normalized audio
+    - stop ignoring errors when writing audio file headers
+    - stop refusing to encode files in Adobe 24.0 format
+
+2020-06-06  David Bryant  <david@wavpack.com>
+
+  * cli/wvunpack.c:
+    add quick verify command (-vv) that relies on block checksums instead of decoding audio
+
+2020-05-07  David Bryant  <david@wavpack.com>
+
+  * cli/wvunpack.c:
+    display "help" options on command-line errors
+
+2020-04-14  David Bryant  <david@wavpack.com>
+
+  * cli/wvunpack.c, cli/wvtag.c:
+    use _snprintf() on Windows and make sure output is NULL terminated
+
+2020-04-13  David Bryant  <david@wavpack.com>
+
+  * cli/wavpack.c, cli/wvunpack.c, cli/wvgain.c, cli/wvtag.c, cli/wvtest.c:
+    reformat wvunpack "help" and split into long and short versions
+    minor "help" edits for other programs and bump copyright dates
+
+2020-04-12  David Bryant  <david@wavpack.com>
+
+  * include/wavpack.h, src/wavpack_local.h:
+    clean up some duplication in the header files
+
+2020-04-11  David Bryant  <david@wavpack.com>
+
+  * cli/caff_write.c:
+    avoid left-shifting negative value (undefined behavior)
+
+2020-04-08  David Bryant  <david@wavpack.com>
+
+  * cli/wavpack.c:
+    issue #81: avoid left-shifting negative values (undefined behavior)
+
+2020-03-31  David Bryant  <david@wavpack.com>
+
+  * cli/wvunpack.c, cli/wvtag.c:
+    sanitize tag extraction names for length and path inclusion
+
+2020-01-31  David Bryant  <david@wavpack.com>
+
+  * src/unpack_dsd.c, src/wavpack_local.h:
+    OSS-Fuzz issue 20448: fix regression from a recent undefined-behavior fix
+
+2020-01-27  David Bryant  <david@wavpack.com>
+
+  * cli/import_id3.c:
+    fix trailing garbage characters on imported ID3v2 TXXX tags
+
+2020-01-22  David Bryant  <david@wavpack.com>
+
+  * src/common_utils.c:
+    fix for fuzz-triggered divide by zero (bad sample rate)
+
+2020-01-20  David Bryant  <david@wavpack.com>
+
+  * cli/wvtest.c, src/common_utils.c, src/decorr_utils.c, src/entropy_utils.c, src/open_utils.c,
+    src/pack.c, src/pack_dsd.c, src/pack_utils.c, src/tag_utils.c, src/unpack.c, src/unpack_dsd.c,
+    src/unpack_floats.c, src/wavpack_local.h:
+    undefined behavior fixes, mostly left-shifting negative values or shifting >= target width
+
+2020-01-13  David Bryant  <david@wavpack.com>
+
+  * src/tag_utils.c:
+    OSS-Fuzz issue 20060: fix for uninitialized memory access
+
+2020-01-09  David Bryant  <david@wavpack.com>
+
+  * src/tags.c:
+    fix bad malloc() triggered by corrupt APEv2 tag (fuzz testing)
+
+2020-01-09  David Bryant  <david@wavpack.com>
+
+  * src/unpack_seek.c, src/unpack_utils.c:
+    several fixes for uninitialized memory access
+
+2019-12-21  David Bryant  <david@wavpack.com>
+
+  * src/unpack.c:
+    fix for uninitialized memory access (unexpected EOF from get_word())
+
+2019-12-14  David Bryant  <david@wavpack.com>
+
+  * cli/wvunpack.c
+    -s option: add "5.1 surround side" and "7.1 surround" to reported channel configurations
+
+2019-12-13  David Bryant  <david@wavpack.com>
+
+  * cli/riff[_write].c, cli/wave64[_write].c, cli/caff[_write].c, cli/dsf[_write].c, cli/dsdiff[_write].c:
+    split header readers & writers so that wvunpack doesn't link libwavpack encoder
+
+2019-12-12  David Bryant  <david@wavpack.com>
+
+  * cli/riff.c, cli/wave64.c, cli/caff.c:
+    -i option: display warning when dropping PCM samples from end of file
+
+2019-12-11  David Bryant  <david@wavpack.com>
+
+  * cli/wavpack.c:
+    fix a WAV header if user specified -i (to ignore length) and we can make it valid
+
+2019-12-08  David Bryant  <david@wavpack.com>
+
+  * fuzzing/fuzzer.cc, fuzzing/fuzzer_seed_corpus.zip, etc...:
+    add fuzzing directory with corpus and other files for oss-fuzz
+
+2019-12-08  David Bryant  <david@wavpack.com>
+
+  * src/open_utils.c:
+    fix possible memory leak on opening corrupted files
+
+2019-12-08  David Bryant  <david@wavpack.com>
+
+  * src/common_utils.c, src/pack_dsd.c, src/unpack_dsd.c, src/wavpack_local.h:
+    - fix potential memory leak when seeking in DSD files
+    - simplify DSD fast mode lookup buffer allocations
+
+2019-12-08  David Bryant  <david@wavpack.com>
+
+  * src/unpack.c, src/unpack_dsd.c, src/unpack_seek.c:
+    seeking fixes:
+    - fix crash during seek to corrupted block
+    - check header size before malloc()
+    - fix overlapping memcpy()
+
+2019-11-30  David Bryant  <david@wavpack.com>
+
+  * src/pack.c:
+    - provide more configuration sanity checks to aid application debugging
+    - force max_blocksize even so bitstream buffer overflow detection works
+
+2019-04-09  David Bryant  <david@wavpack.com>
+
+  * cli/import_id3.c:
+    issue #69: add TPUB (Publisher) to accepted ID3v2 tag fields
+
+2019-03-05  David Bryant  <david@wavpack.com>
+
+  * cli/wave64.c:
+    issue #68: clear WaveHeader at start to prevent uninitialized read
+
+2019-03-05  David Bryant  <david@wavpack.com>
+
+  * cli/dsdiff.c:
+    issue #67: make sure sample rate is specified and non-zero in DFF files
+
+2019-03-04  David Bryant  <david@wavpack.com>
+
+  * cli/caff.c:
+    issue #66: make sure CAF files have a "desc" chunk
+
+2019-03-02  David Bryant  <david@wavpack.com>
+
+  * cli/dsdiff.c:
+    issue #65: makre sure DSDIFF files have a valid channel count
+
+2018-12-23  evpobr  <evpobr@gmail.com>
+
+  * include/wavpack.h src/wavpack_local.h:
+    remove duplication so that wavpack_local.h can include wavpack.h
+
+2018-12-16  evpobr  <evpobr@gmail.com>
+
+  * Makefile.am, CMakeLists.txt:
+    add CMake project
+
+2018-12-09  orbea  <orbea@fredslev.dk>
+
+  * cli/Makefile.am:
+    fix command-line builds with slibtool
+
+2018-12-08  Ørjan Malde <foxyred333@gmail.com>
+
+  * src/extra[12].c, src/pack.c, src/pack_x64.S, src/unpack.c, src/unpack_x64.S, src/wavpack_local.h:
+    x64 ASM support for midipix
+
+2018-11-29  David Bryant  <david@wavpack.com>
+
+  * src/pack_utils.c:
+    issue #53: error on zero sample rate
+    - CVE-2018-19840
+
+2018-11-29  David Bryant  <david@wavpack.com>
+
+  * src/open_utils.c:
+    issue #54: fix potential out-of-bounds heap read
+    - CVE-2018-19841
+
+2018-11-29  David Bryant  <david@wavpack.com>
+
+  * src/open_filename.c:
+    Windows only: use wvc file when verifying encode when source is stdin
+
+2018-09-03  Mike Tzou  <Chocobo1@users.noreply.github.com>
+
+  * cli/import_id3.c, cli/wvgain.c, cli/open_raw.c, cli/wvparser.c, cli/wvunpack.c, winamp/in_wv.c:
+    printf() format specifiers
+    memory leaks
+
+2018-08-26  David Bryant  <david@wavpack.com>
+
+  * cli/dsdiff.c, cli/dsf.c, cli/caff.c:
+    issue #41 issue #42 issue #43: sanitize input files to prevent crashes
+
+2018-06-02  David Bryant  <david@wavpack.com>
+
+  * src/unpack_armv7.S:
+    fix thumb interworking on ARM by adding .type for assembly functions
+
+2018-04-30  David Bryant  <david@wavpack.com>
+
+  * cli/import_id3.c, cli/wavpack.c:
+    allow ID3v2.3 tag import from any file type (not just DSF)
+
+2018-04-29  David Bryant  <david@wavpack.com>
+
+  * cli/import_id3.c:
+    handle ID3v2.3 TXXX tags using description for APEv2 item name (w/ case formatting)
+
+2018-04-24  David Bryant  <david@wavpack.com>
+
+  * cli/riff.c, cli/wave64.c:
+    issue #30 issue #31 issue #32: no multiple format chunks in WAV or W64
+    - CVE-2018-10536
+    - CVE-2018-10537
+
+  * cli/dsdiff.c, cli/riff.c, cli/wave64.c:
+    issue #33, sanitize size of unknown chunks before malloc()
+    - CVE-2018-10538
+    - CVE-2018-10539
+    - CVE-2018-10540
+
+2018-04-17  David Bryant  <david@wavpack.com>
+
+  * cli/import_id3.c:
+    add a bunch more ID3v2.3 tag entries
+    make ImportID3v2() more robust (e.g. always set bytes_used)
+
+2018-04-08  David Bryant  <david@wavpack.com>
+
+  * src/common_utils.c:
+    fix memory leaks
+
+2018-02-11  David Bryant  <david@wavpack.com>
+
+  * cli/caff.c:
+    issue #26, fix buffer overflows and bad allocs on corrupt CAF files
+    - CVE-2018-7254
+
+2018-02-10  David Bryant  <david@wavpack.com>
+
+  * cli/dsdiff.c:
+    issue #28, do not overwrite heap on corrupt DSDIFF file
+    - CVE-2018-7253
+
+2018-02-04  David Bryant  <david@wavpack.com>
+
+  * cli/riff.c:
+    issue #27, do not overwrite stack on corrupt RF64 file
+    - CVE-2018-6767
+
+2017-10-29  David Bryant  <david@wavpack.com>
+
+  * src/read_words.c:
+    issue #24, another C++ compiler fix, this time for _BitScanForward()
+
+2017-10-28  David Bryant  <david@wavpack.com>
+
+  * Makefile.am:
+    add README.md to extra distribution files
+
+2017-10-20  Joël R. Langlois  <joel.r.langlois@gmail.com>
+
+  * README, README.md:
+    Updated README to Markdown format.
+
+2017-10-12  Joël R. Langlois  <joel.r.langlois@gmail.com>
+
+  * src/decorr_utils.c, src/entropy_utils.c, src/open_legacy.c,
+    src/open_utils.c, src/tag_utils.c, src/tags.c, src/unpack3.c,
+    src/unpack3_open.c, src/unpack_dsd.c, src/unpack_seek.c,
+    src/unpack_utils.c:
+    Fixed errors when compiling using a C++ compiler.
+
+2017-09-30  David Bryant  <david@wavpack.com>
+
+  * cli/import_id3.c:
+    experimental fix to handle ID3v2.3 tags that [incorrectly] use synchsafe for the frame size
+
+2017-08-31  David Bryant  <david@wavpack.com>
+
+  * cli/wavpack.c:
+    briefly describe other utilities in help displays for wavpack
+
+2017-07-24  David Bryant  <david@wavpack.com>
+
+  * cli/md5.h:
+    do not try to use libcrypto on OS X
+
+2017-07-23  David Bryant  <david@wavpack.com>
+
+  * cli/md5.c, cli/md5.h, cli/wavpack.c, cli/wvtest.c, cli/wvunpack.c, configure.ac:
+    use Alexander Peslyak's MD5 implementation (or libcrypto if present) to fix
+    unaligned access coredump on OpenBSD/sparc64 (reported on openbsd-ports)
+
+2017-03-19  David Bryant  <david@wavpack.com>
+
+  * src/write_words.c:
+    improve quality of scan_word() results on very short blocks (via multiple passes)
+
+2017-03-01  David Bryant  <david@wavpack.com>
+
+  * cli/wavpack.c, cli/wvgain.c, cli/wvtag.c, cli/wvunpack.c:
+    add required parens to correct precedence error/warning
+
+2017-02-26  David Bryant  <david@wavpack.com>
+
+  * cli/wavpack.c, cli/wvgain.c, cli/wvtag.c, cli/wvunpack.c:
+    refactor debug logging mode so that we can turn on a forced arg dump
+
+  * src/common_utils.c, src/wavpack_local.h:
+    provide for a "close" callback to be installed for dumping accumulated statistics
+
+  * configure.ac, src/unpack_armv7.S:
+    SSAT instruction required armv6, now we should work on all ARMs using a pair of shifts instead
+
+2017-02-18  Alexis Ballier  <aballier@gentoo.org>
+
+  * configure.ac:
+    configure: Restrict arm assembly to armv7 only.
+    ARM assembly in wavpack is armv7 only it seems.
+    I have reports this causes build failures on armv5: https://bugs.gentoo.org/show_bug.cgi?id=609168
+
+2017-02-16  David Bryant  <david@wavpack.com>
+
+  * cli/import_id3.c, cli/wvtag.c:
+    fix GitHub issue #19 (new dependency on wchar_t) by removing dependency
+
+2017-01-22  David Bryant  <david@wavpack.com>
+
+  * .travis.yml:
+    do more exhaustive testing for Travis (but should be faster)
+
+2017-01-22  Stephen  <stephengroat@users.noreply.github.com>
+
+  * .travis.yml:
+    enable travis ci build and testing (#17)
+    Create .travis.yml
+    fix for running tests
+    limit to smaller test suite
+    add quotes to get spaces in arg
+    remove linux clang builds
+    move to trusty for clang
+
+2017-01-18  David Bryant  <david@wavpack.com>
+
+  * ChangeLog:
+    refine change log and add updated plugins
+
+  * audition/cool_wv4.c, audition/readme.odt, audition/readme.pdf:
+    update Cool Edit / Audition filter to 3.1
+
+  * COPYING, license.txt, winamp/in_wv.c, winamp/installer/WavPackPlugin1.nsi:
+    update winamp to 2.8.0.3 and license dates
+
+2017-01-17  David Bryant  <david@wavpack.com>
+
+  * ChangeLog:
+    first pass at 5.1.0 changelog
+
+  * cli/Makefile.am, cli/import_id3.c, cli/wavpack.c:
+    fix Darwin build (iconv) and ptr warnings
+    improve --import-id3 console messaging
+
+2017-01-16  David Bryant  <david@wavpack.com>
+
+  * wavpackdll/wavpackdll.rc, wavpackexe/wavpack.vcproj, winamp/in_wv.c:
+    bump DLL version and fix MSVC build
+
+  * cli/utils.h, cli/wavpack.c, cli/wvgain.c, cli/wvtag.c, cli/wvunpack.c,
+    configure.ac, src/wavpack_version.h:
+    update version to 5.1.0 and bump some copyright dates
+
+  * src/pack.c:
+    do not write data in NEW_CONFIG_BLOCK for "do not care" bits in qmode
+
+  * src/unpack_dsd.c:
+    shorter DSD decimation filter with less HF rolloff and lower CPU use
+
+2017-01-15  David Bryant  <david@wavpack.com>
+
+  * doc/wavpack_doc.html:
+    update user manual for 5.1.0 and wvtag
+
+2017-01-14  David Bryant  <david@wavpack.com>
+
+  * cli/wvtag.c:
+    allow multiple files on Windows, update "help"
+
+  * man/Makefile.am, man/wavpack.1, man/wavpack.xml, man/wvgain.1, man/wvgain.xml,
+    man/wvtag.1, man/wvtag.xml, man/wvunpack.1, man/wvunpack.xml:
+    add man page for wvtag and update the other man pages (--import-id3)
+
+2017-01-13  David Bryant  <david@wavpack.com>
+
+  * cli/Makefile.am, cli/wavpack.c:
+    add --import-id3 option to wavpack executable
+    (works with original DSF files and when transcoding)
+
+  * cli/import_id3.c, cli/wvtag.c:
+    refactor ID3 import code to calculate the total number of bytes being imported
+    - allow total size and item count to be returned even on dry runs
+    - plug a memory leak in the dry run
+
+2017-01-11  David Bryant  <david@wavpack.com>
+
+  * src/pack.c, src/unpack.c:
+    fix issue where noise-shaping falsely triggers lossy muting
+    - only in very rare cases (detected with pathological testing)
+    - also fix (again) macro that disables lossy muting
+
+2017-01-08  David Bryant  <david@wavpack.com>
+
+  * src/pack_utils.c:
+    fix regression causing non-byte-aligned audio (e.g., 12-bit)
+    to lose the actual reduced bit-depth indication (although
+    there was no effect on integrity or compression ratio)
+
+2017-01-07  David Bryant  <david@wavpack.com>
+
+  * cli/import_id3.c, cli/wvtag.c, wavpack.sln, wvtagexe/wvtag.vcproj:
+    add wvtag to MSVC build and fix warnings (and one mistake)
+
+  * src/open_filename.c:
+    fix MSVC build (broken by portability enhancements...sigh)
+
+2017-01-06  David Bryant  <david@wavpack.com>
+
+  * cli/Makefile.am, cli/import_id3.c, cli/wvtag.c:
+    new cli tool "wvtag" to manipulate APEv2 tags on existing WavPack files
+    (includes new facility to import ID3v2.3 tag items from Sony DSF files)
+
+  * cli/wavpack.c:
+    add --pre-quantize-round to settings tag
+
+  * cli/wvgain.c, cli/wvunpack.c:
+    copy TextToUTF8() BOM fix into other modules that use it for filename lists

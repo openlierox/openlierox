@@ -1,0 +1,25 @@
+INCLUDE = -I.
+CFLAGS  = -O1 -speed -c99 -cpu=68060 -fpu=68060 -D__AMIGA__ $(INCLUDE)
+CFLAGS += -DVAR_ARRAYS=1 -DWORDS_BIGENDIAN=1
+CFLAGS += -D_LOW_ACCURACY_
+LIBNAME =  vorbisidec.lib
+
+CC      = vc
+# +m68kdb
+#MKLIB   = join $(LIBOBJ) as $(LIBNAME)
+MKLIB   = cat $(LIBOBJ) > $(LIBNAME)
+
+LIBOBJ = mdct.o block.o window.o synthesis.o info.o floor1.o floor0.o vorbisfile.o res012.o mapping0.o registry.o codebook.o sharedbook.o
+
+all: $(LIBNAME)
+
+$(LIBNAME): $(LIBOBJ)
+	$(MKLIB)
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+clean:
+	$(RM) *.o
+distclean: clean
+	$(RM) $(LIBNAME)

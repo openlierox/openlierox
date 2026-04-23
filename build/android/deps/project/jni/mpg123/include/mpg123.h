@@ -1,0 +1,1 @@
+../../sdl2_mixer/external/mpg123/android/mpg123.h

@@ -1,0 +1,232 @@
+.Dd January 4, 2023
+.Dt WVUNPACK 1
+.Os
+.Sh NAME
+.Nm wvunpack
+.Nd decode wavpack encoded files
+.Sh SYNOPSIS
+.Nm wvunpack
+.Op Fl options
+.Op Fl o Ar output
+.Ar
+.Sh DESCRIPTION
+.Nm wvunpack
+decodes WavPack files back to their original uncompressed form.
+Unless overridden with the
+.Fl o
+switch, the output filename will be the source filename
+with the original file extension replacing WavPack's
+.Dq .wv
+extension.
+It is also possible to output raw audio without headers using the
+.Fl -raw
+option.
+Multiple WavPack input files may be specified
+resulting in multiple output files, and in that case
+.Fl o
+may be used to specify an alternate target directory.
+A filename of
+.Dq -
+specifies
+.Pa stdin
+or
+.Pa stdout .
+It is also possible to export to one of the alternate file formats below,
+but in that case the information in the original headers and trailers
+will be lost, even if the alternate format is the same as the source format.
+WavPack files are generally created with the
+.Nm wavpack
+program.
+.Pp
+If multiple input files are specified with piped output
+.Pf ( Dq -o - ) ,
+then the output from all the files is concatenated.
+This can be utilized as an easy way to concatenate WavPack files
+(assuming the output is subsequently piped into
+.Nm wavpack ) ,
+but only makes sense with raw output
+.Pf ( Fl -raw )
+to avoid headers being interleaved with the audio data.
+.Ss OUTPUT FORMATS
+.Bl -bullet -compact
+.It
+Microsoft RIFF
+.Pq Dq .wav ,
+force with
+.Fl -wav ,
+creates RF64 if > 4 GB
+.It
+Sony Wave64
+.Pq Dq .w64 ,
+force with
+.Fl -w64
+.It
+Apple AIFF
+.Pq Dq .aif ,
+force with
+.Fl -aif
+or
+.Fl -aif-le
+.It
+Apple Core Audio
+.Pq Dq .caf ,
+force with
+.Fl -caf-be
+or
+.Fl -caf-le
+.It
+Raw PCM or DSD
+.Pq Dq .raw ,
+force with
+.Fl r
+or
+.Fl -raw
+.It
+Philips DSDIFF
+.Pq Dq .dff ,
+force with
+.Fl -dsdiff
+or
+.Fl -dff
+.It
+Sony DSD Stream
+.Pq Dq .dsf ,
+force with
+.Fl -dsf
+.El
+.Ss OPTIONS
+.Bl -tag -width Ds
+.It Fl -aif , Fl -aif-le
+force output to Apple AIFF (or AIFF-C/sowt), extension
+.Dq .aif
+.It Fl b
+blindly decode all stream blocks and ignore length info
+.It Fl c
+do not decode audio but instead just extract cuesheet stored in APEv2 tag to
+.Pa stdout
+(equivalent to
+.Fl x
+.Dq cuesheet )
+.It Fl cc
+extract cuesheet stored in APEv2 tag to
+.Pa source-name.cue
+file in same directory as decoded audio file
+(equivalent to
+.Fl xx
+.Dq cuesheet=%a.cue )
+.It Fl -caf-be , Fl -caf-le
+force output to big-endian or little-endian Core Audio, extension
+.Dq .caf
+.It Fl d
+delete source file if successful;
+.Sy use with caution!
+.It Fl -dff , Fl -dsdiff
+force output to Philips DSDIFF, DSD audio source only, extension
+.Dq .dff
+.It Fl -dsf
+force output to Sony DSF, DSD audio source only, extension
+.Dq .dsf
+.It Fl f
+do not decode audio but simply display summary information
+about WavPack file to
+.Pa stdout
+in a machine-parsable format (see
+.Pa doc/wavpack_doc.html
+or
+.Pa cli/wvunpack.c
+for details)
+.It Fl -help
+display extended help
+.It Fl i
+ignore .wvc file (forces hybrid lossy decompression)
+.It Fl m
+calculate and display MD5 signature; verify if lossless
+.It Fl n
+no audio decoding (use with
+.Fl xx
+to extract tags only)
+.It Fl -normalize-floats
+normalize float audio to +/-1.0 if it isn't normalized already
+(rarely the case, but alters audio and fails MD5)
+.It Fl -no-utf8-convert
+leave extracted text tags in UTF-8 encoding during extraction or display
+.It Fl o Ar OUTFILE
+specify output filename (only if single source file)
+or target directory (must already exist)
+.It Fl q
+quiet (keep console output to a minimum)
+.It Fl r , Fl -raw
+force raw PCM or DSD audio decode by skipping headers & trailers, results in
+.Pa source-name.raw
+.It Fl -raw-pcm
+similar to
+.Fl r
+and
+.Fl -raw
+above except that DSD audio will be converted to 24-bit PCM (8x decimation)
+.It Fl s
+do not decode audio but simply display summary information
+about WavPack file to
+.Pa stdout
+.It Fl ss
+do not decode audio but simply display summary and tag information
+about WavPack file to
+.Pa stdout
+.It Fl -skip=[-][ Ns Ar sample Ns | Ns Ar hh : Ns Ar mm : Ns Ar ss.ss ]
+start decoding at specified sample or time index, specifying a
+.Sq -
+causes sample/time to be relative to EOF
+.It Fl t
+copy input file's time stamp to output file(s)
+.It Fl -until=[+|-][ Ns Ar sample Ns | Ns Ar hh : Ns Ar mm : Ns Ar ss.ss ]
+stop decoding at specified sample or time index, specifying a
+.Sq +
+causes sample/time to be relative to
+.Fl -skip
+point,
+specifying a
+.Sq -
+causes sample/time to be relative to EOF
+.It Fl v
+verify source data only (no output file created)
+.It Fl vv
+quick verify (no output, version 5+ files only)
+.It Fl -version
+write program version to
+.Pa stdout
+.It Fl w , Fl -wav
+force output to Microsoft RIFF/RF64, extension
+.Dq .wav
+.It Fl -w64
+force output to Sony Wave64, extension
+.Dq .w64
+.It Fl x Do Ar Field Dc
+do not decode audio but instead just extract the specified tag field to
+.Pa stdout
+.It Fl xx Do Ar Field Ns [= Ns Ar file ] Dc
+extract the specified tag field into a named file in the same directory
+as the decoded audio file; optional filename specification may contain
+.Sq %a
+which is replaced with the audio file base name,
+.Sq %t
+replaced with the tag field name (note: comes from data for binary tags) and
+.Sq %e
+replaced with the extension from the binary tag source file (or
+.Dq txt
+for text tag).
+.It Fl y
+yes to overwrite warning;
+.Sy use with caution!
+.It Fl z[ Ns Ar n ]
+don't set (n = 0 or omitted) or set (n = 1) console title
+to indicate progress (leaves "WvUnpack Completed")
+.El
+.Sh SEE ALSO
+.Xr wavpack 1 ,
+.Xr wvgain 1 ,
+.Xr wvtag 1 ,
+.Lk www.wavpack.com
+.Sh AUTHORS
+.An David Bryant Aq Mt david@wavpack.com
+.An Sebastian Dröge Aq Mt slomo@debian.org
+.An Jan Starý Aq Mt hans@stare.cz

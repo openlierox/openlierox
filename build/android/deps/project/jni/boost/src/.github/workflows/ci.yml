@@ -1,0 +1,76 @@
+name: CI
+
+on: [pull_request]
+
+env:
+  ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        boost_version: [1.79.0,1.82.0]
+        abi: [armeabi-v7a,arm64-v8a,x86,x86_64]
+        os: [ubuntu-latest,macos-latest]
+        include:
+          # includes a new variable of 'variation' for each host os
+          - os: ubuntu-latest
+            variation: linux
+          - os: macos-latest
+            variation: mac
+          # specify ndk version for each boost version
+          - boost_version: 1.79.0
+            ndk_version: 25.0.8775105
+          - boost_version: 1.82.0
+            ndk_version: 25.2.9519653
+      fail-fast: false
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - name: Checkout Sources
+      uses: actions/checkout@v1
+      with:
+        fetch-depth: 1
+    - name: Setup Android Environment
+      uses: android-actions/setup-android@v2
+    - name: Install Android NDK
+      run: sdkmanager --install "ndk;${{ matrix.ndk_version }}"
+    - name: Setup Environment Variables
+      run: |
+        set -x
+        export NDK_ROOT=${ANDROID_SDK_ROOT}/ndk/${{ matrix.ndk_version }}
+        echo "::set-env name=NDK_ROOT::$NDK_ROOT"
+        export NUM_CPU=`python -c 'import multiprocessing as mp; print(mp.cpu_count())'`
+        echo "::set-env name=NUM_CPU::$NUM_CPU"
+        set
+        mkdir -p bins/${{ matrix.variation }}
+        mkdir -p logs/${{ matrix.variation }}
+    - name: Build Boost for Android on ${{ matrix.variation }}
+      run: CXXFLAGS="-std=c++14" ./build-android.sh --boost=${{ matrix.boost_version }} --arch=${{ matrix.abi }} --with-libraries=atomic,random,date_time,filesystem,system,thread,chrono,locale "${NDK_ROOT}"
+    - name: Prepare Binaries
+      run: |
+        set -x
+        mv build/out/* ${GITHUB_WORKSPACE}/bins/${{ matrix.variation }}/ || true
+        # Get rid of boost include directory cause it takes a long time to pack and upload (~20 min)
+        find ${GITHUB_WORKSPACE}/bins/${{ matrix.variation }} -type d -name "include" -exec rm -rf {} +
+        ls -alFR ${GITHUB_WORKSPACE}/bins
+      if: always()
+    - name: Upload Binaries
+      uses: actions/upload-artifact@v1
+      with:
+        name: binaries_${{ matrix.boost_version }}_${{ matrix.abi }}
+        path: ./bins
+      if: always()
+    - name: Prepare Logs
+      run: |
+        set -x
+        mv logs/*.log ${GITHUB_WORKSPACE}/logs/${{ matrix.variation }}/ || true
+        ls -alFR ${GITHUB_WORKSPACE}/logs
+      if: always()
+    - name: Upload Logs
+      uses: actions/upload-artifact@v1
+      with:
+        name: logs_${{ matrix.boost_version }}
+        path: ./logs
+      if: always()

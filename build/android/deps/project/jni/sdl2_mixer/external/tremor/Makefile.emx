@@ -1,0 +1,23 @@
+CFLAGS  = -Zmt -O2 -march=i586 -Wall -I.
+CFLAGS += -DHAVE_ALLOCA -DHAVE_ALLOCA_H -D_LOW_ACCURACY_
+LIBNAME =  vorbisidec.a
+
+CC      = gcc
+AR      = ar
+RANLIB  = ranlib
+
+LIBOBJ = mdct.o block.o window.o synthesis.o info.o floor1.o floor0.o vorbisfile.o res012.o mapping0.o registry.o codebook.o sharedbook.o
+
+all: $(LIBNAME)
+
+$(LIBNAME): $(LIBOBJ)
+	$(AR) cru $(LIBNAME) $(LIBOBJ)
+	$(RANLIB) $(LIBNAME)
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+clean:
+	$(RM) *.o
+distclean: clean
+	$(RM) $(LIBNAME)

@@ -42,6 +42,25 @@ build-*
 !build-output/
 !build/android/
 
+# Android port build artefacts inside the vendored commandergenius tree
+build/android/deps/project/obj/
+build/android/deps/project/libs/
+build/android/deps/project/build/
+build/android/deps/project/app/build/
+build/android/deps/project/bin/
+build/android/deps/project/local.properties
+build/android/deps/project/jni/*/build/
+build/android/deps/project/jni/openssl/lib/
+build/android/deps/project/jni/iconv/lib/
+build/android/deps/project/jni/boost/lib/
+build/android/deps/project/jni/boost/include/
+build/android/deps/project/assets/data.zip.xz
+build/android/deps/project/app/src/main/assets/
+# openlierox application dir is overlaid from this repo at build time
+build/android/deps/project/jni/application/openlierox/
+build/android/deps/project/jni/application/src
+build/android/deps/AndroidAppSettings.cfg.lock
+
 # this one is automatically created by CMake
 gamedecompiler.xcodeproj
 

@@ -1,0 +1,110 @@
+.Dd January 3, 2023
+.Dt WVTAG 1
+.Os
+.Sh NAME
+.Nm wvtag
+.Nd manipulate wavpack metadata
+.Sh SYNOPSIS
+.Nm wvtag
+.Op Fl options
+.Ar
+.Sh DESCRIPTION
+.Nm
+applies the specified metadata operations
+to each of the specified WavPack source files in this order:
+clean, import, delete, write, extract, list.
+Note that WavPack metadata is stored in APEv2 tags, and
+.Nm
+will automatically import from an ID3v1 tag
+if it is the only tag present in the source file,
+and that ID3v1 tag will be deleted and replaced with an APEv2 tag
+if an edit is requested.
+.Ss OPTIONS
+.Bl -tag -width Ds
+.It Fl -allow-huge-tags
+allow tag data up to 16 MB.
+Embedding > 1 MB is not recommended for portable devices
+and may not work with some programs,
+including older versions of WavPack.
+.It Fl c
+extract cuesheet only to
+.Pa stdout
+(equivalent to
+.Fl x
+.Dq cuesheet )
+.It Fl cc
+extract cuesheet to
+.Pa source-name.cue
+file in same directory as source file
+(equivalent to
+.Fl xx
+.Dq cuesheet=%a.cue )
+.It Fl -clean , Fl -clear
+clean all items from tag (done first)
+.It Fl d Do Ar Field Dc
+delete specified metadata item (text or binary)
+.It Fl h , Fl -help
+display this help
+.It Fl -import-id3
+import applicable tag items from ID3v2.3 tag
+present in DSF and possibly other files into the APEv2 tag.
+If there are > 1 MB cover images present, add
+.Fl -allow-huge-tags
+to include them.
+.It Fl l , Fl -list
+list all tag items (done last)
+.It Fl -no-utf8-convert
+don't recode passed tags from local encoding to UTF-8,
+assume they are in UTF-8 already
+.It Fl q
+Be quiet: keep console output to a minimum.
+.It Fl v , Fl -version
+Write program version to
+.Pa stdout
+.It Fl w Do Ar Field Ns = Dc
+delete specified metadata item (text or binary)
+.It Fl w Do Ar Field Ns = Ns Ar Value Dc
+write specified text metadata to APEv2 tag
+.It Fl w Do Ar Field Ns =@ Ns Ar file.ext Dc
+write specified text metadata from file to APEv2 tag,
+normally used for embedded cuesheets and logs
+(field names
+.Dq Cuesheet
+and
+.Dq Log )
+.It Fl -write-binary-tag Do Ar Field Ns =@ Ns Ar file.ext Dc
+write the specified binary metadata file to APEv2 tag,
+normally used for cover art with the specified field name
+.Dq Cover Art (Front)
+.It Fl x Do Ar Field Dc
+extract the specified tag field only to
+.Pa stdout
+.It Fl xx Do Ar Field Ns [= Ns Ar filename ] Dc
+extract the specified tag field into a named file
+in same directory as source file.
+An optional
+.Ar filename
+specification may contain
+.Sq %a
+which gets replaced with the audio file base name;
+.Sq %t
+which gets replaced with the tag field name
+(note that for binary tags, this comes from the data);
+and
+.Sq %e
+which gets replaced with the extension of the binary tag source file
+(or
+.Dq txt
+for a text tag).
+.It Fl y
+yes to all warnings;
+.Sy use with caution!
+.El
+.Sh SEE ALSO
+.Xr wavpack 1 ,
+.Xr wvgain 1 ,
+.Xr wvunpack 1 ,
+.Lk www.wavpack.com
+.Sh AUTHORS
+.An David Bryant Aq Mt david@wavpack.com
+.An Jan Starý Aq Mt hans@stare.cz

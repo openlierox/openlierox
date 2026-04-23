@@ -1,0 +1,21 @@
+name: CI Android
+
+on: [push, pull_request]
+
+jobs:
+  android:
+    name: Android
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: nttld/setup-ndk@v1
+        id: setup_ndk
+        with:
+          ndk-version: r21e
+      - name: Build (Android.mk)
+        run: |
+          ndk-build NDK_PROJECT_PATH=. APP_BUILD_SCRIPT=Android.mk APP_STL=c++_shared V=1

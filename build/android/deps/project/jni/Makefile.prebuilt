@@ -1,0 +1,120 @@
+# Makefile to build precompiled libraries, which cannot be built using standard NDK makefiles
+# TODO: libffmpeg, libpython (used only in GemRB)
+
+ARCH_LIST ?= arm64-v8a x86_64 armeabi-v7a x86
+ifeq ($(strip $(ARCH_LIST)),all)
+	ARCH_LIST := arm64-v8a x86_64 armeabi-v7a x86
+endif
+
+ICONV := $(foreach ARCH, $(ARCH_LIST), iconv/lib/$(ARCH)/libiconv.so iconv/lib/$(ARCH)/libcharset.so)
+
+ICU_LIBS := icudata icui18n icuio icutest icutu icuuc iculx icu-le-hb
+ICU := $(foreach ARCH, $(ARCH_LIST), $(foreach NAME, $(ICU_LIBS), icuuc/lib/$(ARCH)/lib$(NAME).a))
+
+OPENSSL := $(foreach ARCH, $(ARCH_LIST), openssl/lib/$(ARCH)/libcrypto.so.sdl.1.so openssl/lib/$(ARCH)/libssl.so.sdl.1.so)
+
+BOOST_LIBS := \
+	atomic \
+	chrono \
+	container \
+	context \
+	contract \
+	coroutine \
+	date_time \
+	exception \
+	filesystem \
+	graph \
+	iostreams \
+	json \
+	locale \
+	log \
+	log_setup \
+	math_c99 \
+	math_c99f \
+	math_c99l \
+	math_tr1 \
+	math_tr1f \
+	math_tr1l \
+	nowide \
+	prg_exec_monitor \
+	program_options \
+	random \
+	regex \
+	serialization \
+	system \
+	test_exec_monitor \
+	thread \
+	timer \
+	type_erasure \
+	unit_test_framework \
+	wave \
+	wserialization \
+
+
+BOOST := $(foreach ARCH, $(ARCH_LIST), $(foreach NAME, $(strip $(BOOST_LIBS)), boost/lib/$(ARCH)/libboost_$(NAME).a))
+
+.PHONY: all boost icu openssl
+
+all: $(ICONV) $(ICU) $(OPENSSL) $(BOOST)
+
+boost: $(BOOST) $(foreach NAME, $(strip $(BOOST_LIBS)), boost_$(NAME))
+
+icu: $(ICONV) $(ICU)
+
+openssl: $(OPENSSL)
+
+$(ICONV) $(ICU): iconv/src/build.sh
+	cd iconv/src && \
+	for ARCH in $(ARCH_LIST); do \
+		$(shell echo "#=Compiling iconv for $$ARCH") \
+		env ARCHS=$$ARCH PATH=$(PATH):${ANDROID_NDK_HOME} ./build.sh && \
+		mkdir -p ../lib/$$ARCH ../include ; \
+		cp -f $$ARCH/libiconv.so $$ARCH/libcharset.so ../lib/$$ARCH/  ; \
+		cp -f $$ARCH/include/*.h ../include/  ; \
+		mkdir -p ../../icuuc/lib/$$ARCH ../../icuuc/include/unicode ../../icuuc/include/layout  ; \
+		cp -f $$ARCH/libicu*.a ../../icuuc/lib/$$ARCH/  ; \
+		[ -d ../../icuuc/share ] || cp -rf $$ARCH/share ../../icuuc/  ; \
+		cp -f $$ARCH/include/unicode/*.h ../../icuuc/include/unicode/  ; \
+		cp -f $$ARCH/include/layout/*.h ../../icuuc/include/layout/  ; \
+		cp -f $$ARCH/include/icu-le-hb/layout/*.h ../../icuuc/include/layout/  ; \
+	done
+
+$(OPENSSL): openssl/compile.sh
+	cd openssl && env ARCH_LIST="$(ARCH_LIST)" ./compile.sh
+
+$(BOOST): boost/src/build-android.sh
+	rm -rf boost/include boost/lib ; \
+	cd boost/src && \
+	./build-android.sh --boost=1.78.0 --with-iconv --target-version=16 --arch=$(shell echo $(foreach ARCH, $(ARCH_LIST),$(ARCH),) | tr -d ' ') && \
+	for ARCH in $(ARCH_LIST); do  \
+		mkdir -p ../lib/$$ARCH ../include ; \
+		$(foreach NAME, $(strip $(BOOST_LIBS)), cp -f build/out/$$ARCH/lib/libboost_$(NAME)-clang-mt-*.a ../lib/$$ARCH/libboost_$(NAME).a || exit 1 ;) \
+		cp -r -f build/out/$$ARCH/include/boost-*/* ../include/ || exit 1 ; \
+	done || exit 1
+
+$(foreach NAME, $(strip $(BOOST_LIBS)), boost_$(NAME)):
+	ln -sf boost $@
+
+iconv/src/build.sh boost/src/build-android.sh:
+	git submodule update --init --recursive
+
+# Dependencies for CustomBuildScript.mk
+
+define COPY_TO_OBJ =
+
+ARCH := $(1)
+SRCDIR := $(2)
+FILENAME := $(3)
+
+../obj/local/$$(ARCH)/$$(FILENAME) $$(abspath ../obj/local/$$(ARCH)/$$(FILENAME)): $$(SRCDIR)/$$(FILENAME)
+	cp -f $$< $$@
+
+#$$(warning === ARCH = $(1) SRCDIR = $(2) FILENAME = $(3) ../obj/local/$$(ARCH)/$$(FILENAME) $$(abspath ../obj/local/$$(ARCH)/$$(FILENAME)): $$(SRCDIR)/$$(FILENAME))
+
+endef # COPY_TO_OBJ
+
+$(foreach ARCH, $(ARCH_LIST), $(foreach NAME, libiconv.so libcharset.so, $(eval $(call COPY_TO_OBJ,$(ARCH),iconv/lib/$(ARCH),$(NAME)))))
+
+$(foreach ARCH, $(ARCH_LIST), $(foreach NAME, $(ICU_LIBS), $(eval $(call COPY_TO_OBJ,$(ARCH),icuuc/lib/$(ARCH),lib$(NAME).a))))
+
+$(foreach ARCH, $(ARCH_LIST), $(foreach NAME, libcrypto.so.sdl.1.so libssl.so.sdl.1.so, $(eval $(call COPY_TO_OBJ,$(ARCH),openssl/lib/$(ARCH),$(NAME)))))

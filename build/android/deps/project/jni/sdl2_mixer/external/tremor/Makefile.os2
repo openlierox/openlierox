@@ -1,0 +1,27 @@
+# build tremor (libvorbisidec) using OpenWatcom for OS/2 as a static libary
+#
+
+CFLAGS  = -bt=os2 -bm -fp5 -fpi87 -mf -oeatxh -w4 -ei -j -zp8
+# -5s  :  Pentium stack calling conventions.
+# -5r  :  Pentium register calling conventions.
+CFLAGS += -5s
+CFLAGS += -I.
+CPPFLAGS= -DHAVE_ALLOCA -DHAVE_ALLOCA_H -D_LOW_ACCURACY_
+LIBNAME = vorbisidec.lib
+
+COMPILE = wcc386 -q $(CFLAGS) $(CPPFLAGS)
+
+OBJ = mdct.obj block.obj window.obj synthesis.obj info.obj floor1.obj floor0.obj vorbisfile.obj res012.obj mapping0.obj registry.obj codebook.obj sharedbook.obj
+
+all: $(LIBNAME)
+
+$(LIBNAME): $(OBJ)
+	wlib -q -b -n -c -pa -s -t -zld -ii -io $@ $(OBJ)
+
+.c.obj:
+	$(COMPILE) -fo=$^@ $<
+
+distclean: clean .symbolic
+	rm -f *.lib *.err
+clean: .symbolic
+	rm -f *.obj

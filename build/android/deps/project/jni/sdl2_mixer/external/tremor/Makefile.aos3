@@ -1,0 +1,25 @@
+INCLUDE = -I.
+CFLAGS  = -noixemul -O2 -m68020-60 -Wall $(INCLUDE)
+CFLAGS += -DHAVE_ALLOCA=1 -DWORDS_BIGENDIAN=1
+CFLAGS += -D_LOW_ACCURACY_
+LIBNAME =  libvorbisidec.a
+
+CC      = m68k-amigaos-gcc
+AR      = m68k-amigaos-ar
+RANLIB  = m68k-amigaos-ranlib
+
+LIBOBJ = mdct.o block.o window.o synthesis.o info.o floor1.o floor0.o vorbisfile.o res012.o mapping0.o registry.o codebook.o sharedbook.o
+
+all: $(LIBNAME)
+
+$(LIBNAME): $(LIBOBJ)
+	$(AR) cru $(LIBNAME) $(LIBOBJ)
+	$(RANLIB) $(LIBNAME)
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+clean:
+	$(RM) *.o
+distclean: clean
+	$(RM) $(LIBNAME)

@@ -53,33 +53,6 @@ jobs:
             "ndk;29.0.14206865"
           echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/29.0.14206865" >> "$GITHUB_ENV"
 
-      - name: Clone commandergenius port
-        # The Android build uses an external commandergenius checkout as
-        # the SDL2/Gradle/NDK harness. The repo pulls in ~100 submodules
-        # (one per application port it supports — teeworlds, xserver, etc.)
-        # but openlierox only needs libraries under project/jni/. Two
-        # classes of submodule URL in that repo fail on GitHub Actions:
-        #   - git:// URLs: GitHub disabled the protocol in 2022
-        #   - git@github.com: (SSH) URLs: require keys the runner lacks
-        # Clone without submodules, force https:// for any URL, then init
-        # only project/jni/ entries (excluding project/jni/application/*).
-        run: |
-          set -euo pipefail
-          git clone --depth 1 \
-            https://github.com/pelya/commandergenius.git \
-            "$HOME/commandergenius"
-          cd "$HOME/commandergenius"
-          git config --global url."https://github.com/".insteadOf "git://github.com/"
-          git config --global url."https://github.com/".insteadOf "git@github.com:"
-          mapfile -t NEEDED < <(git submodule status | awk '{print $2}' | grep '^project/jni/' | grep -v '^project/jni/application/')
-          echo "Initialising ${#NEEDED[@]} port submodules…"
-          # --recursive so sdl2_image's own submodules (external/jpeg,
-          # external/libpng, etc.) are also fetched; without them the
-          # ndk-build step fails with 'Module SDL2_image depends on
-          # undefined modules: jpeg png'.
-          git submodule update --init --recursive --depth 1 -- "${NEEDED[@]}"
-          echo "PORT_DIR=$HOME/commandergenius" >> "$GITHUB_ENV"
-
       - name: Create Android debug keystore
         # The port's build.sh signs release APKs with the standard
         # Android debug keystore. On a developer machine this is created
@@ -102,7 +75,8 @@ jobs:
       - name: Build APK
         run: |
           set -euo pipefail
-          export PORT_DIR="$HOME/commandergenius"
+          # PORT_DIR defaults to build/android/deps/ (vendored into this
+          # repo), so no external commandergenius clone is required.
           export ANDROID_SDK_ROOT="$ANDROID_SDK_ROOT"
           export ANDROID_HOME="$ANDROID_SDK_ROOT"
           export PATH="$ANDROID_SDK_ROOT/platform-tools:$ANDROID_SDK_ROOT/build-tools/36.0.0:$ANDROID_NDK_HOME:$PATH"
