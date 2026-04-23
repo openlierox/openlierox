@@ -231,6 +231,20 @@ if [ -f "$SDL2_MANIFEST" ]; then
     if [ -n "$APP_VN" ]; then
         sed -i "s^android:versionName=\"[^\"]*\"^android:versionName=\"$APP_VN\"^" "$SDL2_MANIFEST"
     fi
+
+    # Force landscape orientation on the main activity. The SDL2 template
+    # leaves screenOrientation unset, so Android respects device rotation
+    # and launches in portrait on most phones. OpenLieroX is landscape-only.
+    case "$(grep -Po 'ScreenOrientation=\K[hvlp]' "$ANDROID_META/AndroidAppSettings.cfg")" in
+        h|l) ORIENT="landscape" ;;
+        v|p) ORIENT="portrait" ;;
+        *)   ORIENT="" ;;
+    esac
+    if [ -n "$ORIENT" ] && ! grep -q 'android:screenOrientation=' "$SDL2_MANIFEST"; then
+        echo ">>> forcing android:screenOrientation=\"$ORIENT\" on MainActivity"
+        sed -i "/<activity android:name=\"MainActivity\"/a\\            android:screenOrientation=\"$ORIENT\"" \
+            "$SDL2_MANIFEST"
+    fi
 fi
 
 # --- 5. Drop stale application object files ------------------------------
