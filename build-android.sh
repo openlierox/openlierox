@@ -129,11 +129,20 @@ if [ ! -d "$ANDROID_META" ]; then
 fi
 
 echo ">>> syncing build/android metadata into port"
+# Sync each known file: copy if present in our tree, remove from the
+# port if absent. Without the remove side, a fresh commandergenius
+# clone's own bundled project.patch / java.patch (targeting the 0.58
+# SDL 1.2 manifest) sticks around and breaks the SDL2 manifest patch.
 for f in AndroidAppSettings.cfg AndroidPreBuild.sh liero.raw java.patch project.patch; do
     if [ -f "$ANDROID_META/$f" ]; then
         cp -f "$ANDROID_META/$f" "$PORT_APP/$f"
+    else
+        rm -f "$PORT_APP/$f"
     fi
 done
+# Also scrub any stale reject files from a previously failed patch run.
+rm -f "$PORT_APP/$f.rej" 2>/dev/null || true
+rm -f "$PORT_DIR/project/AndroidManifest.xml.rej" 2>/dev/null || true
 chmod +x "$PORT_APP/AndroidPreBuild.sh" 2>/dev/null || true
 
 # --- 2. Overlay 0.59 source onto port's openlierox/src/ -------------------
