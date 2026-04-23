@@ -1,0 +1,91 @@
+name: Build
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+      - 0.59
+      - build-for-android
+
+jobs:
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout openlierox
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libboost-dev \
+            xz-utils \
+            zip
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Android SDK + cmdline-tools
+        uses: android-actions/setup-android@v3
+        with:
+          packages: ""
+
+      - name: Install NDK and build-tools via sdkmanager
+        run: |
+          set -euo pipefail
+          yes | sdkmanager --licenses >/dev/null
+          sdkmanager \
+            "platform-tools" \
+            "platforms;android-36" \
+            "build-tools;36.0.0" \
+            "ndk;29.0.14206865"
+          echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/29.0.14206865" >> "$GITHUB_ENV"
+
+      - name: Clone commandergenius port
+        # The Android build uses an external commandergenius checkout as
+        # the SDL2/Gradle/NDK harness. It has a lot of submodules but the
+        # openlierox port needs most of them (SDL2, SDL2_image, SDL2_mixer,
+        # openal, boost, gd, png, xml2, curl, ssl, etc.).
+        run: |
+          git clone --depth 1 --recurse-submodules --shallow-submodules \
+            https://github.com/pelya/commandergenius.git \
+            "$HOME/commandergenius"
+          echo "PORT_DIR=$HOME/commandergenius" >> "$GITHUB_ENV"
+
+      - name: Build APK
+        run: |
+          set -euo pipefail
+          export PORT_DIR="$HOME/commandergenius"
+          export ANDROID_SDK_ROOT="$ANDROID_SDK_ROOT"
+          export ANDROID_HOME="$ANDROID_SDK_ROOT"
+          export PATH="$ANDROID_SDK_ROOT/platform-tools:$ANDROID_SDK_ROOT/build-tools/36.0.0:$ANDROID_NDK_HOME:$PATH"
+          # The debug keystore used for signing is auto-created on first
+          # apksigner invocation, but ensure the dir exists so the port's
+          # build.sh doesn't race on creating it.
+          mkdir -p "$HOME/.android"
+          ./build-android.sh --sync-data
+
+      - name: Rename APK with version tag
+        id: apk
+        run: |
+          set -euo pipefail
+          VERSION="$(tr '_' '~' < VERSION)"
+          NAME="openlierox-${VERSION}-android.apk"
+          mv build-output/openlierox-android.apk "build-output/${NAME}"
+          echo "name=${NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload openlierox-android
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.apk.outputs.name }}
+          path: build-output/openlierox-*-android.apk
+          if-no-files-found: error
