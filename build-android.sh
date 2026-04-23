@@ -179,8 +179,11 @@ if [ "$SYNC_DATA" = 1 ]; then
     fi
     echo ">>> --sync-data: repacking AndroidData/data.zip.xz from $SRC_GAMEDIR"
     mkdir -p "$PORT_APP/AndroidData"
-    TMP_ZIP="$(mktemp -t olx-gamedir.XXXXXX.zip)"
+    TMP_ZIP="$(mktemp -u -t olx-gamedir.XXXXXX.zip)"
     trap 'rm -f "$TMP_ZIP"' EXIT
+    # mktemp -u only reserves a unique name; zip bails if the target
+    # exists as a zero-byte file ("Zip file structure invalid"), so we
+    # rely on it not existing.
     (cd "$SRC_GAMEDIR" && zip -0 -rq "$TMP_ZIP" .)
     xz -9 --threads=0 < "$TMP_ZIP" > "$PORT_APP/AndroidData/data.zip.xz.new"
     mv "$PORT_APP/AndroidData/data.zip.xz.new" "$PORT_APP/AndroidData/data.zip.xz"
