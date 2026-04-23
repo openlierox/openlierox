@@ -80,6 +80,25 @@ jobs:
           git submodule update --init --recursive --depth 1 -- "${NEEDED[@]}"
           echo "PORT_DIR=$HOME/commandergenius" >> "$GITHUB_ENV"
 
+      - name: Create Android debug keystore
+        # The port's build.sh signs release APKs with the standard
+        # Android debug keystore. On a developer machine this is created
+        # by the SDK on first use; on a fresh CI runner it doesn't
+        # exist, so apksigner aborts with FileNotFoundException. Create
+        # it up front with the conventional storepass/keypass/alias
+        # (android / android / androiddebugkey).
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.android"
+          if [ ! -f "$HOME/.android/debug.keystore" ]; then
+              keytool -genkeypair -v \
+                  -keystore "$HOME/.android/debug.keystore" \
+                  -storepass android -keypass android \
+                  -alias androiddebugkey \
+                  -dname 'CN=Android Debug,O=Android,C=US' \
+                  -keyalg RSA -keysize 2048 -validity 10000
+          fi
+
       - name: Build APK
         run: |
           set -euo pipefail
@@ -87,10 +106,6 @@ jobs:
           export ANDROID_SDK_ROOT="$ANDROID_SDK_ROOT"
           export ANDROID_HOME="$ANDROID_SDK_ROOT"
           export PATH="$ANDROID_SDK_ROOT/platform-tools:$ANDROID_SDK_ROOT/build-tools/36.0.0:$ANDROID_NDK_HOME:$PATH"
-          # The debug keystore used for signing is auto-created on first
-          # apksigner invocation, but ensure the dir exists so the port's
-          # build.sh doesn't race on creating it.
-          mkdir -p "$HOME/.android"
           ./build-android.sh --sync-data
 
       - name: Rename APK with version tag
