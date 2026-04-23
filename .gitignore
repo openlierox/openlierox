@@ -48,6 +48,7 @@ build/android/deps/project/libs/
 build/android/deps/project/build/
 build/android/deps/project/app/build/
 build/android/deps/project/bin/
+build/android/deps/project/.gradle/
 build/android/deps/project/local.properties
 build/android/deps/project/jni/*/build/
 build/android/deps/project/jni/openssl/lib/
