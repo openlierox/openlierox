@@ -41,6 +41,9 @@ build-*
 !build-android.sh
 !build-output/
 !build/android/
+# Vendored third-party code under build/android/deps/ uses "build-" prefixes
+# legitimately (e.g. build-template.gradle, build-scripts/, build-common.sh).
+!build/android/deps/**/build-*
 
 # Android port build artefacts inside the vendored commandergenius tree
 build/android/deps/project/obj/
