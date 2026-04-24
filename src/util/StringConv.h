@@ -131,13 +131,6 @@ INLINE std::string itoa(unsigned long long num, short base=10)  {
 
 	return buf;
 }
-
-INLINE std::string itoa(long long num, short base=10)  {
-	if(num >= 0)
-		return itoa((unsigned long long)num, base);
-	else
-		return "-" + itoa((unsigned long long)-num, base);
-}
 #endif
 
 template<typename _T> std::string hex(_T num) { return itoa(num,16); }
