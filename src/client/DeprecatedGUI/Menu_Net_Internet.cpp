@@ -400,7 +400,7 @@ void Menu_Net_NETFrame(int mouse)
 				Menu_Net_NET_ServerList_Refresher();
 
                 // Remove the menu widget
-                cInternet.SendMessage( mi_PopupMenu, MNM_REDRAWBUFFER, (DWORD)0, 0);
+                cInternet.SendMessage( mi_PopupMenu, MNM_REDRAWBUFFER, (uintptr_t)0, 0);
                 cInternet.removeWidget(mi_PopupMenu);
                 break;
 

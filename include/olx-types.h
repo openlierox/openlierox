@@ -24,6 +24,7 @@
 
 #include <SDL.h>
 #include <cassert>
+#include <cstdint>
 
 struct TimeDiff {
 	Uint64 timeDiff;
@@ -97,7 +98,6 @@ typedef unsigned char	uchar;
 typedef unsigned long	ulong;
 typedef unsigned char	uint24[3];
 
-typedef unsigned long DWORD;
 typedef uchar byte;
 typedef unsigned short ushort;
 

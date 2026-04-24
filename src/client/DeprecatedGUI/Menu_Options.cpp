@@ -369,20 +369,20 @@ bool Menu_OptionsInitialize()
 
 	switch (tLXOptions->iColourDepth) {
 	case 0:  // Automatic
-		cOpt_System.SendMessage(os_ColourDepth, CBM_SETCURSEL, (DWORD)0, 0);
-		cOpt_System.SendMessage(os_ColourDepth, CBM_SETCURINDEX, (DWORD)0, 0);
+		cOpt_System.SendMessage(os_ColourDepth, CBM_SETCURSEL, (uintptr_t)0, 0);
+		cOpt_System.SendMessage(os_ColourDepth, CBM_SETCURINDEX, (uintptr_t)0, 0);
 		break;
 	case 16:  // 16 bit
-		cOpt_System.SendMessage(os_ColourDepth, CBM_SETCURSEL, (DWORD)1, 0);
-		cOpt_System.SendMessage(os_ColourDepth, CBM_SETCURINDEX, (DWORD)1, 0);
+		cOpt_System.SendMessage(os_ColourDepth, CBM_SETCURSEL, (uintptr_t)1, 0);
+		cOpt_System.SendMessage(os_ColourDepth, CBM_SETCURINDEX, (uintptr_t)1, 0);
 		break;
 	case 24:  // 24 bit
-		cOpt_System.SendMessage(os_ColourDepth, CBM_SETCURSEL, (DWORD)2, 0);
-		cOpt_System.SendMessage(os_ColourDepth, CBM_SETCURINDEX, (DWORD)2, 0);
+		cOpt_System.SendMessage(os_ColourDepth, CBM_SETCURSEL, (uintptr_t)2, 0);
+		cOpt_System.SendMessage(os_ColourDepth, CBM_SETCURINDEX, (uintptr_t)2, 0);
 		break;
 	case 32:  // 32 bit
-		cOpt_System.SendMessage(os_ColourDepth, CBM_SETCURSEL, (DWORD)3, 0);
-		cOpt_System.SendMessage(os_ColourDepth, CBM_SETCURINDEX, (DWORD)3, 0);
+		cOpt_System.SendMessage(os_ColourDepth, CBM_SETCURSEL, (uintptr_t)3, 0);
+		cOpt_System.SendMessage(os_ColourDepth, CBM_SETCURINDEX, (uintptr_t)3, 0);
 		break;
 	}
 
@@ -573,7 +573,7 @@ void Menu_OptionsFrame()
 		ev = bSpeedTest ? NULL : cOpt_Game.Process();
 		cOpt_Game.Draw(VideoPostProcessor::videoSurface().get());
 
-		val = (int)cOpt_Game.SendMessage(og_BloodAmount, SLM_GETVALUE, (DWORD)0, 0);
+		val = (int)cOpt_Game.SendMessage(og_BloodAmount, SLM_GETVALUE, (uintptr_t)0, 0);
 		//s = (CSlider *)cOpt_Game.getWidget(og_BloodAmount);
         DrawImageAdv(VideoPostProcessor::videoSurface().get(), tMenu->bmpBuffer, 385,140, 385,140, 70,40);
 		tLX->cFont.Draw(VideoPostProcessor::videoSurface().get(),385, 148, tLX->clNormalLabel, itoa(val)+"%");
@@ -591,7 +591,7 @@ void Menu_OptionsFrame()
 				// Blood amount
 				case og_BloodAmount:
 					if(ev->iEventMsg == SLD_CHANGE) {
-						val = (int)cOpt_Game.SendMessage(og_BloodAmount, SLM_GETVALUE, (DWORD)0, 0);
+						val = (int)cOpt_Game.SendMessage(og_BloodAmount, SLM_GETVALUE, (uintptr_t)0, 0);
 						tLXOptions->iBloodAmount = val;
 					}
 					break;
@@ -623,70 +623,70 @@ void Menu_OptionsFrame()
 				// Old skool rope throw
 				case og_OldSkoolRope:
 					if(ev->iEventMsg == CHK_CHANGED) {
-						tLXOptions->bOldSkoolRope = cOpt_Game.SendMessage(og_OldSkoolRope,CKM_GETCHECK,(DWORD)0,0) != 0;
+						tLXOptions->bOldSkoolRope = cOpt_Game.SendMessage(og_OldSkoolRope,CKM_GETCHECK,(uintptr_t)0,0) != 0;
 					}
 					break;
 
 				// Show the worm's health below name
 /*				case og_ShowWormHealth:
 					if(ev->iEventMsg == CHK_CHANGED)
-						tLXOptions->iShowHealth = cOpt_Game.SendMessage(og_ShowWormHealth, CKM_GETCHECK, (DWORD)0, 0);
+						tLXOptions->iShowHealth = cOpt_Game.SendMessage(og_ShowWormHealth, CKM_GETCHECK, (uintptr_t)0, 0);
 					break;*/
 
 				// TDM nick colorizing
 				case og_ColorizeNicks:
 					if(ev->iEventMsg == CHK_CHANGED)
-						tLXOptions->bColorizeNicks = cOpt_Game.SendMessage(og_ColorizeNicks, CKM_GETCHECK, (DWORD)0, 0) != 0;
+						tLXOptions->bColorizeNicks = cOpt_Game.SendMessage(og_ColorizeNicks, CKM_GETCHECK, (uintptr_t)0, 0) != 0;
 					break;
 
 				// Auto typing
 				case og_AutoTyping:
 					if(ev->iEventMsg == CHK_CHANGED)
-						tLXOptions->bAutoTyping = cOpt_Game.SendMessage(og_AutoTyping, CKM_GETCHECK, (DWORD)0, 0) != 0;
+						tLXOptions->bAutoTyping = cOpt_Game.SendMessage(og_AutoTyping, CKM_GETCHECK, (uintptr_t)0, 0) != 0;
 					break;
 
 				// Antialiasing
 				case og_Antialiasing:
 					if(ev->iEventMsg == CHK_CHANGED)
-						tLXOptions->bAntiAliasing = cOpt_Game.SendMessage(og_Antialiasing, CKM_GETCHECK, (DWORD)0, 0) != 0;
+						tLXOptions->bAntiAliasing = cOpt_Game.SendMessage(og_Antialiasing, CKM_GETCHECK, (uintptr_t)0, 0) != 0;
 					break;
 
 				// Mouse aiming
 				case og_MouseAiming:
 					if(ev->iEventMsg == CHK_CHANGED)
-						tLXOptions->bMouseAiming = cOpt_Game.SendMessage(og_MouseAiming, CKM_GETCHECK, (DWORD)0, 0) != 0;
+						tLXOptions->bMouseAiming = cOpt_Game.SendMessage(og_MouseAiming, CKM_GETCHECK, (uintptr_t)0, 0) != 0;
 					break;
 /*
 				case og_AllowMouseAiming:
 					if(ev->iEventMsg == CHK_CHANGED)
-						tLXOptions->bAllowMouseAiming = cOpt_Game.SendMessage(og_AllowMouseAiming, CKM_GETCHECK, (DWORD)0, 0) != 0;
+						tLXOptions->bAllowMouseAiming = cOpt_Game.SendMessage(og_AllowMouseAiming, CKM_GETCHECK, (uintptr_t)0, 0) != 0;
 					break;
 */
 
 				// Match logging
 				case og_MatchLogging:
 					if(ev->iEventMsg == CHK_CHANGED)
-						tLXOptions->bMatchLogging = cOpt_Game.SendMessage(og_MatchLogging, CKM_GETCHECK, (DWORD)0, 0) != 0;
+						tLXOptions->bMatchLogging = cOpt_Game.SendMessage(og_MatchLogging, CKM_GETCHECK, (uintptr_t)0, 0) != 0;
 					break;
 
 				case og_AntilagMovementPrediction:
 					if(ev->iEventMsg == CHK_CHANGED)
-						tLXOptions->bAntilagMovementPrediction = cOpt_Game.SendMessage(og_AntilagMovementPrediction, CKM_GETCHECK, (DWORD)0, 0) != 0;
+						tLXOptions->bAntilagMovementPrediction = cOpt_Game.SendMessage(og_AntilagMovementPrediction, CKM_GETCHECK, (uintptr_t)0, 0) != 0;
 					break;
 					
 		/*		case og_ScreenShaking:
 					if(ev->iEventMsg == CHK_CHANGED)
-						tLXOptions->bScreenShaking = cOpt_Game.SendMessage(og_ScreenShaking, CKM_GETCHECK, (DWORD)0, 0) != 0;
+						tLXOptions->bScreenShaking = cOpt_Game.SendMessage(og_ScreenShaking, CKM_GETCHECK, (uintptr_t)0, 0) != 0;
 					break; */
 
 				case og_DamagePopups:
 					if(ev->iEventMsg == CHK_CHANGED)
-						tLXOptions->bDamagePopups = cOpt_Game.SendMessage(og_DamagePopups, CKM_GETCHECK, (DWORD)0, 0) != 0;
+						tLXOptions->bDamagePopups = cOpt_Game.SendMessage(og_DamagePopups, CKM_GETCHECK, (uintptr_t)0, 0) != 0;
 					break;
 					
 				case og_ColorizeDamageByWorm:
 					if(ev->iEventMsg == CHK_CHANGED)
-						tLXOptions->bColorizeDamageByWorm = cOpt_Game.SendMessage(og_ColorizeDamageByWorm, CKM_GETCHECK, (DWORD)0, 0) != 0;
+						tLXOptions->bColorizeDamageByWorm = cOpt_Game.SendMessage(og_ColorizeDamageByWorm, CKM_GETCHECK, (uintptr_t)0, 0) != 0;
 					break;
 			}
 		}
@@ -800,13 +800,13 @@ void Menu_OptionsFrame()
 				// Show FPS
 				case os_ShowFPS:
 					if(ev->iEventMsg == CHK_CHANGED)
-						tLXOptions->bShowFPS = cOpt_System.SendMessage(os_ShowFPS, CKM_GETCHECK, (DWORD)0, 0) != 0;
+						tLXOptions->bShowFPS = cOpt_System.SendMessage(os_ShowFPS, CKM_GETCHECK, (uintptr_t)0, 0) != 0;
 					break;
 
 				// Logging
 				case os_LogConvos:
 					if(ev->iEventMsg == CHK_CHANGED)  {
-						tLXOptions->bLogConvos = cOpt_System.SendMessage(os_LogConvos, CKM_GETCHECK, (DWORD)0, 0) != 0;
+						tLXOptions->bLogConvos = cOpt_System.SendMessage(os_LogConvos, CKM_GETCHECK, (uintptr_t)0, 0) != 0;
 						if (convoLogger)  {
 							if (tLXOptions->bLogConvos)
 								convoLogger->startLogging();
@@ -819,13 +819,13 @@ void Menu_OptionsFrame()
 				// Show ping
 				case os_ShowPing:
 					if(ev->iEventMsg == CHK_CHANGED)
-						tLXOptions->bShowPing = cOpt_System.SendMessage(os_ShowPing, CKM_GETCHECK, (DWORD)0, 0) != 0;
+						tLXOptions->bShowPing = cOpt_System.SendMessage(os_ShowPing, CKM_GETCHECK, (uintptr_t)0, 0) != 0;
 					break;
 
 				// Use Ip To Country
 				case os_UseIpToCountry:
 					if(ev->iEventMsg == CHK_CHANGED)  {
-						tLXOptions->bUseIpToCountry = cOpt_System.SendMessage(os_UseIpToCountry, CKM_GETCHECK, (DWORD)0, 0) != 0;
+						tLXOptions->bUseIpToCountry = cOpt_System.SendMessage(os_UseIpToCountry, CKM_GETCHECK, (uintptr_t)0, 0) != 0;
 						if (tLXOptions->bUseIpToCountry && !tIpToCountryDB->Loaded())  {
 							tIpToCountryDB->LoadDBFile(IP_TO_COUNTRY_FILE);
 						}
@@ -834,7 +834,7 @@ void Menu_OptionsFrame()
 
 				case os_ShowCountryFlags:
 					if(ev->iEventMsg == CHK_CHANGED)  {
-						tLXOptions->bShowCountryFlags = cOpt_System.SendMessage(os_ShowCountryFlags, CKM_GETCHECK, (DWORD)0, 0) != 0;
+						tLXOptions->bShowCountryFlags = cOpt_System.SendMessage(os_ShowCountryFlags, CKM_GETCHECK, (uintptr_t)0, 0) != 0;
 					}
 					break;
 
@@ -848,7 +848,7 @@ void Menu_OptionsFrame()
 				
 				case os_CheckForUpdates:
 					if(ev->iEventMsg == CHK_CHANGED)  {
-						tLXOptions->bCheckForUpdates = cOpt_System.SendMessage(os_CheckForUpdates, CKM_GETCHECK, (DWORD)0, 0) != 0;
+						tLXOptions->bCheckForUpdates = cOpt_System.SendMessage(os_CheckForUpdates, CKM_GETCHECK, (uintptr_t)0, 0) != 0;
 					}
 					break;
 				
@@ -862,8 +862,8 @@ void Menu_OptionsFrame()
 		t = (CTextbox *)cOpt_System.getWidget(os_HttpProxy);
 		tLXOptions->sHttpProxy = t->getText();
 
-		tLXOptions->iNetworkSpeed = (int)cOpt_System.SendMessage(os_NetworkSpeed, CBM_GETCURINDEX,(DWORD)0,0);
-		tLXOptions->bCheckBandwidthSanity = cOpt_System.SendMessage(os_NetworkUploadCheck, CKM_GETCHECK, (DWORD)0, 0) != 0;
+		tLXOptions->iNetworkSpeed = (int)cOpt_System.SendMessage(os_NetworkSpeed, CBM_GETCURINDEX,(uintptr_t)0,0);
+		tLXOptions->bCheckBandwidthSanity = cOpt_System.SendMessage(os_NetworkUploadCheck, CKM_GETCHECK, (uintptr_t)0, 0) != 0;
 		
 		cOpt_System.getWidget( os_NetworkUploadBandwidth )->setEnabled( tLXOptions->iNetworkSpeed >= NST_LAN );
 		cOpt_System.getWidget( os_NetworkUploadBandwidthLabel )->setEnabled( tLXOptions->iNetworkSpeed >= NST_LAN );
@@ -873,7 +873,7 @@ void Menu_OptionsFrame()
 		if( tLXOptions->iMaxUploadBandwidth <= 0 )
 			tLXOptions->iMaxUploadBandwidth = 50000;
 
-		tLXOptions->iScreenshotFormat = (int)cOpt_System.SendMessage(os_ScreenshotFormat, CBM_GETCURINDEX,(DWORD)0,0);
+		tLXOptions->iScreenshotFormat = (int)cOpt_System.SendMessage(os_ScreenshotFormat, CBM_GETCURINDEX,(uintptr_t)0,0);
 
 		// FPS and fullscreen
 		t = (CTextbox *)cOpt_System.getWidget(os_MaxFPS);

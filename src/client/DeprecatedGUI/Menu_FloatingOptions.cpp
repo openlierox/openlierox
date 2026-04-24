@@ -463,7 +463,7 @@ void Menu_FloatingOptionsFrame()
 		ev = cFloatingOpt_Game.Process();
 		cFloatingOpt_Game.Draw(VideoPostProcessor::videoSurface().get());
 
-		val = (int)cFloatingOpt_Game.SendMessage(og_BloodAmount, SLM_GETVALUE, (DWORD)0, 0);
+		val = (int)cFloatingOpt_Game.SendMessage(og_BloodAmount, SLM_GETVALUE, (uintptr_t)0, 0);
         DrawImageAdv(VideoPostProcessor::videoSurface().get(), tMenu->bmpBuffer, 385,140, 385,140, 70,40);
 		tLX->cFont.Draw(VideoPostProcessor::videoSurface().get(),385, 148, tLX->clNormalLabel, itoa(val)+"%");
 
@@ -476,7 +476,7 @@ void Menu_FloatingOptionsFrame()
 				// Blood amount
 				case og_BloodAmount:
 					if(ev->iEventMsg == SLD_CHANGE) {
-						val = (int)cFloatingOpt_Game.SendMessage(og_BloodAmount, SLM_GETVALUE, (DWORD)0, 0);
+						val = (int)cFloatingOpt_Game.SendMessage(og_BloodAmount, SLM_GETVALUE, (uintptr_t)0, 0);
 						tLXOptions->iBloodAmount = val;
 					}
 					break;
@@ -500,55 +500,55 @@ void Menu_FloatingOptionsFrame()
 				// Old skool rope throw
 				case og_OldSkoolRope:
 					if(ev->iEventMsg == CHK_CHANGED) {
-						tLXOptions->bOldSkoolRope = cFloatingOpt_Game.SendMessage(og_OldSkoolRope,CKM_GETCHECK,(DWORD)0,0) != 0;
+						tLXOptions->bOldSkoolRope = cFloatingOpt_Game.SendMessage(og_OldSkoolRope,CKM_GETCHECK,(uintptr_t)0,0) != 0;
 					}
 					break;
 
 				// TDM nick colorizing
 				case og_ColorizeNicks:
 					if(ev->iEventMsg == CHK_CHANGED)
-						tLXOptions->bColorizeNicks = cFloatingOpt_Game.SendMessage(og_ColorizeNicks, CKM_GETCHECK, (DWORD)0, 0) != 0;
+						tLXOptions->bColorizeNicks = cFloatingOpt_Game.SendMessage(og_ColorizeNicks, CKM_GETCHECK, (uintptr_t)0, 0) != 0;
 					break;
 
 				// Auto typing
 				case og_AutoTyping:
 					if(ev->iEventMsg == CHK_CHANGED)
-						tLXOptions->bAutoTyping = cFloatingOpt_Game.SendMessage(og_AutoTyping, CKM_GETCHECK, (DWORD)0, 0) != 0;
+						tLXOptions->bAutoTyping = cFloatingOpt_Game.SendMessage(og_AutoTyping, CKM_GETCHECK, (uintptr_t)0, 0) != 0;
 					break;
 
 				// Antialiasing
 				case og_Antialiasing:
 					if(ev->iEventMsg == CHK_CHANGED)
-						tLXOptions->bAntiAliasing = cFloatingOpt_Game.SendMessage(og_Antialiasing, CKM_GETCHECK, (DWORD)0, 0) != 0;
+						tLXOptions->bAntiAliasing = cFloatingOpt_Game.SendMessage(og_Antialiasing, CKM_GETCHECK, (uintptr_t)0, 0) != 0;
 					break;
 
 
 				// Mouse aiming
 				case og_MouseAiming:
 					if(ev->iEventMsg == CHK_CHANGED)
-						tLXOptions->bMouseAiming = cFloatingOpt_Game.SendMessage(og_MouseAiming, CKM_GETCHECK, (DWORD)0, 0) != 0;
+						tLXOptions->bMouseAiming = cFloatingOpt_Game.SendMessage(og_MouseAiming, CKM_GETCHECK, (uintptr_t)0, 0) != 0;
 					break;
 /*
 				case og_AllowMouseAiming:
 					if(ev->iEventMsg == CHK_CHANGED)
-						tLXOptions->bAllowMouseAiming = cFloatingOpt_Game.SendMessage(og_AllowMouseAiming, CKM_GETCHECK, (DWORD)0, 0) != 0;
+						tLXOptions->bAllowMouseAiming = cFloatingOpt_Game.SendMessage(og_AllowMouseAiming, CKM_GETCHECK, (uintptr_t)0, 0) != 0;
 					break;
 */
 
 				// Match logging
 				case og_MatchLogging:
 					if(ev->iEventMsg == CHK_CHANGED)
-						tLXOptions->bMatchLogging = cFloatingOpt_Game.SendMessage(og_MatchLogging, CKM_GETCHECK, (DWORD)0, 0) != 0;
+						tLXOptions->bMatchLogging = cFloatingOpt_Game.SendMessage(og_MatchLogging, CKM_GETCHECK, (uintptr_t)0, 0) != 0;
 					break;
 
 				case og_AntilagMovementPrediction:
 					if(ev->iEventMsg == CHK_CHANGED)
-						tLXOptions->bAntilagMovementPrediction = cFloatingOpt_Game.SendMessage(og_AntilagMovementPrediction, CKM_GETCHECK, (DWORD)0, 0) != 0;
+						tLXOptions->bAntilagMovementPrediction = cFloatingOpt_Game.SendMessage(og_AntilagMovementPrediction, CKM_GETCHECK, (uintptr_t)0, 0) != 0;
 					break;
 					
 /*				case og_ScreenShaking:
 					if(ev->iEventMsg == CHK_CHANGED)
-						tLXOptions->bScreenShaking = cFloatingOpt_Game.SendMessage(og_ScreenShaking, CKM_GETCHECK, (DWORD)0, 0) != 0;
+						tLXOptions->bScreenShaking = cFloatingOpt_Game.SendMessage(og_ScreenShaking, CKM_GETCHECK, (uintptr_t)0, 0) != 0;
 					break; */
 			}
 		}
@@ -598,14 +598,14 @@ void Menu_FloatingOptionsFrame()
 				// Show FPS
 				case os_ShowFPS:
 					if(ev->iEventMsg == CHK_CHANGED)
-						tLXOptions->bShowFPS = cFloatingOpt_System.SendMessage(os_ShowFPS, CKM_GETCHECK, (DWORD)0, 0) != 0;
+						tLXOptions->bShowFPS = cFloatingOpt_System.SendMessage(os_ShowFPS, CKM_GETCHECK, (uintptr_t)0, 0) != 0;
 					break;
 
 				// Logging
 				case os_LogConvos:
 					if(ev->iEventMsg == CHK_CHANGED)  {
 						// check if value is really different
-						if(tLXOptions->bLogConvos != (cFloatingOpt_System.SendMessage(os_LogConvos, CKM_GETCHECK, (DWORD)0, 0) != 0)) {
+						if(tLXOptions->bLogConvos != (cFloatingOpt_System.SendMessage(os_LogConvos, CKM_GETCHECK, (uintptr_t)0, 0) != 0)) {
 							tLXOptions->bLogConvos = ! tLXOptions->bLogConvos;
 							if (convoLogger)  {
 								if (tLXOptions->bLogConvos)  {
@@ -622,14 +622,14 @@ void Menu_FloatingOptionsFrame()
 				// Show ping
 				case os_ShowPing:
 					if(ev->iEventMsg == CHK_CHANGED)
-						tLXOptions->bShowPing = cFloatingOpt_System.SendMessage(os_ShowPing, CKM_GETCHECK, (DWORD)0, 0) != 0;
+						tLXOptions->bShowPing = cFloatingOpt_System.SendMessage(os_ShowPing, CKM_GETCHECK, (uintptr_t)0, 0) != 0;
 					break;
 			}
 		}
 
 
 		// Get the values
-		tLXOptions->iNetworkSpeed = (int)cFloatingOpt_System.SendMessage(os_NetworkSpeed, CBM_GETCURINDEX,(DWORD)0,0);
+		tLXOptions->iNetworkSpeed = (int)cFloatingOpt_System.SendMessage(os_NetworkSpeed, CBM_GETCURINDEX,(uintptr_t)0,0);
 
 		cFloatingOpt_System.getWidget( os_NetworkUploadBandwidth )->setEnabled( tLXOptions->iNetworkSpeed >= NST_LAN );
 		cFloatingOpt_System.getWidget( os_NetworkUploadBandwidthLabel )->setEnabled( tLXOptions->iNetworkSpeed >= NST_LAN );
@@ -638,7 +638,7 @@ void Menu_FloatingOptionsFrame()
 		if( tLXOptions->iMaxUploadBandwidth <= 0 )
 			tLXOptions->iMaxUploadBandwidth = 20000;
 
-		tLXOptions->iScreenshotFormat = (int)cFloatingOpt_System.SendMessage(os_ScreenshotFormat, CBM_GETCURINDEX,(DWORD)0,0);
+		tLXOptions->iScreenshotFormat = (int)cFloatingOpt_System.SendMessage(os_ScreenshotFormat, CBM_GETCURINDEX,(uintptr_t)0,0);
 
 		// Anti-aliasing and fullscreen
 

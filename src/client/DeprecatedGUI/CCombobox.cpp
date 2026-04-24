@@ -583,7 +583,7 @@ int CCombobox::KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate
 
 ///////////////////
 // Process a message sent to this widget
-DWORD CCombobox::SendMessage(int iMsg, DWORD Param1, DWORD Param2)
+uintptr_t CCombobox::SendMessage(int iMsg, uintptr_t Param1, uintptr_t Param2)
 {
 
 	switch(iMsg) {
@@ -623,7 +623,7 @@ DWORD CCombobox::SendMessage(int iMsg, DWORD Param1, DWORD Param2)
 	return 0;
 }
 
-DWORD CCombobox::SendMessage(int iMsg, const std::string& sStr, DWORD Param)
+uintptr_t CCombobox::SendMessage(int iMsg, const std::string& sStr, uintptr_t Param)
 {
 	switch (iMsg)  {
 	// Add item message
@@ -632,7 +632,7 @@ DWORD CCombobox::SendMessage(int iMsg, const std::string& sStr, DWORD Param)
 		break;
 	// Add item message (string index)
 	case CBS_ADDSITEM:
-		addItem(0, sStr, *((std::string *) Param)); // TODO: 64bit unsafe
+		addItem(0, sStr, *((std::string *) Param));
 		break;
 	// Set the current item based on the string index
 	case CBS_SETCURSINDEX:
@@ -643,7 +643,7 @@ DWORD CCombobox::SendMessage(int iMsg, const std::string& sStr, DWORD Param)
 	return 0;
 }
 
-DWORD CCombobox::SendMessage(int iMsg, std::string *sStr, DWORD Param)
+uintptr_t CCombobox::SendMessage(int iMsg, std::string *sStr, uintptr_t Param)
 {
 	switch (iMsg)  {
 	// Get the current item's string index

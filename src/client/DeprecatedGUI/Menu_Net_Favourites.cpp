@@ -351,7 +351,7 @@ void Menu_Net_FavouritesFrame(int mouse)
                     case MNU_USER+1:
 						{
 							// Remove the menu widget
-							cFavourites.SendMessage(mf_PopupMenu, MNM_REDRAWBUFFER, (DWORD)0, 0);
+							cFavourites.SendMessage(mf_PopupMenu, MNM_REDRAWBUFFER, (uintptr_t)0, 0);
 							cFavourites.removeWidget(mf_PopupMenu);
 
 							server_t::Ptr sv = ServerList::get()->findServerStr(szFavouritesCurServer);
@@ -407,7 +407,7 @@ void Menu_Net_FavouritesFrame(int mouse)
                 ServerList::get()->fillList( (CListview *)cFavourites.getWidget( mf_ServerList ), SLFT_Favourites );
 
                 // Remove the menu widget
-                cFavourites.SendMessage(mf_PopupMenu, MNM_REDRAWBUFFER, (DWORD)0, 0);
+                cFavourites.SendMessage(mf_PopupMenu, MNM_REDRAWBUFFER, (uintptr_t)0, 0);
                 cFavourites.removeWidget(mf_PopupMenu);
                 break;
 		}

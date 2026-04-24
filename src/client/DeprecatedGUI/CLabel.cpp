@@ -19,13 +19,13 @@ namespace DeprecatedGUI {
 			iX -= iWidth / 2;
 	}
 		
-	DWORD CLabel::SendMessage(int iMsg, DWORD Param1, DWORD Param2)	{ return 0; }
-	DWORD CLabel::SendMessage(int iMsg, const std::string& sStr, DWORD Param) { 
+	uintptr_t CLabel::SendMessage(int iMsg, uintptr_t Param1, uintptr_t Param2)	{ return 0; }
+	uintptr_t CLabel::SendMessage(int iMsg, const std::string& sStr, uintptr_t Param) { 
 		if (iMsg == LBS_SETTEXT) 
 		{sText = sStr; iWidth = tLX->cFont.GetWidth(sText); iHeight = tLX->cFont.GetHeight(sText);} 
 		return 0; 	}
 	
-	DWORD CLabel::SendMessage(int iMsg, std::string *sStr, DWORD Param)  { return 0; }
+	uintptr_t CLabel::SendMessage(int iMsg, std::string *sStr, uintptr_t Param)  { return 0; }
 	
 	void	CLabel::ChangeColour(Color col)			{ iColour = col; }
 	void	CLabel::setText(const std::string& sStr)	{sText = sStr; iWidth = tLX->cFont.GetWidth(sText); iHeight = tLX->cFont.GetHeight(sText);};

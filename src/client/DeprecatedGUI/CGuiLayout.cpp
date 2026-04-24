@@ -976,7 +976,7 @@ void CGuiLayout::SetGlobalProperty(int property, int value)
 
 ///////////////////
 // Send a message to a widget
-DWORD CGuiLayout::SendMessage(int iControl, int iMsg, DWORD Param1, DWORD Param2)
+uintptr_t CGuiLayout::SendMessage(int iControl, int iMsg, uintptr_t Param1, uintptr_t Param2)
 {
 	CWidget *w = getWidget(iControl);
 
@@ -999,7 +999,7 @@ DWORD CGuiLayout::SendMessage(int iControl, int iMsg, DWORD Param1, DWORD Param2
 	return w->SendMessage(iMsg, Param1, Param2);
 }
 
-DWORD CGuiLayout::SendMessage(int iControl, int iMsg, const std::string& sStr, DWORD Param)
+uintptr_t CGuiLayout::SendMessage(int iControl, int iMsg, const std::string& sStr, uintptr_t Param)
 {
 	CWidget *w = getWidget(iControl);
 
@@ -1011,7 +1011,7 @@ DWORD CGuiLayout::SendMessage(int iControl, int iMsg, const std::string& sStr, D
 
 }
 
-DWORD CGuiLayout::SendMessage(int iControl, int iMsg, std::string *sStr, DWORD Param)
+uintptr_t CGuiLayout::SendMessage(int iControl, int iMsg, std::string *sStr, uintptr_t Param)
 {
 	// Check the string
 	if (!sStr)

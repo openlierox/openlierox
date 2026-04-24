@@ -356,7 +356,7 @@ void Menu_Net_LANFrame(int mouse)
                 ServerList::get()->fillList( (CListview *)cLan.getWidget( nl_ServerList ), SLFT_Lan );
 
                 // Remove the menu widget
-                cLan.SendMessage(nl_PopupMenu, MNM_REDRAWBUFFER, (DWORD)0, 0);
+                cLan.SendMessage(nl_PopupMenu, MNM_REDRAWBUFFER, (uintptr_t)0, 0);
                 cLan.removeWidget(nl_PopupMenu);
                 break;
 		}
