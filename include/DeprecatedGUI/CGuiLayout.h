@@ -127,9 +127,9 @@ public:
 	CWidget		*getFocusedWidget()		{ return cFocused; }
 
 	// Messaging
-	DWORD		SendMessage(int iControl, int iMsg, DWORD Param1, DWORD Param2);
-	DWORD		SendMessage(int iControl, int iMsg, const std::string& sStr, DWORD Param);
-	DWORD		SendMessage(int iControl, int iMsg, std::string *sStr, DWORD Param);
+	uintptr_t		SendMessage(int iControl, int iMsg, uintptr_t Param1, uintptr_t Param2);
+	uintptr_t		SendMessage(int iControl, int iMsg, const std::string& sStr, uintptr_t Param);
+	uintptr_t		SendMessage(int iControl, int iMsg, std::string *sStr, uintptr_t Param);
 
 	// Variables
 	int			getID()		{ return iID; }

@@ -80,7 +80,7 @@ public:
 
 
 	// Process a message sent
-	INLINE DWORD SendMessage(int iMsg, DWORD Param1, DWORD Param2) {
+	INLINE uintptr_t SendMessage(int iMsg, uintptr_t Param1, uintptr_t Param2) {
 
 				if(iMsg == INM_GETVALUE) {
 						return iKeyvalue;
@@ -89,8 +89,8 @@ public:
 				return 0;
 			}
 
-	DWORD SendMessage(int iMsg, const std::string& sStr, DWORD Param) { return 0; }
-	DWORD SendMessage(int iMsg, std::string *sStr, DWORD Param)  {
+	uintptr_t SendMessage(int iMsg, const std::string& sStr, uintptr_t Param) { return 0; }
+	uintptr_t SendMessage(int iMsg, std::string *sStr, uintptr_t Param)  {
 		if (iMsg == INS_GETTEXT)  {
 			*sStr = sText;
 		}

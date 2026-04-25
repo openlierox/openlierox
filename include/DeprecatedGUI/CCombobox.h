@@ -157,9 +157,9 @@ public:
 	void	Draw(SDL_Surface * bmpDest);
 	void	LoadStyle() {}
 	
-	DWORD SendMessage(int iMsg, DWORD Param1, DWORD Param2);
-	DWORD SendMessage(int iMsg, const std::string& sStr, DWORD Param);
-	DWORD SendMessage(int iMsg, std::string *sStr, DWORD Param);
+	uintptr_t SendMessage(int iMsg, uintptr_t Param1, uintptr_t Param2);
+	uintptr_t SendMessage(int iMsg, const std::string& sStr, uintptr_t Param);
+	uintptr_t SendMessage(int iMsg, std::string *sStr, uintptr_t Param);
 
 	void	setListBackend(const GuiList::Pt& l) { listBackend = l; }
 	/*

@@ -108,9 +108,9 @@ public:
 	int		getMax()					{ return iMax; } // TODO: that should return the max possible value!!
 	bool	getGrabbed()				{ return bSliderGrabbed; }
 
-	DWORD SendMessage(int iMsg, DWORD Param1, DWORD Param2);
-	DWORD SendMessage(int iMsg, const std::string& sStr, DWORD Param) { return 0; }
-	DWORD SendMessage(int iMsg, std::string *sStr, DWORD Param)  { return 0; }
+	uintptr_t SendMessage(int iMsg, uintptr_t Param1, uintptr_t Param2);
+	uintptr_t SendMessage(int iMsg, const std::string& sStr, uintptr_t Param) { return 0; }
+	uintptr_t SendMessage(int iMsg, std::string *sStr, uintptr_t Param)  { return 0; }
 
 	static CWidget * WidgetCreator( const std::vector< ScriptVar_t > & p, CGuiLayoutBase * layout, int id, int x, int y, int dx, int dy )
 	{

@@ -58,9 +58,9 @@ public:
 	int		KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate)	{ return CLabel::KeyDown( c, keysym, modstate ); }
 	int		KeyUp(UnicodeChar c, int keysym, const ModifiersState& modstate)	{ return CLabel::KeyUp( c, keysym, modstate ); }
 
-	DWORD SendMessage(int iMsg, DWORD Param1, DWORD Param2)	{ return CLabel::SendMessage( iMsg, Param1, Param2 ); }
-	DWORD SendMessage(int iMsg, const std::string& sStr, DWORD Param) { return CLabel::SendMessage( iMsg, sStr, Param ); }
-	DWORD SendMessage(int iMsg, std::string *sStr, DWORD Param)  { return CLabel::SendMessage( iMsg, sStr, Param ); }
+	uintptr_t SendMessage(int iMsg, uintptr_t Param1, uintptr_t Param2)	{ return CLabel::SendMessage( iMsg, Param1, Param2 ); }
+	uintptr_t SendMessage(int iMsg, const std::string& sStr, uintptr_t Param) { return CLabel::SendMessage( iMsg, sStr, Param ); }
+	uintptr_t SendMessage(int iMsg, std::string *sStr, uintptr_t Param)  { return CLabel::SendMessage( iMsg, sStr, Param ); }
 
 	void	Draw(SDL_Surface * bmpDest);
 

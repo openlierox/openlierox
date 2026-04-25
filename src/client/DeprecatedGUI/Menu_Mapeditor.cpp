@@ -685,7 +685,7 @@ void Menu_MapEd_LoadSave(int save)
 	cg.Add( new CListview(),                            2, 180,170, 280,110);
 	cg.Add( new CTextbox(),                             3, 260,285, 200,tLX->cFont.GetHeight());
 
-	cg.SendMessage(2,		LVM_SETOLDSTYLE, (DWORD)0, 0);
+	cg.SendMessage(2,		LVM_SETOLDSTYLE, (uintptr_t)0, 0);
 
 	t = (CTextbox *)cg.getWidget(3);
 

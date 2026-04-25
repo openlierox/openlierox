@@ -2269,7 +2269,7 @@ void CClient::DrawViewportManager(SDL_Surface * bmpDest)
             if(ev->iEventMsg == DeprecatedGUI::CHK_CHANGED) {
                 // If there is only one worm, disable the 2nd viewport
                 if( game.worms()->size() <= 1 )
-                    ViewportMgr.SendMessage(v2_On, DeprecatedGUI::CKM_SETCHECK,(DWORD)0,0);
+                    ViewportMgr.SendMessage(v2_On, DeprecatedGUI::CKM_SETCHECK,(uintptr_t)0,0);
             }
             break;
 
@@ -2279,15 +2279,15 @@ void CClient::DrawViewportManager(SDL_Surface * bmpDest)
 
                 // If there is only one worm, disable the 2nd viewport
                 if( game.worms()->size() <= 1 )
-                    ViewportMgr.SendMessage(v2_On, DeprecatedGUI::CKM_SETCHECK,(DWORD)0,0);
+                    ViewportMgr.SendMessage(v2_On, DeprecatedGUI::CKM_SETCHECK,(uintptr_t)0,0);
 
 				DeprecatedGUI::CCombobox *v1Target = (DeprecatedGUI::CCombobox *)ViewportMgr.getWidget(v1_Target);
 				DeprecatedGUI::CCombobox *v2Target = (DeprecatedGUI::CCombobox *)ViewportMgr.getWidget(v2_Target);
 
                 // Grab settings
-                int a_type = (int) ViewportMgr.SendMessage(v1_Type, DeprecatedGUI::CBM_GETCURINDEX, (DWORD)0,0);
-                int b_on = (int) ViewportMgr.SendMessage(v2_On, DeprecatedGUI::CKM_GETCHECK, (DWORD)0,0);
-                int b_type = (int) ViewportMgr.SendMessage(v2_Type, DeprecatedGUI::CBM_GETCURINDEX, (DWORD)0,0);
+                int a_type = (int) ViewportMgr.SendMessage(v1_Type, DeprecatedGUI::CBM_GETCURINDEX, (uintptr_t)0,0);
+                int b_on = (int) ViewportMgr.SendMessage(v2_On, DeprecatedGUI::CKM_GETCHECK, (uintptr_t)0,0);
+                int b_type = (int) ViewportMgr.SendMessage(v2_Type, DeprecatedGUI::CBM_GETCURINDEX, (uintptr_t)0,0);
 				if (!v1Target->getSelectedItem().get() || !v2Target->getSelectedItem().get())
 					return;
 

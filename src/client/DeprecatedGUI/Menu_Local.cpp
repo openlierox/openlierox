@@ -126,14 +126,14 @@ static void Menu_Local_InitCustomLevel() {
 
 	cLocalMenu.SendMessage(ml_Playing,		LVS_ADDCOLUMN, "Playing", 24);
 	cLocalMenu.SendMessage(ml_Playing,		LVS_ADDCOLUMN, "", 300 - gfxGame.bmpTeamColours[0].get()->w - 50);
-	cLocalMenu.SendMessage(ml_Playing,		LVS_ADDCOLUMN, "", (DWORD)-1);
+	cLocalMenu.SendMessage(ml_Playing,		LVS_ADDCOLUMN, "", (uintptr_t)-1);
 	
-	cLocalMenu.SendMessage(ml_Playing,		LVM_SETOLDSTYLE, (DWORD)1, 0);
+	cLocalMenu.SendMessage(ml_Playing,		LVM_SETOLDSTYLE, (uintptr_t)1, 0);
 	
 	cLocalMenu.SendMessage(ml_PlayerList,	LVS_ADDCOLUMN, "Players", 24);
 	cLocalMenu.SendMessage(ml_PlayerList,	LVS_ADDCOLUMN, "", 60);
 	
-	cLocalMenu.SendMessage(ml_PlayerList,		LVM_SETOLDSTYLE, (DWORD)0, 0);
+	cLocalMenu.SendMessage(ml_PlayerList,		LVM_SETOLDSTYLE, (uintptr_t)0, 0);
 	
 	for(Iterator<CGameMode*>::Ref i = GameModeIterator(); i->isValid(); i->next()) {
 		cLocalMenu.SendMessage(ml_Gametype,    CBS_ADDITEM, i->get()->Name(), GetGameModeIndex(i->get()));
@@ -517,7 +517,7 @@ void Menu_LocalFrame()
 			// Game type
 			case ml_Gametype:
 				if(ev->iEventMsg == CMB_CHANGED) {
-					gameSettings.overwrite[FT_GameMode].as<GameModeInfo>()->mode = GameMode((GameModeIndex)cLocalMenu.SendMessage(ml_Gametype, CBM_GETCURINDEX, (DWORD)0, 0));
+					gameSettings.overwrite[FT_GameMode].as<GameModeInfo>()->mode = GameMode((GameModeIndex)cLocalMenu.SendMessage(ml_Gametype, CBM_GETCURINDEX, (uintptr_t)0, 0));
 
 					// Go through the items and enable/disable the team flags and update worm graphics
 					bool teams_on = gameSettings[FT_GameMode].as<GameModeInfo>()->mode->GameTeams() > 1;
@@ -657,7 +657,7 @@ static void _refillPlayerList() {
 	for_each_iterator(SmartPointer<profile_t>, p, GetProfiles()) {
 		if(playingIds.count(i) == 0) {
 			w->AddItem("", i, tLX->clListView);		
-			//cLocalMenu.SendMessage( ml_PlayerList, LVS_ADDSUBITEM, (DWORD)p->bmpWorm, LVS_IMAGE); // TODO: 64bit unsafe (pointer cast)
+			//cLocalMenu.SendMessage( ml_PlayerList, LVS_ADDSUBITEM, (uintptr_t)p->bmpWorm, LVS_IMAGE); // TODO: 64bit unsafe (pointer cast)
 			//cLocalMenu.SendMessage( ml_PlayerList, LVS_ADDSUBITEM, p->sName, LVS_TEXT);
 			w->AddSubitem( LVS_IMAGE, "", p->get()->cSkin.getPreview(), NULL );
 			w->AddSubitem( LVS_TEXT, p->get()->sName, (DynDrawIntf*)NULL, NULL );
@@ -813,7 +813,7 @@ static bool Menu_LocalStartGame_CustomGame() {
 	//
 	// Game Info
 	//
-	gameSettings.overwrite[FT_GameMode].as<GameModeInfo>()->mode = GameMode((GameModeIndex)cLocalMenu.SendMessage(ml_Gametype, CBM_GETCURINDEX, (DWORD)0, 0));
+	gameSettings.overwrite[FT_GameMode].as<GameModeInfo>()->mode = GameMode((GameModeIndex)cLocalMenu.SendMessage(ml_Gametype, CBM_GETCURINDEX, (uintptr_t)0, 0));
 	
 	gameSettings.overwrite[FT_NewNetEngine] = false; // May become buggy otherwise, new net engine doesn't support any kind of pause
 	
@@ -1604,7 +1604,7 @@ bool Menu_WeaponsRestrictions_Frame()
 	DrawImageAdv(VideoPostProcessor::videoSurface().get(), tMenu->bmpBuffer, 120,150, 120,150, 400,300);
 
     // Draw the list
-    int count = (int)cWeaponsRest.SendMessage(wr_Scroll, SCM_GETVALUE,(DWORD)0,0);
+    int count = (int)cWeaponsRest.SendMessage(wr_Scroll, SCM_GETVALUE,(uintptr_t)0,0);
 
 	int w, j;
 	w = j = 0;
@@ -1649,11 +1649,11 @@ bool Menu_WeaponsRestrictions_Frame()
 
     // Adjust the scrollbar
     cWeaponsRest.SendMessage(wr_Scroll, SCM_SETITEMSPERBOX, 12, 0);
-    cWeaponsRest.SendMessage(wr_Scroll, SCM_SETMIN, (DWORD)0, 0);
+    cWeaponsRest.SendMessage(wr_Scroll, SCM_SETMIN, (uintptr_t)0, 0);
 	if(cWpnRestList.getNumWeapons() > 10)
 		cWeaponsRest.SendMessage(wr_Scroll, SCM_SETMAX, cWpnRestList.getNumWeapons() + 1, 0);
     else
-        cWeaponsRest.SendMessage(wr_Scroll, SCM_SETMAX, (DWORD)0, 0);
+        cWeaponsRest.SendMessage(wr_Scroll, SCM_SETMAX, (uintptr_t)0, 0);
 
 
 	ev = cWeaponsRest.Process();
@@ -1778,7 +1778,7 @@ void Menu_WeaponPresets(bool save, CWpnRest *wpnrest)
 	cWpnPresets.Add( new CListview(),                            wp_PresetList, 180,170, 280,110+(!save)*20);
 	cWpnPresets.Add( new CTextbox(),                             wp_PresetName, 270,285, 190,tLX->cFont.GetHeight());
 
-	cWpnPresets.SendMessage(wp_PresetList,LVM_SETOLDSTYLE,(DWORD)0,0);
+	cWpnPresets.SendMessage(wp_PresetList,LVM_SETOLDSTYLE,(uintptr_t)0,0);
 
 	t = (CTextbox *)cWpnPresets.getWidget(wp_PresetName);
 

@@ -72,7 +72,7 @@ void CImage::Change(const SmartPointer<DynDrawIntf>& bmpImg)
 
 /////////////////////
 // This widget is a sendmessage
-DWORD CImage::SendMessage(int iMsg, DWORD Param1, DWORD Param2)
+uintptr_t CImage::SendMessage(int iMsg, uintptr_t Param1, uintptr_t Param2)
 {
 	return 0;
 }

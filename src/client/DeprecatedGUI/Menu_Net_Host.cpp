@@ -140,8 +140,8 @@ bool Menu_Net_HostInitialize()
 	//cHostPly.Add( new CLabel("Server-side Health",			tLX->clNormalLabel),-1,	125, 418,0,  0);
 	//cHostPly.Add( new CCheckbox(false),	                    hs_ServerSideHealth,	270,415,17, 17);
 
-	cHostPly.SendMessage(hs_Playing,		LVM_SETOLDSTYLE, (DWORD)0, 0);
-	cHostPly.SendMessage(hs_PlayerList,		LVM_SETOLDSTYLE, (DWORD)0, 0);
+	cHostPly.SendMessage(hs_Playing,		LVM_SETOLDSTYLE, (uintptr_t)0, 0);
+	cHostPly.SendMessage(hs_PlayerList,		LVM_SETOLDSTYLE, (uintptr_t)0, 0);
 
 	cHostPly.SendMessage(hs_Servername,TXM_SETMAX,32,0);
 	//cHostPly.SendMessage(hs_Password,TXM_SETMAX,32,0);
@@ -169,7 +169,7 @@ bool Menu_Net_HostInitialize()
 	int i = 0;
 	for_each_iterator(SmartPointer<profile_t>, p, GetProfiles()) {
 		cHostPly.SendMessage( hs_PlayerList, LVS_ADDITEM, "", i++);
-		//cHostPly.SendMessage( hs_PlayerList, LVS_ADDSUBITEM, (DWORD)p->bmpWorm, LVS_IMAGE ); // TODO: 64bit unsafe (pointer cast)
+		//cHostPly.SendMessage( hs_PlayerList, LVS_ADDSUBITEM, (uintptr_t)p->bmpWorm, LVS_IMAGE ); // TODO: 64bit unsafe (pointer cast)
 		//cHostPly.SendMessage( hs_PlayerList, LVS_ADDSUBITEM, p->sName, LVS_TEXT);
 		CListview * w = (CListview *) cHostPly.getWidget(hs_PlayerList);
 		w->AddSubitem( LVS_IMAGE, "", p->get()->cSkin.getPreview(), NULL );
@@ -479,13 +479,13 @@ void Menu_Net_HostPlyFrame(int mouse)
 					cHostPly.SendMessage( hs_WelcomeMessage, TXS_GETTEXT, &tLXOptions->sWelcomeMessage, 0);
 					//cHostPly.SendMessage( hs_Password, TXS_GETTEXT, &getGameLobby()->sPassword, 0);
 
-					tLXOptions->bRegServer =  cHostPly.SendMessage( hs_Register, CKM_GETCHECK, (DWORD)0, 0) != 0;
-					tLXOptions->bAllowWantsJoinMsg = cHostPly.SendMessage( hs_AllowWantsJoin, CKM_GETCHECK, (DWORD)0, 0) != 0;
-					tLXOptions->bWantsJoinBanned = cHostPly.SendMessage( hs_WantsJoinBanned,   CKM_GETCHECK, (DWORD)0, 0) != 0;
-					tLXOptions->bAllowRemoteBots = cHostPly.SendMessage( hs_AllowRemoteBots, CKM_GETCHECK, (DWORD)0, 0) != 0;
-					tLXOptions->bAllowNickChange = cHostPly.SendMessage( hs_AllowNickChange, CKM_GETCHECK, (DWORD)0, 0) != 0;
+					tLXOptions->bRegServer =  cHostPly.SendMessage( hs_Register, CKM_GETCHECK, (uintptr_t)0, 0) != 0;
+					tLXOptions->bAllowWantsJoinMsg = cHostPly.SendMessage( hs_AllowWantsJoin, CKM_GETCHECK, (uintptr_t)0, 0) != 0;
+					tLXOptions->bWantsJoinBanned = cHostPly.SendMessage( hs_WantsJoinBanned,   CKM_GETCHECK, (uintptr_t)0, 0) != 0;
+					tLXOptions->bAllowRemoteBots = cHostPly.SendMessage( hs_AllowRemoteBots, CKM_GETCHECK, (uintptr_t)0, 0) != 0;
+					tLXOptions->bAllowNickChange = cHostPly.SendMessage( hs_AllowNickChange, CKM_GETCHECK, (uintptr_t)0, 0) != 0;
 					tLXOptions->bServerSideHealth = false; // HINT: disable ssh for normal (non-dedicated) servers, as it is very cheaty
-					//tLXOptions->bServerSideHealth = cHostPly.SendMessage( hs_ServerSideHealth, CKM_GETCHECK, (DWORD)0, 0) != 0;
+					//tLXOptions->bServerSideHealth = cHostPly.SendMessage( hs_ServerSideHealth, CKM_GETCHECK, (uintptr_t)0, 0) != 0;
 
 					cHostPly.Shutdown();
 
@@ -1079,7 +1079,7 @@ void Menu_Net_HostLobbyFrame(int mouse)
 			// Game type change
 			case hl_Gamemode:
 				if(ev->iEventMsg == CMB_CHANGED) {
-					gameSettings.overwrite[FT_GameMode].as<GameModeInfo>()->mode = GameMode((GameModeIndex)cHostLobby.SendMessage(hl_Gamemode, CBM_GETCURINDEX, (DWORD)0, 0));
+					gameSettings.overwrite[FT_GameMode].as<GameModeInfo>()->mode = GameMode((GameModeIndex)cHostLobby.SendMessage(hl_Gamemode, CBM_GETCURINDEX, (uintptr_t)0, 0));
 					bHost_Update = true;
 					cServer->UpdateGameLobby();
 				}
@@ -1292,7 +1292,7 @@ bool Menu_Net_HostStartGame()
 	}
 	
 	// Get the game type
-	gameSettings.overwrite[FT_GameMode].as<GameModeInfo>()->mode = GameMode((GameModeIndex)cHostLobby.SendMessage(hl_Gamemode, CBM_GETCURINDEX, (DWORD)0, 0));
+	gameSettings.overwrite[FT_GameMode].as<GameModeInfo>()->mode = GameMode((GameModeIndex)cHostLobby.SendMessage(hl_Gamemode, CBM_GETCURINDEX, (uintptr_t)0, 0));
 
 	// Start the game
 	game.startGame();
@@ -1616,11 +1616,11 @@ bool Menu_ServerSettings_Frame()
 					cServerSettings.SendMessage(ss_WeaponSelectionMaxTime, TXS_GETTEXT, &buf, 0);
 					tLXOptions->iWeaponSelectionMaxTime = MAX( 5, atoi(buf) );	// At least 5 seconds (hit Random - Done)
 
-					tLXOptions->bAllowWantsJoinMsg = cServerSettings.SendMessage( ss_AllowWantsJoin, CKM_GETCHECK, (DWORD)0, 0) != 0;
-					tLXOptions->bWantsJoinBanned = cServerSettings.SendMessage( ss_WantsJoinBanned, CKM_GETCHECK, (DWORD)0, 0) != 0;
-					tLXOptions->bAllowRemoteBots = cServerSettings.SendMessage( ss_AllowRemoteBots, CKM_GETCHECK, (DWORD)0, 0) != 0;
-					tLXOptions->bAllowNickChange = cServerSettings.SendMessage( ss_AllowNickChange, CKM_GETCHECK, (DWORD)0, 0) != 0;
-					//tLXOptions->bServerSideHealth = cServerSettings.SendMessage( ss_ServerSideHealth, CKM_GETCHECK, (DWORD)0, 0) != 0;
+					tLXOptions->bAllowWantsJoinMsg = cServerSettings.SendMessage( ss_AllowWantsJoin, CKM_GETCHECK, (uintptr_t)0, 0) != 0;
+					tLXOptions->bWantsJoinBanned = cServerSettings.SendMessage( ss_WantsJoinBanned, CKM_GETCHECK, (uintptr_t)0, 0) != 0;
+					tLXOptions->bAllowRemoteBots = cServerSettings.SendMessage( ss_AllowRemoteBots, CKM_GETCHECK, (uintptr_t)0, 0) != 0;
+					tLXOptions->bAllowNickChange = cServerSettings.SendMessage( ss_AllowNickChange, CKM_GETCHECK, (uintptr_t)0, 0) != 0;
+					//tLXOptions->bServerSideHealth = cServerSettings.SendMessage( ss_ServerSideHealth, CKM_GETCHECK, (uintptr_t)0, 0) != 0;
 
 					Menu_ServerSettingsShutdown();
 
@@ -1911,9 +1911,9 @@ void Menu_HostActionsPopupMenuClick(CGuiLayout & layout, int id_PopupMenu, int i
                 }
 
                 // Remove the menu widget
-                layout.SendMessage( id_PopupMenu, MNM_REDRAWBUFFER, (DWORD)0, 0);
+                layout.SendMessage( id_PopupMenu, MNM_REDRAWBUFFER, (uintptr_t)0, 0);
                 layout.removeWidget(id_PopupMenu);
-                layout.SendMessage( id_PopupPlayerInfo, MNM_REDRAWBUFFER, (DWORD)0, 0);
+                layout.SendMessage( id_PopupPlayerInfo, MNM_REDRAWBUFFER, (uintptr_t)0, 0);
 				layout.removeWidget(id_PopupPlayerInfo);
 };
 
@@ -1947,9 +1947,9 @@ void Menu_HostActionsPopupPlayerInfoClick(CGuiLayout & layout, int id_PopupMenu,
 				};
 
                 // Remove the menu widget
-                layout.SendMessage( id_PopupMenu, MNM_REDRAWBUFFER, (DWORD)0, 0);
+                layout.SendMessage( id_PopupMenu, MNM_REDRAWBUFFER, (uintptr_t)0, 0);
                 layout.removeWidget(id_PopupMenu);
-                layout.SendMessage( id_PopupPlayerInfo, MNM_REDRAWBUFFER, (DWORD)0, 0);
+                layout.SendMessage( id_PopupPlayerInfo, MNM_REDRAWBUFFER, (uintptr_t)0, 0);
 				layout.removeWidget(id_PopupPlayerInfo);
 };
 

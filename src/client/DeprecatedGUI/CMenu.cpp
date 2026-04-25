@@ -40,7 +40,7 @@ CMenu::CMenu(int nPosX, int nPosY)
 
 ///////////////////
 // Handle a menu message
-DWORD CMenu::SendMessage(int iMsg, DWORD Param1, DWORD Param2)
+uintptr_t CMenu::SendMessage(int iMsg, uintptr_t Param1, uintptr_t Param2)
 {
     switch(iMsg) {
 
@@ -53,7 +53,7 @@ DWORD CMenu::SendMessage(int iMsg, DWORD Param1, DWORD Param2)
     return 0;
 }
 
-DWORD CMenu::SendMessage(int iMsg, const std::string& sStr, DWORD Param)
+uintptr_t CMenu::SendMessage(int iMsg, const std::string& sStr, uintptr_t Param)
 {
 	switch (iMsg)  {
 
