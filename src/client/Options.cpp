@@ -142,7 +142,12 @@ bool GameOptions::Init() {
 #else
 			false )
 #endif
-		( tLXOptions->iColourDepth, "Video.ColourDepth", 32 )
+		( tLXOptions->iColourDepth, "Video.ColourDepth",
+#ifdef __ANDROID__
+			16 )  // 16-bit is much faster on mobile GPUs
+#else
+			32 )
+#endif
 		( tLXOptions->sResolution, "Video.Resolution", "" )
 
 		( tLXOptions->iNetworkPort, "Network.Port", (int)LX_PORT )

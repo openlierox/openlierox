@@ -54,3 +54,24 @@ PrecompiledHeader.*
 *openlierox_pch_dephelp.*
 
 distrib
+
+# Android port build artefacts (clones, gradle/cmake intermediates)
+build/android/deps/SDL/
+build/android/deps/SDL_image/
+build/android/deps/SDL_mixer/
+build/android/deps/curl/
+build/android/deps/freealut/
+build/android/deps/libgd/
+build/android/deps/libjpeg-turbo/
+build/android/deps/libogg/
+build/android/deps/libpng/
+build/android/deps/libvorbis/
+build/android/deps/libxml2/
+build/android/deps/openal-soft/
+build/android/deps/boost-hdr/
+build/android/assets/
+build/android/output/
+build/android/local.properties
+build/android/.gradle/
+build/android/app/.cxx/
+build/android/app/build/

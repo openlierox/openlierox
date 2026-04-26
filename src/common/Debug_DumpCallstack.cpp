@@ -15,7 +15,10 @@
 #include <cstdlib>
 
 #ifndef HAVE_EXECINFO
-#	if defined(__linux__)
+#	if defined(__ANDROID__)
+		// Bionic libc has no <execinfo.h> / backtrace().
+#		define HAVE_EXECINFO 0
+#	elif defined(__linux__)
 #		define HAVE_EXECINFO 1
 #	elif defined(__DARWIN_VERS_1050)
 #		define HAVE_EXECINFO 1

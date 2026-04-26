@@ -13,6 +13,11 @@
 #include <set>
 #include <string>
 
+#ifdef __ANDROID__
+#include <stdlib.h>  // setenv
+#include <unistd.h>  // chdir
+#endif
+
 #include "MainLoop.h"
 #include "TeeStdoutHandler.h"
 #include "LieroX.h"
@@ -207,7 +212,23 @@ int main(int argc, char *argv[]) {
 // Main entry point
 int real_main(int argc, char *argv[])
 {
+#ifdef __ANDROID__
+	// SDL2 returns the Activity's getFilesDir() — i.e. /data/data/net.openlierox/files.
+	// OpenLieroX's basesearchpaths assume HOME is set; route both HOME and the
+	// process working directory at it so the standard search rules (${HOME}/.OpenLieroX,
+	// SYSTEM_DATA_DIR/OpenLieroX) all land in app-private storage.
+	{
+		const char* internal = SDL_AndroidGetInternalStoragePath();
+		if (internal && *internal) {
+			setenv("HOME", internal, 1);
+			chdir(internal);
+		}
+	}
+#endif
+
+#ifndef __ANDROID__
 	if(DoCrashReport(argc, argv)) return 0;
+#endif
 
 	ParseArguments_BeforeInit(argc, argv);
 
@@ -260,7 +281,9 @@ startpoint:
 
 	teeStdoutFile(GetWriteFullFileName("logs/OpenLieroX - " + GetDateTimeFilename() + ".txt", true));
 	activateStdinCLIHistory();
+#ifndef __ANDROID__
 	CrashHandler::init();
+#endif
 
 	if(!NetworkTexts::Init()) {
 		SystemError("Could not load network strings.");
@@ -409,8 +432,10 @@ startpoint:
 	
 	notes << "Good Bye and enjoy your day..." << endl;
 
+#ifndef __ANDROID__
 	// Uninit the crash handler after all other code
 	CrashHandler::uninit();
+#endif
 
 	quitStdinCLISupport();
 	teeStdoutQuit();

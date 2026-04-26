@@ -202,7 +202,8 @@ bool InitNetworkSystem() {
 	
 	dnsCache = new ThreadVar<dnsCacheT>();
 
-#ifndef WIN32
+#if !defined(WIN32) && !defined(__ANDROID__)
+	// Bionic libc on Android does not provide sigignore().
 	sigignore(SIGPIPE);
 #endif
 	

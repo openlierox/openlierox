@@ -1,0 +1,83 @@
+plugins {
+    id 'com.android.application'
+}
+
+def olxRoot = project.rootDir.toPath().resolve('../..').normalize().toFile()
+def versionFile = new File(olxRoot, 'VERSION')
+def olxVersion = versionFile.exists() ? versionFile.text.trim() : '0.59'
+
+android {
+    namespace 'net.openlierox'
+    compileSdk 36
+    ndkVersion '29.0.14206865'
+
+    defaultConfig {
+        applicationId 'net.openlierox'
+        minSdk 21
+        targetSdk 34
+        versionCode 1
+        versionName olxVersion
+
+        externalNativeBuild {
+            cmake {
+                // Per-target compile flags + defines live in jni/CMakeLists.txt;
+                // this block only sets globals that affect every translation unit
+                // (including Lua / HawkNL C sources, which need _FORTIFY_SOURCE off).
+                cppFlags '-fexceptions', '-frtti', '-U_FORTIFY_SOURCE'
+                cFlags   '-U_FORTIFY_SOURCE'
+                arguments '-DANDROID_STL=c++_shared',
+                          '-DANDROID_PLATFORM=android-21',
+                          "-DOLX_ROOT=${olxRoot.absolutePath}"
+            }
+        }
+        ndk {
+            // While bringing the port up, build only the x86_64 ABI used by
+            // the development emulator. Re-add 'arm64-v8a' (and optionally
+            // armeabi-v7a / x86) once the build is stable.
+            abiFilters 'x86_64'
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path 'src/main/jni/CMakeLists.txt'
+            version '3.22.1'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.debug
+        }
+        debug {
+            // Keep debuggable + matchingFallbacks defaults.
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging true
+        }
+    }
+
+    // build-android.sh stages the game data into build/android/assets;
+    // wire it in here as an extra assets source so we don't have to
+    // duplicate the tree under app/src/main/assets.
+    sourceSets {
+        main {
+            assets.srcDirs += [new File(rootDir, 'assets')]
+        }
+    }
+}
+
+dependencies {
+    // SDLActivity-based apps don't need androidx.appcompat. Keep this
+    // module dependency-free to avoid kotlin-stdlib class conflicts that
+    // come along with appcompat 1.7.x.
+}
