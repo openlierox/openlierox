@@ -480,6 +480,7 @@ void InitBaseSearchPaths() {
 	AddToFileList(&basesearchpaths, "${HOME}/OpenLieroX");
 	AddToFileList(&basesearchpaths, ".");
 	AddToFileList(&basesearchpaths, "${BIN}");
+	AddToFileList(&basesearchpaths, "${BIN}/gamedir");
 #else // all other systems (Linux, *BSD, OS/2, ...)
 	AddToFileList(&basesearchpaths, "${HOME}/.OpenLieroX");
 	AddToFileList(&basesearchpaths, ".");

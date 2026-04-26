@@ -135,4 +135,5 @@ Logger& Logger::flush() {
 
 void StdoutPrintFct::print(const std::string &s) const {
 	printf("%s", s.c_str());
+	fflush(stdout);
 }

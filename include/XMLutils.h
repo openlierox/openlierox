@@ -16,6 +16,7 @@
 // Karel Petranek
 
 #include <string>
+#include <libxml/tree.h>
 #include <libxml/xmlmemory.h>
 #include "Color.h"
 #include "CodeAttributes.h"

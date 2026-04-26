@@ -10,7 +10,7 @@
 #include "Debug.h"
 
 // not for MingW as it seems it has some different dbghelp version (or none at all)
-#if defined(WIN32) && !defined(__MINGW32_VERSION)
+#if defined(WIN32) && !defined(__MINGW32__)
 
 #include <windows.h>
 #include <dbghelp.h>
@@ -231,7 +231,7 @@ void OlxWriteCoreDump(const char* fileName)
 
 
 // all rest cases, except mingw
-#elif !defined(__MINGW32_VERSION)
+#elif !defined(__MINGW32__)
 
 #ifdef GCOREDUMPER
 #include <google/coredumper.h>
