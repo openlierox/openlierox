@@ -31,10 +31,14 @@ android {
             }
         }
         ndk {
-            // While bringing the port up, build only the x86_64 ABI used by
-            // the development emulator. Re-add 'arm64-v8a' (and optionally
-            // armeabi-v7a / x86) once the build is stable.
-            abiFilters 'x86_64'
+            // Single fat APK covering the two Android ABIs that still
+            // see meaningful device share:
+            //   arm64-v8a    — 64-bit ARM, mandatory for Play Store, all
+            //                  modern phones/tablets/Chromebooks.
+            //   x86_64       — 64-bit Intel, dev emulators + Chromebooks.
+            // 32-bit x86 and armeabi-v7a were dropped — too few
+            // real-world devices.
+            abiFilters 'arm64-v8a', 'x86_64'
         }
     }
 
