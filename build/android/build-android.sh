@@ -7,11 +7,16 @@
 #   1. Ensures third-party native deps are cloned under build/android/deps
 #      (SDL2, SDL2_image, SDL2_mixer, libxml2, libgd, libpng, libjpeg-turbo,
 #      libogg, libvorbis, openal-soft, freealut, libcurl).
-#   2. Stages OpenLieroX game data into build/android/assets so the APK
-#      bundles share/gamedir.
+#   2. Stages OpenLieroX game data into build/android/output/assets so the
+#      APK bundles share/gamedir.
 #   3. Runs the gradle wrapper to produce the debug APK.
 #
-# The resulting APK is copied to build/android/output/openlierox.apk.
+# Every generated artefact lands under build/android/output/:
+#     output/assets/         — staged game data (APK input)
+#     output/build/          — Gradle build dir (was app/build/)
+#     output/cxx/            — CMake build dir (was app/.cxx/)
+#     output/gradle-cache/   — Gradle project cache (was .gradle/)
+#     output/openlierox-*.apk — final APK
 #
 # Usage: ./build/android/build-android.sh [--release] [--clean] [--install] [--run]
 #
@@ -86,30 +91,36 @@ fi
 # ---------- stage game data ------------------------------------------------
 
 if [ "$SKIP_DATA" -eq 0 ]; then
-    echo "Staging game data from share/gamedir into build/android/assets..."
-    rm -rf "$ANDROID_DIR/assets/gamedir"
-    mkdir -p "$ANDROID_DIR/assets"
-    cp -a "$OLX_ROOT/share/gamedir" "$ANDROID_DIR/assets/gamedir"
+    echo "Staging game data from share/gamedir into build/android/output/assets..."
+    rm -rf "$ANDROID_DIR/output/assets/gamedir"
+    mkdir -p "$ANDROID_DIR/output/assets"
+    cp -a "$OLX_ROOT/share/gamedir" "$ANDROID_DIR/output/assets/gamedir"
     # Drop a marker so the runtime can check that the data was extracted.
     echo "$(cat "$OLX_ROOT/VERSION" 2>/dev/null || echo unknown)" \
-        > "$ANDROID_DIR/assets/gamedir.version"
+        > "$ANDROID_DIR/output/assets/gamedir.version"
 fi
 
 # ---------- gradle build ---------------------------------------------------
 
 cd "$ANDROID_DIR"
 
+# Keep Gradle's project cache (the conventional .gradle/ dir) under
+# output/ alongside every other generated artefact.
+GRADLE_CACHE_DIR="$ANDROID_DIR/output/gradle-cache"
+mkdir -p "$GRADLE_CACHE_DIR"
+GRADLE_OPTS_COMMON=(--no-daemon --console=plain --project-cache-dir "$GRADLE_CACHE_DIR")
+
 if [ "$DO_CLEAN" -eq 1 ]; then
-    ./gradlew clean
+    ./gradlew "${GRADLE_OPTS_COMMON[@]}" clean
 fi
 
 GRADLE_TASK="assemble${BUILD_TYPE^}"   # assembleDebug / assembleRelease
 
-./gradlew "$GRADLE_TASK" --no-daemon --console=plain
+./gradlew "${GRADLE_OPTS_COMMON[@]}" "$GRADLE_TASK"
 
 # ---------- output ---------------------------------------------------------
 
-APK_SRC="$ANDROID_DIR/app/build/outputs/apk/$BUILD_TYPE/app-${BUILD_TYPE}.apk"
+APK_SRC="$ANDROID_DIR/output/build/outputs/apk/$BUILD_TYPE/app-${BUILD_TYPE}.apk"
 APK_DST_DIR="$ANDROID_DIR/output"
 APK_DST="$APK_DST_DIR/openlierox-${BUILD_TYPE}.apk"
 

@@ -57,9 +57,4 @@ distrib
 
 # Android port build artefacts (clones, gradle/cmake intermediates)
 build/android/deps
-build/android/assets/
 build/android/output/
-build/android/local.properties
-build/android/.gradle/
-build/android/app/.cxx/
-build/android/app/build/

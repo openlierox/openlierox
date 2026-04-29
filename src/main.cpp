@@ -213,15 +213,20 @@ int main(int argc, char *argv[]) {
 int real_main(int argc, char *argv[])
 {
 #ifdef __ANDROID__
-	// SDL2 returns the Activity's getFilesDir() — i.e. /data/data/net.openlierox/files.
-	// OpenLieroX's basesearchpaths assume HOME is set; route both HOME and the
-	// process working directory at it so the standard search rules (${HOME}/.OpenLieroX,
-	// SYSTEM_DATA_DIR/OpenLieroX) all land in app-private storage.
+	// SDL2 returns the Activity's getFilesDir() — e.g.
+	// /data/user/10/net.openlierox/files. OpenLieroXActivity extracts the
+	// packaged gamedir into ${filesDir}/OpenLieroX/. We point HOME at
+	// filesDir (so ${HOME}/.OpenLieroX/cfg lands in app-private config
+	// storage) and chdir into the gamedir so OLX's "." search path
+	// resolves to the staged data tree (data/gfx/font.png etc).
 	{
 		const char* internal = SDL_AndroidGetInternalStoragePath();
 		if (internal && *internal) {
 			setenv("HOME", internal, 1);
-			chdir(internal);
+			std::string gamedir = std::string(internal) + "/OpenLieroX";
+			if (chdir(gamedir.c_str()) != 0) {
+				chdir(internal);
+			}
 		}
 	}
 #endif

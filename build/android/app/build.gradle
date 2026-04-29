@@ -6,6 +6,13 @@ def olxRoot = project.rootDir.toPath().resolve('../..').normalize().toFile()
 def versionFile = new File(olxRoot, 'VERSION')
 def olxVersion = versionFile.exists() ? versionFile.text.trim() : '0.59'
 
+// Funnel every generated artefact under build/android/output/ so the
+// repo only has one ignored sub-tree to manage. Gradle's project cache
+// (.gradle/) is relocated separately by build-android.sh via
+// --project-cache-dir, since its location is set on the command line.
+def outputRoot = new File(rootDir, 'output')
+project.layout.buildDirectory.set(new File(outputRoot, 'build'))
+
 android {
     namespace 'net.openlierox'
     compileSdk 36
@@ -46,6 +53,10 @@ android {
         cmake {
             path 'src/main/jni/CMakeLists.txt'
             version '3.22.1'
+            // Move CMake's intermediate tree out of app/.cxx into
+            // build/android/output/cxx so all generated artefacts share
+            // one parent directory.
+            buildStagingDirectory new File(outputRoot, 'cxx')
         }
     }
 
@@ -70,12 +81,13 @@ android {
         }
     }
 
-    // build-android.sh stages the game data into build/android/assets;
-    // wire it in here as an extra assets source so we don't have to
-    // duplicate the tree under app/src/main/assets.
+    // build-android.sh stages the game data into
+    // build/android/output/assets; wire it in here as an extra assets
+    // source so we don't have to duplicate the tree under
+    // app/src/main/assets.
     sourceSets {
         main {
-            assets.srcDirs += [new File(rootDir, 'assets')]
+            assets.srcDirs += [new File(outputRoot, 'assets')]
         }
     }
 }
