@@ -85,7 +85,7 @@ echo "ANDROID_NDK_HOME=${ANDROID_NDK_HOME:-(unset — gradle will pick one)}"
 # ---------- third-party deps ----------------------------------------------
 
 if [ "$SKIP_FETCH" -eq 0 ]; then
-    "$ANDROID_DIR/deps/fetch.sh"
+    "$ANDROID_DIR/fetch-dependencies.sh"
 fi
 
 # ---------- stage game data ------------------------------------------------
