@@ -1,0 +1,91 @@
+name: Build
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+      - 0.59
+
+jobs:
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libboost-dev \
+            xz-utils \
+            zip
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Android SDK + cmdline-tools
+        uses: android-actions/setup-android@v3
+        with:
+          packages: ""
+
+      - name: Install NDK and build-tools via sdkmanager
+        run: |
+          set -eu
+          # `yes | sdkmanager --licenses` exits non-zero under
+          # `set -o pipefail` because sdkmanager closes stdin after
+          # consuming enough y's and `yes` gets SIGPIPE. Run it in a
+          # subshell without pipefail and ignore its exit code.
+          (yes || true) | sdkmanager --licenses >/dev/null 2>&1 || true
+          sdkmanager \
+            "platform-tools" \
+            "platforms;android-36" \
+            "build-tools;36.0.0" \
+            "ndk;29.0.14206865"
+          echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/29.0.14206865" >> "$GITHUB_ENV"
+
+      - name: Create Android debug keystore
+        # Android Gradle Plugin signs debug APKs with the standard
+        # debug keystore. On a developer machine the SDK creates it on
+        # first use; on a fresh CI runner it doesn't exist, so apksigner
+        # aborts. Create it up front with the conventional
+        # storepass/keypass/alias (android / android / androiddebugkey).
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.android"
+          if [ ! -f "$HOME/.android/debug.keystore" ]; then
+              keytool -genkeypair -v \
+                  -keystore "$HOME/.android/debug.keystore" \
+                  -storepass android -keypass android \
+                  -alias androiddebugkey \
+                  -dname 'CN=Android Debug,O=Android,C=US' \
+                  -keyalg RSA -keysize 2048 -validity 10000
+          fi
+
+      - name: Build APK
+        run: ./build/android/build-android.sh
+
+      - name: Detect APK filename
+        id: apk
+        run: |
+          set -euo pipefail
+          VERSION="$(./get_version.sh)"
+          NAME="openlierox-${VERSION}-android.apk"
+          mv build/android/output/openlierox-debug.apk "build/android/output/${NAME}"
+          echo "name=${NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload openlierox-android
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.apk.outputs.name }}
+          path: build/android/output/openlierox-*-android.apk
+          if-no-files-found: error
