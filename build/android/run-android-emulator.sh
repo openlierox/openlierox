@@ -63,6 +63,14 @@ fi
 echo "Installing $APK..."
 "$ADB" install -r -t "$APK"
 
+# Force-stop any prior instance: a singleInstance Activity that's still
+# tearing down from a previous run will have its UI thread destroy the
+# new Activity mid-startup, and SDL_main races into SDL_CreateRenderer
+# against a surfaceDestroyed() callback, failing with "Couldn't find
+# matching render driver". Force-stop guarantees a clean slate.
+"$ADB" shell am force-stop "$PKG"
+sleep 1
+
 # Clear logcat so we only see our session.
 "$ADB" logcat -c
 
