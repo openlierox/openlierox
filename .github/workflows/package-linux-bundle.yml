@@ -10,6 +10,8 @@ on:
 jobs:
   build-linux:
     name: Build Linux-bundle
+    # Temporarily disabled while the Android port lands; re-enable by removing this line.
+    if: false
     runs-on: ubuntu-24.04
 
     steps:

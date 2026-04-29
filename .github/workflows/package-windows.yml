@@ -10,6 +10,8 @@ on:
 jobs:
   build-windows:
     name: Build Windows .exe (MSYS2 MinGW64)
+    # Temporarily disabled while the Android port lands; re-enable by removing this line.
+    if: false
     runs-on: windows-2022
     defaults:
       run:
