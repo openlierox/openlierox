@@ -54,3 +54,8 @@ PrecompiledHeader.*
 *openlierox_pch_dephelp.*
 
 distrib
+
+# Android port build artefacts (clones, gradle/cmake intermediates)
+build/android/deps
+build/android/output/
+*.claude

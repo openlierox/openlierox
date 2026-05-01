@@ -1,0 +1,99 @@
+plugins {
+    id 'com.android.application'
+}
+
+def olxRoot = project.rootDir.toPath().resolve('../..').normalize().toFile()
+def versionFile = new File(olxRoot, 'VERSION')
+def olxVersion = versionFile.exists() ? versionFile.text.trim() : '0.59'
+
+// Funnel every generated artefact under build/android/output/ so the
+// repo only has one ignored sub-tree to manage. Gradle's project cache
+// (.gradle/) is relocated separately by build-android.sh via
+// --project-cache-dir, since its location is set on the command line.
+def outputRoot = new File(rootDir, 'output')
+project.layout.buildDirectory.set(new File(outputRoot, 'build'))
+
+android {
+    namespace 'net.openlierox'
+    compileSdk 36
+    ndkVersion '29.0.14206865'
+
+    defaultConfig {
+        applicationId 'net.openlierox'
+        minSdk 21
+        targetSdk 34
+        versionCode 1
+        versionName olxVersion
+
+        externalNativeBuild {
+            cmake {
+                // Per-target compile flags + defines live in jni/CMakeLists.txt;
+                // this block only sets globals that affect every translation unit
+                // (including Lua / HawkNL C sources, which need _FORTIFY_SOURCE off).
+                cppFlags '-fexceptions', '-frtti', '-U_FORTIFY_SOURCE'
+                cFlags   '-U_FORTIFY_SOURCE'
+                arguments '-DANDROID_STL=c++_shared',
+                          '-DANDROID_PLATFORM=android-21',
+                          "-DOLX_ROOT=${olxRoot.absolutePath}"
+            }
+        }
+        ndk {
+            // Single fat APK covering the two Android ABIs that still
+            // see meaningful device share:
+            //   arm64-v8a    — 64-bit ARM, mandatory for Play Store, all
+            //                  modern phones/tablets/Chromebooks.
+            //   x86_64       — 64-bit Intel, dev emulators + Chromebooks.
+            // 32-bit x86 and armeabi-v7a were dropped — too few
+            // real-world devices.
+            abiFilters 'arm64-v8a', 'x86_64'
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path 'src/main/jni/CMakeLists.txt'
+            version '3.22.1'
+            // Move CMake's intermediate tree out of app/.cxx into
+            // build/android/output/cxx so all generated artefacts share
+            // one parent directory.
+            buildStagingDirectory new File(outputRoot, 'cxx')
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.debug
+        }
+        debug {
+            // Keep debuggable + matchingFallbacks defaults.
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging true
+        }
+    }
+
+    // build-android.sh stages the game data into
+    // build/android/output/assets; wire it in here as an extra assets
+    // source so we don't have to duplicate the tree under
+    // app/src/main/assets.
+    sourceSets {
+        main {
+            assets.srcDirs += [new File(outputRoot, 'assets')]
+        }
+    }
+}
+
+dependencies {
+    // SDLActivity-based apps don't need androidx.appcompat. Keep this
+    // module dependency-free to avoid kotlin-stdlib class conflicts that
+    // come along with appcompat 1.7.x.
+}

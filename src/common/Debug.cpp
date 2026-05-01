@@ -17,6 +17,10 @@
 
 #include <time.h>
 
+#ifdef __ANDROID__
+#include <android/log.h>
+#endif
+
 std::string GetLogTimeStamp()
 {
 	// TODO: please recode this, don't use C-strings!
@@ -99,6 +103,10 @@ static bool logger_output(Logger& log, const std::string& buf) {
 		ret = PrettyPrint(prefix, buf, StdoutPrintFct(), log.lastWasNewline);
 		//std::cout.flush();
 		SDL_mutexV(globalCoutMutex);
+#ifdef __ANDROID__
+		__android_log_print(ANDROID_LOG_INFO, "OpenLieroX", "%s%s",
+			prefix.c_str(), buf.c_str());
+#endif
 	}
 	if((tLXOptions ? tLXOptions->iVerbosity : 0) >= log.minCallstackVerb) {
 		DumpCallstackPrintf();

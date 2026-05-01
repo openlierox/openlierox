@@ -798,8 +798,14 @@ static void charactersParsed(void* context, const xmlChar* ch, int len)
 	*result += std::string( (const char *) ch, len );
 }
 
-/* GCS: custom error function to ignore errors */
+/* GCS: custom error function to ignore errors. libxml2 2.12+ added a
+ * `const` to the second argument; pick the right signature so we
+ * compile on both pre- and post-2.12 libxml2. */
+#if defined(LIBXML_VERSION) && LIBXML_VERSION >= 21200
+static void xmlErrorHandlerDummy(void *, const xmlError *)
+#else
 static void xmlErrorHandlerDummy(void *, xmlErrorPtr)
+#endif
 {
 	/* ignore all errors */
 }

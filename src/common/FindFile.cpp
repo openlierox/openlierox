@@ -30,6 +30,10 @@
 #include "Debug.h"
 #include <boost/crc.hpp>
 
+#ifdef __ANDROID__
+#include <SDL_system.h>
+#endif
+
 
 #ifdef WIN32
 #	ifndef _WIN32_IE
@@ -471,7 +475,19 @@ bool GetExactFileName(const std::string& abs_searchname, std::string& filename) 
 searchpathlist	basesearchpaths;
 void InitBaseSearchPaths() {
 	basesearchpaths.clear();
-#if defined(__APPLE__)
+#if defined(__ANDROID__)
+	// Android has no $HOME and no meaningful cwd. The Activity stages the
+	// packaged gamedir into getFilesDir()/OpenLieroX/, which SDL exposes via
+	// SDL_AndroidGetInternalStoragePath(). External app storage is offered
+	// as a secondary path so users can drop in mods/levels via a file
+	// manager or USB.
+	if (const char* internal = SDL_AndroidGetInternalStoragePath()) {
+		AddToFileList(&basesearchpaths, std::string(internal) + "/OpenLieroX");
+	}
+	if (const char* external = SDL_AndroidGetExternalStoragePath()) {
+		AddToFileList(&basesearchpaths, std::string(external) + "/OpenLieroX");
+	}
+#elif defined(__APPLE__)
 	AddToFileList(&basesearchpaths, "${HOME}/Library/Application Support/OpenLieroX");
 	AddToFileList(&basesearchpaths, ".");
 	AddToFileList(&basesearchpaths, "${BIN}/../Resources/gamedir");
@@ -752,7 +768,13 @@ bool FileListIncludesExact(const searchpathlist* l, const std::string& f) {
 }
 
 std::string GetHomeDir() {
-#ifndef WIN32
+#if defined(__ANDROID__)
+	// Android apps have no user home directory. The closest analogue is the
+	// per-app private files dir, which is also where we stage the gamedir.
+	if (const char* internal = SDL_AndroidGetInternalStoragePath())
+		return internal;
+	return "";
+#elif !defined(WIN32)
 	char* home = getenv("HOME");
 	if(home == NULL || home[0] == '\0') {
 		passwd* userinfo = getpwuid(getuid());

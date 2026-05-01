@@ -207,7 +207,9 @@ int main(int argc, char *argv[]) {
 // Main entry point
 int real_main(int argc, char *argv[])
 {
+#ifndef __ANDROID__
 	if(DoCrashReport(argc, argv)) return 0;
+#endif
 
 	ParseArguments_BeforeInit(argc, argv);
 
@@ -260,7 +262,9 @@ startpoint:
 
 	teeStdoutFile(GetWriteFullFileName("logs/OpenLieroX - " + GetDateTimeFilename() + ".txt", true));
 	activateStdinCLIHistory();
+#ifndef __ANDROID__
 	CrashHandler::init();
+#endif
 
 	if(!NetworkTexts::Init()) {
 		SystemError("Could not load network strings.");
@@ -409,8 +413,10 @@ startpoint:
 	
 	notes << "Good Bye and enjoy your day..." << endl;
 
+#ifndef __ANDROID__
 	// Uninit the crash handler after all other code
 	CrashHandler::uninit();
+#endif
 
 	quitStdinCLISupport();
 	teeStdoutQuit();
