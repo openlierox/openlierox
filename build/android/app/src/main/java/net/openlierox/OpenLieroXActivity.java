@@ -2,6 +2,7 @@ package net.openlierox;
 
 import android.content.res.AssetManager;
 import android.os.Bundle;
+import android.os.Process;
 import android.util.Log;
 
 import org.libsdl.app.SDLActivity;
@@ -44,6 +45,17 @@ public class OpenLieroXActivity extends SDLActivity {
             Log.e(TAG, "Failed to extract gamedir: " + e.getMessage(), e);
         }
         super.onCreate(savedInstanceState);
+    }
+
+    @Override
+    protected void onDestroy() {
+        // OLX's globals (singletons, network/OpenAL/SDL state, file-static
+        // caches) aren't designed to be re-initialised inside one process,
+        // so a second SDL_main() call against a warm JVM tends to hang on
+        // boot. Force a hard process exit so the next launch is always a
+        // cold start — identical to swiping the app from Recents.
+        super.onDestroy();
+        Process.killProcess(Process.myPid());
     }
 
     private void extractGamedirIfNeeded() throws IOException {
