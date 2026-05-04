@@ -8,6 +8,7 @@ include(${OLXROOTDIR}/CMakeOlxCommon.cmake)
 
 IF(WIN32)
 	SET(OLX_ICON_PATH "${OLXROOTDIR}/share/OpenLieroX.ico")
+	SET(OLX_MANIFEST_PATH "${OLXROOTDIR}/share/OpenLieroX-windows.manifest")
 	configure_file(
 		"${OLXROOTDIR}/OpenLieroX.rc.in"
 		"${CMAKE_BINARY_DIR}/OpenLieroX.rc"
