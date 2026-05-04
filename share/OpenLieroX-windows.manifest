@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+  <assemblyIdentity type="win32" name="OpenLieroX" version="1.0.0.0"/>
+  <application xmlns="urn:schemas-microsoft-com:asm.v3">
+    <windowsSettings>
+      <!--
+        Make the entire narrow Win32/CRT layer (fopen, stat, _findfirst,
+        SHGetSpecialFolderPathA, argv, environment, console) interpret
+        char* paths as UTF-8 instead of the system ANSI codepage. This
+        is what fixes asset loading from folders containing characters
+        outside the user's ANSI codepage (e.g. German äöüß).
+      -->
+      <activeCodePage xmlns="http://schemas.microsoft.com/SMI/2019/WindowsSettings">UTF-8</activeCodePage>
+    </windowsSettings>
+  </application>
+</assembly>
