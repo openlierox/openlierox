@@ -84,6 +84,13 @@ public:
 	int		Setup(const std::string& text);
 	static void InitJoysticksTemp(); // call this if CInput::Wait shall recognise joystick events
 	static void UnInitJoysticksTemp();
+	// SDL_CONTROLLERDEVICEADDED / SDL_CONTROLLERDEVICEREMOVED hotplug
+	// handlers. Without these, controllers plugged in after startup
+	// (or surfaced late by the platform — e.g. browser Gamepad API
+	// only exposing pads after the user's first button press) are
+	// invisible to the engine.
+	static void OnControllerAdded(int deviceIndex);
+	static void OnControllerRemoved(int instanceId);
 	static int Wait(std::string& strText); // TODO: change this name. this function doesn't realy wait, it just checks the event-state
 	bool	isUsed() { return Type >= 0; }
 	int		getData() { return Data; }

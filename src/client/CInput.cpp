@@ -182,6 +182,8 @@ int keys_t::keySymFromName(const std::string & name)
 void updateAxisStates() {}
 void CInput::InitJoysticksTemp() {}
 void CInput::UnInitJoysticksTemp() {}
+void CInput::OnControllerAdded(int) {}
+void CInput::OnControllerRemoved(int) {}
 
 #else
 
@@ -363,6 +365,65 @@ static void uninitTempController(int i) {
 void CInput::UnInitJoysticksTemp() {
 	uninitTempController(0);
 	uninitTempController(1);
+}
+
+void CInput::OnControllerAdded(int deviceIndex) {
+	if(!bJoystickSupport) return;
+	// SDL fires SDL_CONTROLLERDEVICEADDED for every controller present
+	// during SDL_INIT_GAMECONTROLLER (not only true hot-plug events).
+	// Skip if this device is already open in some slot — otherwise the
+	// boot-time scan in InitJoysticksTemp() and this handler will both
+	// open the same physical pad and we'll bind it to two slots.
+	SDL_JoystickID newId = SDL_JoystickGetDeviceInstanceID(deviceIndex);
+	if(newId >= 0) {
+		for(int j = 0; j < 2; ++j) {
+			if(!controllers[j]) continue;
+			SDL_Joystick* joy = SDL_GameControllerGetJoystick(controllers[j]);
+			if(joy && SDL_JoystickInstanceID(joy) == newId) return;
+		}
+	}
+	// Fill the first free slot. We only support up to two controllers.
+	for(int i = 0; i < 2; ++i) {
+		if(controllers[i] != NULL) continue;
+		const char* name = SDL_GameControllerNameForIndex(deviceIndex);
+		notes << "OnControllerAdded: opening device " << deviceIndex
+		      << " (\"" << (name ? name : "unknown") << "\") in slot " << i << endl;
+		if(!SDL_IsGameController(deviceIndex)) {
+			warnings << "  Device is not a recognised SDL GameController — skipping" << endl;
+			return;
+		}
+		controllers[i] = SDL_GameControllerOpen(deviceIndex);
+		if(!controllers[i]) {
+			warnings << "  Could not open game controller: " << SDL_GetError() << endl;
+			return;
+		}
+		SDL_Joystick* joy = SDL_GameControllerGetJoystick(controllers[i]);
+		notes << "  Axes: "    << SDL_JoystickNumAxes(joy)    << endl;
+		notes << "  Buttons: " << SDL_JoystickNumButtons(joy) << endl;
+		notes << "  Hats: "    << SDL_JoystickNumHats(joy)    << endl;
+		// Hot-plugged controllers persist past the menu's temp-init
+		// teardown — leave controllers_inited_temp[i] false.
+		SDL_GameControllerUpdate();
+		return;
+	}
+	notes << "OnControllerAdded: device " << deviceIndex
+	      << " ignored — both controller slots already in use" << endl;
+}
+
+void CInput::OnControllerRemoved(int instanceId) {
+	if(!bJoystickSupport) return;
+	for(int i = 0; i < 2; ++i) {
+		if(!controllers[i]) continue;
+		SDL_Joystick* joy = SDL_GameControllerGetJoystick(controllers[i]);
+		if(!joy) continue;
+		if(SDL_JoystickInstanceID(joy) != (SDL_JoystickID)instanceId) continue;
+		notes << "OnControllerRemoved: closing slot " << i
+		      << " (instance " << instanceId << ")" << endl;
+		SDL_GameControllerClose(controllers[i]);
+		controllers[i] = NULL;
+		controllers_inited_temp[i] = false;
+		return;
+	}
 }
 
 #endif // !DEDICATED_ONLY
