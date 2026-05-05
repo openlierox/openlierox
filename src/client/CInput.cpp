@@ -177,7 +177,7 @@ int keys_t::keySymFromName(const std::string & name)
 
 	
 	
-#if defined(DEDICATED_ONLY) || defined(DISABLE_JOYSTICK)
+#ifdef DEDICATED_ONLY
 
 void updateAxisStates() {}
 void CInput::InitJoysticksTemp() {}
