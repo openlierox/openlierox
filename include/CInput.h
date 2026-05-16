@@ -157,6 +157,17 @@ struct joystick_t {
 };
 
 
+// Returns true if the given SDL keycode resolves to one of player 1's
+// configured action bindings (Ply1Controls). Used by the touch
+// auto-hide so player 2 pressing their keyboard keys doesn't dismiss
+// player 1's on-screen controls.
+bool isPlayer1KeyBinding(SDL_Keycode sym);
+
+// Returns the local player slot (0 = player 1, 1 = player 2) that the
+// given controller instance ID drives, or -1 if not registered.
+int  getControllerPlayerSlot(SDL_JoystickID instanceID);
+
+
 
 
 #endif  //  __CINPUT_H__

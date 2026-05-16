@@ -216,6 +216,12 @@ bool GameOptions::Init() {
 		( tLXOptions->bAntiAliasing, "Game.Antialiasing", true )
 		( tLXOptions->bMouseAiming, "Game.MouseAiming", false ) // TODO: rename to mouse control?
 		( tLXOptions->iMouseSensity, "Game.MouseSensity", 200 )
+		( tLXOptions->bTouchscreenControls, "Game.TouchscreenControls",
+#ifdef __ANDROID__
+			true )
+#else
+			false )
+#endif
 		( tLXOptions->bAntilagMovementPrediction, "Game.AntilagMovementPrediction", true )
 		( tLXOptions->sLastSelectedPlayer, "Game.LastSelectedPlayer", "" )
 		( tLXOptions->sLastSelectedPlayer2, "Game.LastSelectedPlayer2", "" )

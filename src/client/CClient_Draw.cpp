@@ -40,6 +40,8 @@
 #include "DeprecatedGUI/CCheckbox.h"
 #include "DeprecatedGUI/CChatWidget.h"
 #include "InputEvents.h"
+#include "TouchControls.h"
+#include "TouchScreenInput.h"
 #include "AuxLib.h"
 #include "Timer.h"
 #include "Clipboard.h"
@@ -555,6 +557,17 @@ void CClient::Draw(const SmartPointer<SDL_Surface>& bmpDest)
 			MiniMapY = 480 - tInterfaceSettings.MiniMapH;
 		//}
 
+		// When the on-screen touch controls are visible, scoot the
+		// minimap left so the right-edge action-button column doesn't
+		// cover it. The buttons live at x>=525 (kVJoyAreaRight); a
+		// small extra gap keeps the minimap visually separated.
+		if(TouchControls::IsActive()) {
+			constexpr int kTouchRightEdge = 525;
+			constexpr int kGap            = 4;
+			MiniMapX = kTouchRightEdge - kGap - tInterfaceSettings.MiniMapW;
+			if(MiniMapX < 0) MiniMapX = 0;
+		}
+
 		// Mini-Map
 		if (game.gameMap() != NULL && (bool)getGameLobby()[FT_MiniMap])  {
 			if (game.state >= Game::S_Preparing)
@@ -818,6 +831,9 @@ void CClient::Draw(const SmartPointer<SDL_Surface>& bmpDest)
 
 	// Console
 	Con_Draw(bmpDest.get());
+
+	// Touchscreen on-screen controls (no-op when option is disabled)
+	TouchControls::Render(bmpDest.get());
 
 	// We currently just set it always to true because it paints on the video surface
 	// and expects that it will always stay there. This is of course wrong for double buffering
@@ -1281,7 +1297,10 @@ void CClient::SimulateHud()
 	}
 
 	// Game Menu
-	if( ( WasKeyboardEventHappening(SDLK_ESCAPE, false) || DeprecatedGUI::CChatWidget::GlobalEnabled()) && 
+	if( ( WasKeyboardEventHappening(SDLK_ESCAPE, false)
+		|| DeprecatedGUI::CChatWidget::GlobalEnabled()
+		|| TouchScreenInput::wasActionTapped(1, TouchScreenInput::Action::OpenMenu)
+		) &&
 			!bChat_Typing && !con && game.state >= Game::S_Preparing) {
         if( !bViewportMgr )
         {

@@ -286,6 +286,7 @@ public:
 	bool	bAntiAliasing;
 	bool	bMouseAiming;
 	int		iMouseSensity;
+	bool	bTouchscreenControls;	// On-screen buttons for finger input. Default on for Android.
 	bool	bAntilagMovementPrediction;
 	std::string	sLastSelectedPlayer;
 	std::string	sLastSelectedPlayer2;

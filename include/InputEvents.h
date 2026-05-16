@@ -110,6 +110,12 @@ ModifiersState *GetCurrentModstate();
 
 bool		WasKeyboardEventHappening(SDL_Keycode key, bool down = true);
 
+// Inject a synthetic keyboard event into the same pipeline real key events go
+// through. Used by the on-screen touch controls so that a touch button press
+// ends up in the player CInput state exactly like a real key press would.
+// Must be called from the main thread / gameloop thread.
+void		InjectSyntheticKey(SDL_Keycode sym, bool down);
+
 
 class CInput;
 void		RegisterCInput(CInput* input);
