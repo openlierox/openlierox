@@ -1,4 +1,4 @@
-#!/usr/bin/python -u
+#!/usr/bin/env python3 -u
 # Dedicated Control handler script for OpenLieroX
 # (http://openlierox.sourceforge.net)
 
@@ -263,7 +263,7 @@ def parseNewWorm(wormID, name):
 	wormIP = io.getWormIP(wormID).split(":")[0]
 	# io.messageLog("Curtime " + str(time.time()) + " IP " + str(wormIP) + " Kicked worms: " + str(cmds.kickedUsers), io.LOG_INFO)
 	if wormIP in cmds.kickedUsers and cmds.kickedUsers[ wormIP ] > time.time():
-			io.kickWorm( wormID, "You can join in " + str(int(cmds.kickedUsers[ wormIP ] - time.time())/60 + 1) + " minutes" )
+			io.kickWorm( wormID, "You can join in " + str(int(cmds.kickedUsers[ wormIP ] - time.time()) // 60 + 1) + " minutes" )
 			return
 	cmds.recheckVote()
 
@@ -543,21 +543,23 @@ class PresetCicler(StandardCiclerBase):
 
 		sDefaults = os.path.join(presetDir,"Defaults")
 		try:
-			execfile(sDefaults)
-		except:
+			with open(sDefaults) as fDefaults:
+				exec(compile(fDefaults.read(), sDefaults, 'exec'))
+		except Exception:
 			io.messageLog("Error in preset: " + str(formatExceptionInfo()),io.LOG_ERROR)
 
 		sFile = os.path.join(presetDir,self.curSelection)
 		try:
-			fPreset = file(sFile,"r")
+			fPreset = open(sFile,"r")
 			line = fPreset.readline()
 			if line.find("python") != -1:
 				fPreset.close()
-				execfile(sFile)
+				with open(sFile) as fScript:
+					exec(compile(fScript.read(), sFile, 'exec'))
 			else:
-				print line.strip().replace('"','')
+				print(line.strip().replace('"',''))
 				for line in fPreset.readlines():
-					print line.strip().replace('"','')
+					print(line.strip().replace('"',''))
 				fPreset.close()
 		except IOError:
 			# File does not exist, perhaps it was removed.

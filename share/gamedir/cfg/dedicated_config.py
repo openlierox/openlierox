@@ -1,4 +1,4 @@
-#!/usr/bin/python -u
+#!/usr/bin/env python3 -u
 
 # TODO: what is this script for? why not using cfg/options.cfg ?
 # TODO: This script should only contain special settings which are not covered by options.cfg

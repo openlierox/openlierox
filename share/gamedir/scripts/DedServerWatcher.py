@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 
 # Simple script that will restard ded server if it hung
 # You do not need that script on Windows - we have ded server installed as system service there
@@ -18,7 +18,7 @@ olxPath = "openlierox.exe" # Modify here the path to OLX binary
 TimeToSleep=60 # OLX and ded server will write something in logs once per 40 seconds
 
 def startProcess():
-	print "Starting " + olxPath
+	print("Starting " + olxPath)
 	if sys.platform == "win32":
 		proc = subprocess.Popen( [olxPath, olxPath, "-dedicated"] )
 	else:
@@ -31,13 +31,13 @@ def killProcess(proc):
 		ctypes.windll.kernel32.TerminateProcess( proc.pid, 1 )
 	else:
 		os.kill( proc, signal.SIGKILL )
-	
+
 proc = startProcess()
 uptime = time.time()
 
 def signalHandler(signum, frame):
-	print "Signal caught - exiting"
-	print "Killing process, uptime was %f hours" % ( ( time.time() - uptime ) / 3600 )
+	print("Signal caught - exiting")
+	print("Killing process, uptime was %f hours" % ( ( time.time() - uptime ) / 3600 ))
 	killProcess(proc)
 	sys.exit()
 
@@ -55,10 +55,10 @@ time.sleep(TimeToSleep)
 
 while True:
 
-	#print "stdout.txt size %i was %i, dedicated_control.log size %i was %i" % \
-	#	( os.stat("stdout.txt").st_size, fileSize1, os.stat("dedicated_control.log").st_size, fileSize2 )
+	#print("stdout.txt size %i was %i, dedicated_control.log size %i was %i" % \
+	#	( os.stat("stdout.txt").st_size, fileSize1, os.stat("dedicated_control.log").st_size, fileSize2 ))
 	if fileSize1 == os.stat("stdout.txt").st_size or fileSize2 == os.stat("dedicated_control.log").st_size:
-		print "Killing process, uptime was %f hours" % ( ( time.time() - uptime ) / 3600 )
+		print("Killing process, uptime was %f hours" % ( ( time.time() - uptime ) / 3600 ))
 		killProcess(proc)
 		proc = startProcess()
 		uptime = time.time()
@@ -67,4 +67,3 @@ while True:
 	fileSize2 = os.stat("dedicated_control.log").st_size
 
 	time.sleep(TimeToSleep)
-

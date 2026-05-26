@@ -1,15 +1,19 @@
-#!/usr/bin/python -u
+#!/usr/bin/env python3 -u
 
 # Dedicated Control handler script for OpenLieroX
 # (http://openlierox.sourceforge.net)
 
-import os, sys, time
+import builtins
+import importlib
+import os
+import sys
+import time
 
 # Print Python script errors to external file -
 # on Windows it cannot print errors to console
 # We should start logging as soon as possible, or we won't get errors about invalid config file
 if sys.platform == "win32":
-	sys.stderr = open("dedicated_control_errors.log", "w", 0)
+	sys.stderr = open("dedicated_control_errors.log", "w", buffering=1)
 
 # Add current dir to module search path
 sys.path.append( os.getcwd() )
@@ -24,11 +28,11 @@ if len(sys.argv) > 1:
 # Add dir with config file to module search path
 try:
 	sys.path.append(os.path.dirname(io.getFullFileName(cfg_name+".py")))
-except:
+except Exception:
 	pass
 
-exec("import %s as cfg" % os.path.basename(cfg_name)) # Per-host config
-__builtins__.cfg = cfg # Make it accessible from all modules
+cfg = importlib.import_module(os.path.basename(cfg_name)) # Per-host config
+builtins.cfg = cfg # Make it accessible from all modules
 
 import dedicated_control_handler as hnd # control handler
 
@@ -37,10 +41,10 @@ import dedicated_control_handler as hnd # control handler
 
 hnd.init()
 
-io.messageLog("Dedicated_control started",io.LOG_INFO)
+io.messageLog("Dedicated_control started", io.LOG_INFO)
 
 # main loop
 while hnd.gameState != hnd.GAME_QUIT:
 	hnd.signalHandler(io.getSignal())
 
-io.messageLog("Dedicated_control stopped",io.LOG_INFO)
+io.messageLog("Dedicated_control stopped", io.LOG_INFO)

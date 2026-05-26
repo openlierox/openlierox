@@ -1,4 +1,4 @@
-#!/usr/bin/python -u
+#!/usr/bin/env python3 -u
 # Dedicated Control handler script for OpenLieroX
 # (http://openlierox.sourceforge.net)
 
@@ -141,7 +141,7 @@ def parseAdminCommand(wormid,message):
 		elif parseAdminCommand_Preset and parseAdminCommand_Preset(wormid, cmd, params):
 			pass
 		else:
-			raise Exception, "Invalid admin command"
+			raise Exception("Invalid admin command")
 
 	except: # All python classes derive from main "Exception", but confused me, this has the same effect.
 		if wormid >= 0:
@@ -273,7 +273,7 @@ def parseUserCommand(wormid,message):
 		if cfg.ALLOW_TEAM_CHANGE and cmd == "team":
 			if not params:
 				io.privateMsg(wormid, "You need to specify a team" )
-				raise Exception, "You need to specify a team"
+				raise Exception("You need to specify a team")
 			else:
 				if params[0].lower() == "blue" or params[0].lower() == "b":
 					io.setWormTeam(wormid, 0)
@@ -301,7 +301,7 @@ def parseUserCommand(wormid,message):
 			if cmd == "kick":
 				kicked = int( params[0] )
 				if not kicked in hnd.worms.keys():
-					raise Exception, "Invalid worm ID"
+					raise Exception("Invalid worm ID")
 				addVote( "io.kickWorm(" + str(kicked) + 
 							", 'You are kicked for " + str(cfg.VOTING_KICK_TIME) + " minutes')", 
 							wormid, "Kick %i: %s" % ( kicked, hnd.worms[kicked].Name ) )
@@ -309,7 +309,7 @@ def parseUserCommand(wormid,message):
 			
 			if cmd == "mute":
 				if not kicked in hnd.worms.keys():
-					raise Exception, "Invalid worm ID"
+					raise Exception("Invalid worm ID")
 				kicked = int( params[0] )
 				addVote( "io.muteWorm(" + str(kicked) +")", wormid, "Mute %i: %s" % ( kicked, hnd.worms[kicked].Name ) )
 				hnd.worms[kicked].Voted = -1
@@ -369,7 +369,7 @@ def parseUserCommand(wormid,message):
 		elif parseUserCommand_Preset and parseUserCommand_Preset(wormid, cmd, params):
 			pass
 		else:
-			raise Exception, "Invalid user command"
+			raise Exception("Invalid user command")
 	
 	except: # All python classes derive from main "Exception", but confused me, this has the same effect.
 		if wormid >= 0:

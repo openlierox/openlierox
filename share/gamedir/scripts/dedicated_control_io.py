@@ -1,4 +1,4 @@
-#!/usr/bin/python -u
+#!/usr/bin/env python3 -u
 # Dedicated Control handler script for OpenLieroX
 # (http://openlierox.sourceforge.net)
 
@@ -33,7 +33,7 @@ def getResponse():
 
 
 def SendCommand(cmd):
-	print cmd
+	print(cmd)
 	return getResponse()
 
 def getSignal():
