@@ -1,4 +1,4 @@
-#!/usr/bin/env python3 -u
+#!/usr/bin/python3 -u
 
 import sys, time, os, random, traceback, re
 from functools import cmp_to_key
