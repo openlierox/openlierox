@@ -9,6 +9,7 @@
 
 #include "ServerList.h"
 #include "TaskManager.h"
+#include "HTTP.h"
 #include "CBytestream.h"
 #include "Consts.h"
 #include "DeprecatedGUI/Menu.h"
@@ -1143,10 +1144,19 @@ static std::list<std::string> getUdpMasterServerList() {
 
 
 struct UdpUpdater : Task {
+	std::string m_statusTxt;
 	ServerList *m_list;
 
 	UdpUpdater(ServerList *l) : m_list(l) { name = "udp serverlist updater"; }
 	Result handle() { return SvrList_UpdaterFunc(); }
+	std::string statusText() {
+		Mutex::ScopedLock lock(*mutex);
+		return m_statusTxt;
+	}
+	void setStatusText(const std::string& t) {
+		Mutex::ScopedLock lock(*mutex);
+		m_statusTxt = t;
+	}
 	Result SvrList_UpdaterFunc();
 };
 
@@ -1165,6 +1175,9 @@ Result UdpUpdater::SvrList_UpdaterFunc()
 	for (std::list<std::string>::iterator it = tUdpMasterServers.begin(); it != tUdpMasterServers.end(); ++it, ++UdpServerIndex)  
 	{
 		std::string& server = *it;
+		// Show the name exactly as written in udpmasterservers.txt (before the
+		// default port gets appended below), so the status is easy to debug.
+		setStatusText("Querying server " + server + " (" + itoa(UdpServerIndex + 1) + "/" + itoa((int)tUdpMasterServers.size()) + ")");
 		NetworkAddr addr;
 		if (server.find(':') == std::string::npos)
 			server += ":23450";  // Default port
@@ -1407,10 +1420,6 @@ void ServerListUpdater::updateServerList() {
 	CHttp http;
 	
 	while(true) {
-		if( SvrCount > 0 ) {
-			setStatusText("Updating server list: " + itoa(CurServer + 1) + "/" + itoa(SvrCount));
-		}
-		
 		// Do the HTTP requests of the master servers
 		if( !SentRequest ) {
 			
@@ -1424,9 +1433,11 @@ void ServerListUpdater::updateServerList() {
 				TrimSpaces(szLine);
 				
 				if( szLine.length() > 0 && szLine[0] != '#' ) {
-					
+
 					// Send the request
 					//notes << "Getting serverlist from " + szLine + "..." << endl;
+					// Show the master server name exactly as in masterservers.txt.
+					setStatusText("Querying server " + szLine + " (" + itoa(CurServer + 1) + "/" + itoa(SvrCount) + ")");
 					http.RequestData(szLine + LX_SVRLIST, tLXOptions->sHttpProxy);
 					SentRequest = true;
 					
@@ -1466,6 +1477,115 @@ void ServerListUpdater::updateServerList() {
 void ServerList::updateList() {
 	taskManager->start(new ServerListUpdater(this), TaskManager::QT_QueueToSameTypeAndBreakCurrent);
 }
+
+
+/*************************
+ *
+ * Master server list files auto-update
+ *
+ * The lists of master servers themselves (cfg/masterservers.txt and
+ * cfg/udpmasterservers.txt) are kept up to date by downloading the latest
+ * versions from the OpenLieroX serverlist repository.
+ *
+ ************************/
+
+struct MasterServerListFile {
+	const char* url;
+	const char* localFile;
+};
+
+static const MasterServerListFile masterServerListFiles[] = {
+	{ "https://openlierox.github.io/serverlist/masterservers.txt", "cfg/masterservers.txt" },
+	{ "https://openlierox.github.io/serverlist/udpmasterservers.txt", "cfg/udpmasterservers.txt" },
+};
+
+struct MasterServerListUpdater : Task {
+	MasterServerListUpdater() { name = "masterserver list files updater"; }
+	Result handle();
+	// Shown in the menu status bar while the master server files download, before
+	// ServerListUpdater takes over with its own "Updating server list" status.
+	std::string statusText() { return "Updating server list..."; }
+	void updateFile(const MasterServerListFile& f);
+};
+
+void MasterServerListUpdater::updateFile(const MasterServerListFile& f)
+{
+	// Show the full destination path so it's clear where the downloaded file ends up.
+	notes << "Updating " << f.url << " to:\n" << GetWriteFullFileName(f.localFile) << endl;
+
+	CHttp http;
+	http.RequestData(f.url, tLXOptions->sHttpProxy);
+
+	const AbsTime startTime = GetTime();
+	HttpProc_t result = HTTP_PROC_PROCESSING;
+	while(result == HTTP_PROC_PROCESSING) {
+		if(breakSignal) {
+			http.CancelProcessing();
+			return;
+		}
+		if(GetTime() - startTime > 30.0f) {
+			// Bound the wait so a stalled connection can't hang the task
+			// (and block the next file) without leaving a trace.
+			http.CancelProcessing();
+			warnings << "Could not update " << f.localFile << ": download timed out" << endl;
+			return;
+		}
+		SDL_Delay(20);
+		result = http.ProcessRequest();
+	}
+
+	if(result == HTTP_PROC_ERROR) {
+		warnings << "Could not update " << f.localFile << ": " << http.GetError().sErrorMsg << endl;
+		return;
+	}
+
+	// Only accept a successful (2xx) HTTP response, so an error page (e.g. a
+	// "404 Not Found" body) never overwrites a working file.
+	const long status = http.GetHTTPStatusCode();
+	if(status < 200 || status >= 300) {
+		warnings << "Could not update " << f.localFile << ": server returned HTTP status " << status << endl;
+		return;
+	}
+
+	const std::string& data = http.GetData();
+	if(data.empty()) {
+		// Don't overwrite a working file with an empty download.
+		warnings << "Could not update " << f.localFile << ": downloaded file is empty" << endl;
+		return;
+	}
+
+	FILE* fp = OpenGameFile(f.localFile, "wb");
+	if(!fp) {
+		warnings << "Could not update " << f.localFile << ": cannot open the file for writing" << endl;
+		return;
+	}
+	fwrite(data.data(), 1, data.size(), fp);
+	fclose(fp);
+}
+
+Result MasterServerListUpdater::handle()
+{
+	for(size_t i = 0; i < sizeof(masterServerListFiles) / sizeof(masterServerListFiles[0]); ++i) {
+		if(breakSignal) return "break";
+		updateFile(masterServerListFiles[i]);
+	}
+	if(breakSignal) return "break";
+
+	// The master server lists are now up to date, so refresh the server list
+	// shown in the UI. This must happen after the downloads above so that it
+	// reads the freshly downloaded files, not the previous ones.
+	ServerList::get()->updateList();
+	return true;
+}
+
+void DownloadMasterServerListFiles()
+{
+	// Logged here on the main thread, so there is always a trace when Netplay
+	// is clicked - even if the background task below never gets to run.
+	notes << "Updating the master server list files..." << endl;
+	taskManager->start(new MasterServerListUpdater(), TaskManager::QT_QueueToSameTypeAndBreakCurrent);
+}
+
 
 ///////////////////
 // Parse the downloaded server list

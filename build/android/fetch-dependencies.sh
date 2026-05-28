@@ -27,6 +27,7 @@ DEPS=(
     "libvorbis|https://github.com/xiph/vorbis.git|v1.3.7"
     "openal-soft|https://github.com/kcat/openal-soft.git|1.23.1"
     "freealut|https://github.com/vancegroup/freealut.git|freealut_1_1_0"
+    "mbedtls|https://github.com/Mbed-TLS/mbedtls.git|mbedtls-3.6.2"
     "curl|https://github.com/curl/curl.git|curl-8_10_1"
 )
 
@@ -135,6 +136,21 @@ if [ ! -e boost-hdr/boost ]; then
     else
         echo "WARNING: /usr/include/boost not found. Install libboost-dev or set up boost-hdr/boost manually." >&2
     fi
+fi
+
+# Mozilla CA certificate bundle for libcurl's mbedTLS backend on Android.
+# (Linux/macOS use the OS cert store, Windows uses CURLSSLOPT_NATIVE_CA.)
+# Pinned to a dated release and verified against an in-tree sha256 so a
+# compromised endpoint can't swap the bundle without a visible code change.
+# To update: pick a newer dated URL from https://curl.se/docs/caextract.html
+# and replace the sha256 below (one is published next to each release).
+CACERT_URL="https://curl.se/ca/cacert-2026-05-14.pem"
+CACERT_SHA256="86a1f3366afac7c6f8ae9f3c779ac221129328c43f0ab2b8817eb2f362a5025c"
+if [ ! -f cacert.pem ] || ! echo "$CACERT_SHA256  cacert.pem" | sha256sum -c --status -; then
+    echo "Downloading $(basename "$CACERT_URL")"
+    curl -fsSL -o cacert.pem.tmp "$CACERT_URL"
+    echo "$CACERT_SHA256  cacert.pem.tmp" | sha256sum -c --status -
+    mv cacert.pem.tmp cacert.pem
 fi
 
 echo "All dependencies are in place under $DEPS_DIR"
