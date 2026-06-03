@@ -28,9 +28,9 @@ jobs:
             build-essential \
             patchelf \
             dpkg-dev \
-            libsdl2-dev \
-            libsdl2-image-dev \
-            libsdl2-mixer-dev \
+            libsdl1.2-dev \
+            libsdl-image1.2-dev \
+            libsdl-mixer1.2-dev \
             libxml2-dev \
             libgd-dev \
             zlib1g-dev \
