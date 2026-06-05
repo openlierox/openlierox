@@ -1,0 +1,51 @@
+name: Build Linux deb
+
+on:
+  pull_request:
+    branches:
+      - 0.58
+  push:
+    branches:
+      - 0.58
+
+jobs:
+  build-linux:
+    name: Build Debian/Ubuntu Linux packages
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Install Debian build scripts
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            dpkg-dev \
+            devscripts \
+            equivs
+
+      - name: Install build dependencies
+        run: |
+          mk-build-deps -B
+          sudo apt install -y \
+            ./openlierox-build-deps-depends_*.deb
+
+      - name: Build
+        run: |
+          dpkg-buildpackage -us -uc -jauto
+
+      - name: Detect filename
+        id: bundle
+        run: echo "name=$(basename ../openlierox_*.deb)" >> "$GITHUB_OUTPUT"
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.bundle.outputs.name }}
+          path: ../openlierox_*.deb
+          if-no-files-found: error
