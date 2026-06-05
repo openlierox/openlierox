@@ -48,4 +48,5 @@ jobs:
         with:
           name: ${{ steps.bundle.outputs.name }}
           path: openlierox_*.deb
+          archive: false
           if-no-files-found: error
