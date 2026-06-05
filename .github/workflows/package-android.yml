@@ -88,8 +88,7 @@ jobs:
           export ANDROID_KEYSTORE_FILE="`pwd`/keystore.jks"
           export ANDROID_UPLOAD_KEYSTORE_FILE="`pwd`/upload_keystore.jks"
           export PATH=$PATH:$ANDROID_SDK_ROOT/build-tools/36.0.0
-          apksigner --help
-          ./build/android/build-android.sh --release --bundle --sign --arch arm64-v8a,x86_64,armeabi-v7a,x86
+          ./build/android/build-android.sh --release --bundle --sign # --arch arm64-v8a,x86_64,armeabi-v7a,x86
 
         env:
           ANDROID_KEYSTORE_PASS: "${{secrets.ANDROID_KEYSTORE_PASS}}"
@@ -103,7 +102,7 @@ jobs:
           set -euo pipefail
           VERSION="$(./get_version.sh)"
           NAME="openlierox-${VERSION}-android.apk"
-          mv build/android/output/openlierox-debug.apk "build/android/output/${NAME}"
+          mv build/android/output/openlierox-release.apk "build/android/output/${NAME}"
           echo "name=${NAME}" >> "$GITHUB_OUTPUT"
 
       - name: Upload openlierox-android
