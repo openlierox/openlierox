@@ -109,7 +109,8 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.apk.outputs.name }}
-          path: build/android/output/openlierox-*-android.apk build/android/output/openlierox-release.aab
+          path: build/android/output/openlierox-*-android.apk
+          archive: false
           if-no-files-found: error
 
       - name: Publish to Play Store
