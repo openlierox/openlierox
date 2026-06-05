@@ -5,6 +5,7 @@ plugins {
 def olxRoot = project.rootDir.toPath().resolve('../..').normalize().toFile()
 def versionFile = new File(olxRoot, 'VERSION')
 def olxVersion = versionFile.exists() ? versionFile.text.trim() : '0.59'
+def architectures = project.hasProperty('architectures') ? project.architectures.split(',') : 'arm64-v8a'
 
 // Funnel every generated artefact under build/android/output/ so the
 // repo only has one ignored sub-tree to manage. Gradle's project cache
@@ -14,15 +15,15 @@ def outputRoot = new File(rootDir, 'output')
 project.layout.buildDirectory.set(new File(outputRoot, 'build'))
 
 android {
-    namespace 'net.openlierox'
+    namespace 'openlierox.net'
     compileSdk 36
     ndkVersion '29.0.14206865'
 
     defaultConfig {
-        applicationId 'net.openlierox'
+        applicationId 'openlierox.net'
         minSdk 21
-        targetSdk 34
-        versionCode 1
+        targetSdk 36
+        versionCode 10591001 // 0.59_beta10 Android revision 01
         versionName olxVersion
 
         externalNativeBuild {
@@ -43,9 +44,7 @@ android {
             //   arm64-v8a    — 64-bit ARM, mandatory for Play Store, all
             //                  modern phones/tablets/Chromebooks.
             //   x86_64       — 64-bit Intel, dev emulators + Chromebooks.
-            // 32-bit x86 and armeabi-v7a were dropped — too few
-            // real-world devices.
-            abiFilters 'arm64-v8a', 'x86_64'
+            abiFilters architectures
         }
     }
 
@@ -62,11 +61,18 @@ android {
 
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
+            shrinkResources true
             signingConfig signingConfigs.debug
         }
         debug {
             // Keep debuggable + matchingFallbacks defaults.
+        }
+        releaseWithDebugInfo {
+            initWith release
+            ndk {
+                debugSymbolLevel 'FULL'
+            }
         }
     }
 

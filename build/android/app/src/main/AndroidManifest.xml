@@ -23,7 +23,7 @@
         tools:ignore="MissingApplicationIcon">
 
         <activity
-            android:name="net.openlierox.OpenLieroXActivity"
+            android:name="openlierox.net.OpenLieroXActivity"
             android:exported="true"
             android:label="OpenLieroX"
             android:configChanges="layoutDirection|locale|orientation|uiMode|screenLayout|screenSize|smallestScreenSize|keyboard|keyboardHidden|navigation"

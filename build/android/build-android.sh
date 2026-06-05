@@ -37,8 +37,11 @@ BUILD_TYPE="debug"
 DO_CLEAN=0
 DO_INSTALL=0
 DO_RUN=0
+DO_BUNDLE=0
+DO_SIGN=0
 SKIP_DATA=0
 SKIP_FETCH=0
+ARCHITECTURES="arm64-v8a"
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -47,6 +50,9 @@ while [ $# -gt 0 ]; do
         --clean)      DO_CLEAN=1 ;;
         --install|-i) DO_INSTALL=1 ;;
         --run|-r)     DO_INSTALL=1; DO_RUN=1 ;;
+        --bundle)     DO_BUNDLE=1 ;;
+        --sign)       DO_SIGN=1 ;;
+        --arch)       ARCHITECTURES="$2" ; shift ;;
         --skip-data)  SKIP_DATA=1 ;;
         --skip-fetch) SKIP_FETCH=1 ;;
         -h|--help)
@@ -116,7 +122,7 @@ fi
 
 GRADLE_TASK="assemble${BUILD_TYPE^}"   # assembleDebug / assembleRelease
 
-./gradlew "${GRADLE_OPTS_COMMON[@]}" "$GRADLE_TASK"
+./gradlew "${GRADLE_OPTS_COMMON[@]}" "$GRADLE_TASK" -Parchitectures="$ARCHITECTURES"
 
 # ---------- output ---------------------------------------------------------
 
@@ -127,6 +133,32 @@ APK_DST="$APK_DST_DIR/openlierox-${BUILD_TYPE}.apk"
 mkdir -p "$APK_DST_DIR"
 cp -f "$APK_SRC" "$APK_DST"
 echo "APK: $APK_DST"
+
+# ---------- bundle ---------------------------------------------------------
+
+BUNDLE_SRC="$ANDROID_DIR/output/build/outputs/bundle/releaseWithDebugInfo/app-releaseWithDebugInfo.aab"
+BUNDLE_DST="$ANDROID_DIR/output/openlierox-release.aab"
+
+if [ "$DO_BUNDLE" -eq 1 ]; then
+    # Always build release with debug info, the bundle is used only for uploading to Play Store
+    ./gradlew "${GRADLE_OPTS_COMMON[@]}" bundleReleaseWithDebugInfo -Parchitectures="$ARCHITECTURES"
+    cp -f "$BUNDLE_SRC" "$BUNDLE_DST"
+fi
+
+# ---------- sign ---------------------------------------------------------
+
+if [ "$DO_SIGN" -eq 1 ]; then
+    apksigner sign --ks "$ANDROID_KEYSTORE_FILE" --ks-key-alias "$ANDROID_KEYSTORE_ALIAS" \
+      --ks-pass env:ANDROID_KEYSTORE_PASS "$APK_DST"
+
+    if [ "$DO_BUNDLE" -eq 1 ]; then
+      jarsigner -verbose -sigalg SHA1withRSA -digestalg SHA1 \
+        -keystore "$ANDROID_UPLOAD_KEYSTORE_FILE" \
+        -storepass:env ANDROID_UPLOAD_KEYSTORE_PASS \
+        "$BUNDLE_DST" \
+        "$ANDROID_UPLOAD_KEYSTORE_ALIAS"
+    fi
+fi
 
 # ---------- install + run --------------------------------------------------
 
