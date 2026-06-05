@@ -9,17 +9,13 @@ override_dh_auto_configure:
 	cmake . -DVERSION=$(shell cat VERSION) \
 		-DCMAKE_C_FLAGS="-g -O3" \
 		-DCMAKE_CXX_FLAGS="-g -O3" \
-		-DHAWKNL_BUILTIN=0 \
+		-DHAWKNL_BUILTIN=1 \
 		-DLIBZIP_BUILTIN=0 \
 		-DLIBLUA_BUILTIN=0 \
-		-DBOOST_LINK_STATIC=1 \
+		-DBOOST_LINK_STATIC=0 \
+		-DBREAKPAD=Off \
 		-DDEBUG=0 \
 		-DSYSTEM_DATA_DIR=/usr/share/games
-# Note: Breakpad is disabled for x86_64 because this platform is currently
-# unsupported there.
-ifeq ($(DEB_HOST_ARCH),amd64)
-	cmake . -DBREAKPAD=Off
-endif
 
 override_dh_auto_install:
 	install -d debian/tmp/usr/games/
