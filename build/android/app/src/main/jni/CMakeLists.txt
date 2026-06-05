@@ -308,7 +308,7 @@ target_include_directories(main PRIVATE
 target_compile_definitions(main PRIVATE
     NBREAKPAD
     HAVE_BOOST
-    SYSTEM_DATA_DIR="/data/data/net.openlierox/files")
+    SYSTEM_DATA_DIR="/data/data/openlierox.net/files")
 
 # DEDICATED_ONLY is checked with `#ifdef`, not by value; defining it to
 # 0 still flips the bDedicated default to true, so just leave the macro

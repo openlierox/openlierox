@@ -1,4 +1,4 @@
-package net.openlierox;
+package openlierox.net;
 
 import android.content.res.AssetManager;
 import android.os.Bundle;
