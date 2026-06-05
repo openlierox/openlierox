@@ -153,7 +153,6 @@ if [ "$DO_SIGN" -eq 1 ]; then
 
     if [ "$DO_BUNDLE" -eq 1 ]; then
       zip -d "$BUNDLE_DST" "META-INF/*"
-      unzip -l "$BUNDLE_DST"
       jarsigner -verbose -sigalg SHA1withRSA -digestalg SHA1 \
         -keystore "$ANDROID_UPLOAD_KEYSTORE_FILE" \
         -storepass:env ANDROID_UPLOAD_KEYSTORE_PASS \
