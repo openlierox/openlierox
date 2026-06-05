@@ -21,7 +21,7 @@ android {
 
     defaultConfig {
         applicationId 'openlierox.net'
-        minSdk 21
+        minSdk 24
         targetSdk 36
         versionCode 10591001 // 0.59_beta10 Android revision 01
         versionName olxVersion
