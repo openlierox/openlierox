@@ -1,4 +1,4 @@
-name: Build
+name: Build Linux deb
 
 on:
   pull_request:

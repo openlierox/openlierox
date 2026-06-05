@@ -1,4 +1,4 @@
-name: Build
+name: Build Android
 
 on:
   pull_request:
