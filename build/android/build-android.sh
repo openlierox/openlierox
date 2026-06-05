@@ -152,6 +152,7 @@ if [ "$DO_SIGN" -eq 1 ]; then
       --ks-pass env:ANDROID_KEYSTORE_PASS "$APK_DST"
 
     if [ "$DO_BUNDLE" -eq 1 ]; then
+      zip -d "$BUNDLE_DST" 'META-INF/*'
       jarsigner -verbose -sigalg SHA1withRSA -digestalg SHA1 \
         -keystore "$ANDROID_UPLOAD_KEYSTORE_FILE" \
         -storepass:env ANDROID_UPLOAD_KEYSTORE_PASS \
