@@ -37,14 +37,15 @@ jobs:
       - name: Build
         run: |
           dpkg-buildpackage -us -uc -jauto
+          mv ../openlierox_*.deb ./
 
       - name: Detect filename
         id: bundle
-        run: echo "name=$(basename ../openlierox_*.deb)" >> "$GITHUB_OUTPUT"
+        run: echo "name=$(basename openlierox_*.deb)" >> "$GITHUB_OUTPUT"
 
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.bundle.outputs.name }}
-          path: ../openlierox_*.deb
+          path: openlierox_*.deb
           if-no-files-found: error
