@@ -88,7 +88,7 @@ jobs:
           export ANDROID_KEYSTORE_FILE="`pwd`/keystore.jks"
           export ANDROID_UPLOAD_KEYSTORE_FILE="`pwd`/upload_keystore.jks"
           export PATH=$PATH:$ANDROID_SDK_ROOT/build-tools/36.0.0
-          ./build/android/build-android.sh --release --bundle --sign # --arch arm64-v8a,x86_64,armeabi-v7a,x86
+          ./build/android/build-android.sh --release --bundle --sign --arch arm64-v8a,x86_64,armeabi-v7a,x86
 
         env:
           ANDROID_KEYSTORE_PASS: "${{secrets.ANDROID_KEYSTORE_PASS}}"
