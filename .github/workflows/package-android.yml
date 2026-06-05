@@ -62,7 +62,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$HOME/.android"
-          if false && [ ! -f "$HOME/.android/debug.keystore" ]; then
+          if [ ! -f "$HOME/.android/debug.keystore" ]; then
               keytool -genkeypair -v \
                   -keystore "$HOME/.android/debug.keystore" \
                   -storepass android -keypass android \
