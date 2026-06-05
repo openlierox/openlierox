@@ -34,7 +34,7 @@ android {
                 cppFlags '-fexceptions', '-frtti', '-U_FORTIFY_SOURCE'
                 cFlags   '-U_FORTIFY_SOURCE'
                 arguments '-DANDROID_STL=c++_shared',
-                          '-DANDROID_PLATFORM=android-21',
+                          '-DANDROID_PLATFORM=android-24',
                           "-DOLX_ROOT=${olxRoot.absolutePath}"
             }
         }
