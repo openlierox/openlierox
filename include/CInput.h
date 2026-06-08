@@ -28,8 +28,7 @@
 #define		INP_NOTUSED			-1
 #define		INP_KEYBOARD		0
 #define		INP_MOUSE			1
-#define		INP_JOYSTICK1		2
-#define		INP_JOYSTICK2		3
+#define		INP_JOYSTICK		2
 
 
 // Joystick data
@@ -64,6 +63,7 @@ private:
 	int		Type; // keyboard, mouse or joystick
 	int		Data;
 	int		SdlIndex;
+	int		JoystickIndex; // 0-based pad index for INP_JOYSTICK
 	std::string m_EventName;
 	ModifiersState m_modifiers; // required modifier keys for keyboard bindings
 	bool	resetEachFrame;
@@ -84,11 +84,18 @@ public:
 	int		Setup(const std::string& text);
 	static void InitJoysticksTemp(); // call this if CInput::Wait shall recognise joystick events
 	static void UnInitJoysticksTemp();
+	// SDL_CONTROLLERDEVICEADDED / SDL_CONTROLLERDEVICEREMOVED hotplug
+	// handlers. Without these, controllers plugged in after startup
+	// (or surfaced late by the platform — e.g. browser Gamepad API
+	// only exposing pads after the user's first button press) are
+	// invisible to the engine.
+	static void OnControllerAdded(int deviceIndex);
+	static void OnControllerRemoved(int instanceId);
 	static int Wait(std::string& strText); // TODO: change this name. this function doesn't realy wait, it just checks the event-state
 	bool	isUsed() { return Type >= 0; }
 	int		getData() { return Data; }
 	int		getType() { return Type; }
-	bool	isJoystick() { return Type == INP_JOYSTICK1 || Type == INP_JOYSTICK2; }
+	bool	isJoystick() { return Type == INP_JOYSTICK; }
 	bool	isKeyboard() { return Type == INP_KEYBOARD; }
 	void	setResetEachFrame(bool r)	{ resetEachFrame = r; }
 	bool	getResetEachFrame()			{ return resetEachFrame; }

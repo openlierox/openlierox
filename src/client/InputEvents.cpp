@@ -405,6 +405,16 @@ static void EvHndl_UserEvent(SDL_Event* ev) {
 	}
 }
 
+static void EvHndl_ControllerDeviceAdded(SDL_Event* ev) {
+	// ev->cdevice.which is the device index here (per SDL2 docs).
+	CInput::OnControllerAdded(ev->cdevice.which);
+}
+
+static void EvHndl_ControllerDeviceRemoved(SDL_Event* ev) {
+	// ev->cdevice.which is the joystick instance id here.
+	CInput::OnControllerRemoved(ev->cdevice.which);
+}
+
 void InitEventSystem() {	
 	Mouse.Button = 0;
 	Mouse.Down = 0;
@@ -421,6 +431,8 @@ void InitEventSystem() {
 	sdlEvents[SDL_MOUSEWHEEL].handler() = getEventHandler(&EvHndl_MouseWheel);
 	sdlEvents[SDL_QUIT].handler() = getEventHandler(&EvHndl_Quit);
 	sdlEvents[SDL_USEREVENT].handler() = getEventHandler(&EvHndl_UserEvent);
+	sdlEvents[SDL_CONTROLLERDEVICEADDED  ].handler() = getEventHandler(&EvHndl_ControllerDeviceAdded);
+	sdlEvents[SDL_CONTROLLERDEVICEREMOVED].handler() = getEventHandler(&EvHndl_ControllerDeviceRemoved);
 	// Note: SDL_SYSWMEVENT is handled directly on the main thread by handleSDLEvents().
 	
 	bEventSystemInited = true;
@@ -575,12 +587,10 @@ void ProcessEvents()
 
 		HandleMouseState();
 #ifndef DEDICATED_ONLY
-#ifndef DISABLE_JOYSTICK
 		if(bJoystickSupport)  {
 			SDL_GameControllerUpdate();
 			updateAxisStates();
 		}
-#endif
 #endif
 		HandleCInputs_UpdateUpForNonKeyboard();
 		HandleCInputs_UpdateDownOnceForNonKeyboard();
