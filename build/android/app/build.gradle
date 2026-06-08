@@ -23,7 +23,7 @@ android {
         applicationId 'openlierox.net'
         minSdk 24
         targetSdk 36
-        versionCode 10591004 // 0.59_beta10 Android revision 04
+        versionCode 10591005 // 0.59_beta10 Android revision 05
         versionName olxVersion
 
         externalNativeBuild {
