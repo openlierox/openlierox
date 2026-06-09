@@ -21,7 +21,7 @@
 #include "StringUtils.h"
 #include "Cursor.h"
 #include "Timer.h"
-#include "Sounds.h"
+#include "sound/SoundsBase.h"
 #include "AuxLib.h"
 
 
@@ -1517,9 +1517,9 @@ void CListview::MoveMouseToCurrentItem()
 				RepositionMouse(int _x, int _y): x(_x), y(_y)
 				{
 				}
-				int handle()
+				Result handle()
 				{
-					SDL_WarpMouse(x, y);
+					SDL_WarpMouseInWindow(NULL, x, y);
 					return true;
 				}
 			};

@@ -24,7 +24,7 @@
 #include "DeprecatedGUI/Menu.h"
 #include "GfxPrimitives.h"
 #include "StringUtils.h"
-#include "Sounds.h"
+#include "sound/SoundsBase.h"
 #include "Timer.h"
 #include "Debug.h"
 #include "CodeAttributes.h"

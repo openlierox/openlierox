@@ -19,7 +19,7 @@
 #include "DeprecatedGUI/Menu.h"
 #include "GfxPrimitives.h"
 #include "CInput.h"
-#include "Sounds.h"
+#include "sound/SoundsBase.h"
 #include "DeprecatedGUI/CInputBox.h"
 
 

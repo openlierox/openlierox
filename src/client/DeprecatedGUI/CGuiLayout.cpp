@@ -22,7 +22,7 @@
 #include "AuxLib.h"
 #include "DeprecatedGUI/Menu.h"
 #include "StringUtils.h"
-#include "Sounds.h"
+#include "sound/SoundsBase.h"
 #include "DeprecatedGUI/CBox.h"
 #include "DeprecatedGUI/CImage.h"
 #include "DeprecatedGUI/CButton.h"
