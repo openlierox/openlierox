@@ -256,7 +256,7 @@ void CWormHumanInputHandler::getInput() {
 		const float carveDelay = 0.2f;
 
 		if(		(mouseControl && ws->bMove && m_worm->iMoveDirectionSide == DIR_LEFT)
-			||	( ( (cLeft.isJoystick() && cLeft.isDown()) /*|| (cLeft.isKeyboard() && leftOnce)*/ ) && !cSelWeapon.isDown())
+			||	( cLeft.isJoystickDown() /*|| (cLeft.isKeyboard() && leftOnce)*/ && !cSelWeapon.isDown())
 			) {
 
 			if(tLX->currentTime - m_worm->fLastCarve >= carveDelay) {
@@ -267,7 +267,7 @@ void CWormHumanInputHandler::getInput() {
 		}
 
 		if(		(mouseControl && ws->bMove && m_worm->iMoveDirectionSide == DIR_RIGHT)
-			||	( ( (cRight.isJoystick() && cRight.isDown()) /*|| (cRight.isKeyboard() && rightOnce)*/ ) && !cSelWeapon.isDown())
+			||	( cRight.isJoystickDown() /*|| (cRight.isKeyboard() && rightOnce)*/ && !cSelWeapon.isDown())
 			) {
 
 			if(tLX->currentTime - m_worm->fLastCarve >= carveDelay) {
@@ -297,7 +297,7 @@ void CWormHumanInputHandler::getInput() {
 			MOD(m_worm->iCurrentWeapon, m_worm->getWeaponSlotsCount());
 
 			// Joystick: if the button is pressed, change the weapon (it is annoying to move the axis for weapon changing)
-			if (cSelWeapon.isJoystick() && change == 0 && cSelWeapon.isDownOnce())  {
+			if (change == 0 && cSelWeapon.isJoystickDownOnce())  {
 				m_worm->iCurrentWeapon++;
 				MOD(m_worm->iCurrentWeapon, m_worm->getWeaponSlotsCount());
 			}

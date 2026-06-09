@@ -1489,20 +1489,21 @@ bool CWorm::CanType()
 bool CWormHumanInputHandler::canType() {
 	keyboard_t* kb = GetKeyboard();
 	for (int i = 0; i < kb->queueLength; i++)  {
-		if (cUp.getData() == kb->keyQueue[i].sym ||
-			cDown.getData() == kb->keyQueue[i].sym ||
-			cLeft.getData() == kb->keyQueue[i].sym ||
-			cRight.getData() == kb->keyQueue[i].sym ||
-			cShoot.getData() == kb->keyQueue[i].sym ||
-			cJump.getData() == kb->keyQueue[i].sym ||
-			cSelWeapon.getData() == kb->keyQueue[i].sym ||
-			cInpRope.getData() == kb->keyQueue[i].sym ||
-			cStrafe.getData() == kb->keyQueue[i].sym ||
-			cWeapons[0].getData() == kb->keyQueue[i].sym ||
-			cWeapons[1].getData() == kb->keyQueue[i].sym ||
-			cWeapons[2].getData() == kb->keyQueue[i].sym ||
-			cWeapons[3].getData() == kb->keyQueue[i].sym ||
-			cWeapons[4].getData() == kb->keyQueue[i].sym)
+		const int sym = kb->keyQueue[i].sym;
+		if (cUp.usesKeyboardKey(sym) ||
+			cDown.usesKeyboardKey(sym) ||
+			cLeft.usesKeyboardKey(sym) ||
+			cRight.usesKeyboardKey(sym) ||
+			cShoot.usesKeyboardKey(sym) ||
+			cJump.usesKeyboardKey(sym) ||
+			cSelWeapon.usesKeyboardKey(sym) ||
+			cInpRope.usesKeyboardKey(sym) ||
+			cStrafe.usesKeyboardKey(sym) ||
+			cWeapons[0].usesKeyboardKey(sym) ||
+			cWeapons[1].usesKeyboardKey(sym) ||
+			cWeapons[2].usesKeyboardKey(sym) ||
+			cWeapons[3].usesKeyboardKey(sym) ||
+			cWeapons[4].usesKeyboardKey(sym))
 			return false;
 	}
 	return true;

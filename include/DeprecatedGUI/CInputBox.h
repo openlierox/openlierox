@@ -39,11 +39,15 @@ enum {
 
 class CInputbox : public CWidget {
 public:
-	// Constructor
-	CInputbox(int val, const std::string& _text, SmartPointer<SDL_Surface> img, const std::string& name) {
+	// Constructor.
+	// slot selects which binding of a comma-separated control value this box
+	// edits (0-based). -1 (the default) means the box represents the whole
+	// value, as before.
+	CInputbox(int val, const std::string& _text, SmartPointer<SDL_Surface> img, const std::string& name, int slot = -1) {
 		iKeyvalue = val;
 		sText = _text;
 		sName = name;
+		iSlot = slot;
 
 		bmpImage = img;
 		iType = wid_Inputbox;
@@ -56,6 +60,7 @@ private:
 	// Attributes
 
 	int			iKeyvalue;
+	int			iSlot;
 	std::string	sText;
 	SmartPointer<SDL_Surface> bmpImage;
 	bool		bMouseOver;
@@ -103,6 +108,7 @@ public:
 
 	INLINE int		getValue()						{ return iKeyvalue; }
 	INLINE void	setValue(int _v)					{ iKeyvalue = _v; }
+	INLINE int		getSlot()						{ return iSlot; }
 	INLINE std::string	getText()				{ return sText; }
 	INLINE void	setText(const std::string& _t)		{ sText = _t; }
 	INLINE std::string	getName()				{ return sName; }
