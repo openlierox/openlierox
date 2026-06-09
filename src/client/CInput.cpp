@@ -433,13 +433,7 @@ void CInput::OnControllerRemoved(int instanceId) {
 
 
 CInput::CInput() {
-	Type = INP_NOTUSED;
-	Data = 0;
-	SdlIndex = 0;
-	JoystickIndex = 0;
 	resetEachFrame = true;
-	bDown = false;
-	reset();
 
 	RegisterCInput(this);
 }
@@ -541,10 +535,53 @@ int CInput::Wait(std::string& strText)
 
 ///////////////////
 // Setup
+// The config value may be a single binding or a comma-separated list of
+// bindings (e.g. "lalt, j1_button_south"). Each token is parsed into its own
+// Binding; the action is active when any of them is active.
 int CInput::Setup(const std::string& string)
 {
 	m_EventName = string;
 	resetEachFrame = true;
+	m_bindings.clear();
+
+	int ret = false;
+	std::vector<std::string> tokens = explode(string, ",");
+	for(std::vector<std::string>::iterator it = tokens.begin(); it != tokens.end(); ++it) {
+		std::string token = Trimmed(*it);
+		if(token.empty()) continue;
+		Binding b;
+		bool ok = b.setup(token);
+		m_bindings.push_back(b);
+		if(ok) ret = true;
+	}
+
+	// Fallback: nothing usable came out of splitting (e.g. the binding is the
+	// comma key itself, written as ","). Treat the whole string as one token.
+	if(m_bindings.empty()) {
+		std::string whole = Trimmed(string);
+		if(!whole.empty()) {
+			Binding b;
+			ret = b.setup(whole);
+			m_bindings.push_back(b);
+		}
+	}
+
+	// Always keep at least one (unused) binding so the rest of the code can
+	// treat a control uniformly whether or not it parsed to anything.
+	if(m_bindings.empty())
+		m_bindings.push_back(Binding());
+
+	return ret;
+}
+
+///////////////////
+// Parse a single binding token
+bool CInput::Binding::setup(const std::string& string)
+{
+	Type = INP_NOTUSED;
+	Data = 0;
+	SdlIndex = 0;
+	JoystickIndex = 0;
 	m_modifiers.clear();
 
 	// Parse optional modifier prefixes: "alt+", "ctrl+", "shift+"
@@ -646,7 +683,7 @@ int CInput::Setup(const std::string& string)
 
 ////////////////////
 // Returns the "force" value for a joystick axis
-int CInput::getJoystickValue()
+int CInput::Binding::getJoystickValue() const
 {
 #ifdef HAVE_JOYSTICK
 	if(Type == INP_JOYSTICK)
@@ -655,10 +692,23 @@ int CInput::getJoystickValue()
 	return 0;
 }
 
+int CInput::getJoystickValue()
+{
+	// Return the joystick binding with the largest force (by magnitude).
+	int best = 0;
+	for(std::vector<Binding>::iterator it = m_bindings.begin(); it != m_bindings.end(); ++it) {
+		int v = it->getJoystickValue();
+		int vMag = (v < 0) ? -v : v;
+		int bestMag = (best < 0) ? -best : best;
+		if(vMag > bestMag) best = v;
+	}
+	return best;
+}
+
 
 ////////////////////
 // Returns true if this joystick is a throttle
-bool CInput::isJoystickThrottle()
+bool CInput::Binding::isJoystickThrottle() const
 {
 #ifdef HAVE_JOYSTICK
 	if (Type == INP_JOYSTICK)
@@ -667,12 +717,18 @@ bool CInput::isJoystickThrottle()
 	return false;
 }
 
+bool CInput::isJoystickThrottle()
+{
+	for(std::vector<Binding>::iterator it = m_bindings.begin(); it != m_bindings.end(); ++it)
+		if(it->isJoystickThrottle()) return true;
+	return false;
+}
+
 
 ///////////////////
 // Returns if the input has just been released
-bool CInput::isUp()
+bool CInput::Binding::isUp() const
 {
-
 	switch(Type) {
 
 		// Keyboard
@@ -697,10 +753,17 @@ bool CInput::isUp()
 	return false;
 }
 
+bool CInput::isUp()
+{
+	for(std::vector<Binding>::iterator it = m_bindings.begin(); it != m_bindings.end(); ++it)
+		if(it->isUp()) return true;
+	return false;
+}
+
 
 ///////////////////
 // Returns if the input is down
-bool CInput::isDown() const
+bool CInput::Binding::isDown() const
 {
 	switch(Type) {
 
@@ -725,66 +788,202 @@ bool CInput::isDown() const
 	return false;
 }
 
+bool CInput::isDown() const
+{
+	for(std::vector<Binding>::const_iterator it = m_bindings.begin(); it != m_bindings.end(); ++it)
+		if(it->isDown()) return true;
+	return false;
+}
+
 
 ///////////////////
 // Returns if the input was pushed down once
 bool CInput::isDownOnce()
 {
-	return nDownOnce != 0;
-}
-
-int CInput::wasDown_withoutRepeats() const {
-	return nDownOnce;
+	for(std::vector<Binding>::iterator it = m_bindings.begin(); it != m_bindings.end(); ++it)
+		if(it->nDownOnce != 0) return true;
+	return false;
 }
 
 // goes through the event-signals and searches for the event
+int CInput::Binding::wasDown() const {
+	switch(Type) {
+	case INP_KEYBOARD:
+		return nDown;
+
+	case INP_MOUSE:
+		// TODO: to make this possible, we need to go extend HandleNextEvent to save the mouse events
+		return nDownOnce; // no other way at the moment
+
+#ifdef HAVE_JOYSTICK
+	case INP_JOYSTICK:
+		return nDownOnce; // no other way at the moment
+#endif
+	}
+
+	return 0;
+}
+
 int CInput::wasDown() const {
 	int counter = 0;
+	for(std::vector<Binding>::const_iterator it = m_bindings.begin(); it != m_bindings.end(); ++it)
+		counter += it->wasDown();
+	return counter;
+}
 
-	switch(Type) {
-	case INP_KEYBOARD:
-		counter = nDown;
-		break;
-
-	case INP_MOUSE:
-		// TODO: to make this possible, we need to go extend HandleNextEvent to save the mouse events
-		counter = nDownOnce; // no other way at the moment
-		break;
-
-#ifdef HAVE_JOYSTICK
-	case INP_JOYSTICK:
-		counter = nDownOnce; // no other way at the moment
-		break;
-#endif
-	}
-
+int CInput::wasDown(bool withRepeats) const {
+	if(withRepeats) return wasDown();
+	int counter = 0;
+	for(std::vector<Binding>::const_iterator it = m_bindings.begin(); it != m_bindings.end(); ++it)
+		counter += it->wasDown_withoutRepeats();
 	return counter;
 }
 
 // goes through the event-signals and searches for the event
-int CInput::wasUp() {
-	int counter = 0;
-
+int CInput::Binding::wasUp() const {
 	switch(Type) {
 	case INP_KEYBOARD:
-		counter = nUp;
-		break;
+		return nUp;
 
 	case INP_MOUSE:
 		// TODO: to make this possible, we need to go extend HandleNextEvent to save the mouse events
-		counter = 0;  // no other way at the moment
-		break;
+		return 0;  // no other way at the moment
 
 #ifdef HAVE_JOYSTICK
 	case INP_JOYSTICK:
-		counter = 0; // no other way at the moment
-		break;
+		return 0; // no other way at the moment
 #endif
 	}
 
+	return 0;
+}
+
+int CInput::wasUp() {
+	int counter = 0;
+	for(std::vector<Binding>::iterator it = m_bindings.begin(); it != m_bindings.end(); ++it)
+		counter += it->wasUp();
 	return counter;
+}
+
+bool CInput::isUsed() const {
+	for(std::vector<Binding>::const_iterator it = m_bindings.begin(); it != m_bindings.end(); ++it)
+		if(it->isUsed()) return true;
+	return false;
+}
+
+bool CInput::isJoystick() const {
+	for(std::vector<Binding>::const_iterator it = m_bindings.begin(); it != m_bindings.end(); ++it)
+		if(it->isJoystick()) return true;
+	return false;
+}
+
+bool CInput::isJoystickDown() const {
+	for(std::vector<Binding>::const_iterator it = m_bindings.begin(); it != m_bindings.end(); ++it)
+		if(it->isJoystick() && it->isDown()) return true;
+	return false;
+}
+
+bool CInput::isJoystickDownOnce() const {
+	for(std::vector<Binding>::const_iterator it = m_bindings.begin(); it != m_bindings.end(); ++it)
+		if(it->isJoystick() && it->nDownOnce != 0) return true;
+	return false;
+}
+
+bool CInput::isKeyboard() const {
+	for(std::vector<Binding>::const_iterator it = m_bindings.begin(); it != m_bindings.end(); ++it)
+		if(it->isKeyboard()) return true;
+	return false;
+}
+
+bool CInput::usesKeyboardKey(int sym) const {
+	for(std::vector<Binding>::const_iterator it = m_bindings.begin(); it != m_bindings.end(); ++it)
+		if(it->isKeyboard() && it->Data == sym) return true;
+	return false;
 }
 
 void CInput::reset() {
-	nDown = nDownOnce = nUp = 0;
+	for(std::vector<Binding>::iterator it = m_bindings.begin(); it != m_bindings.end(); ++it)
+		it->reset();
+}
+
+
+///////////////////
+// Update keyboard bindings from a key event
+void CInput::handleKeyEvent(const KeyboardEvent& ev) {
+	for(std::vector<Binding>::iterator b = m_bindings.begin(); b != m_bindings.end(); ++b) {
+		if(!b->isKeyboard() || b->Data != ev.sym)
+			continue;
+		// If the binding requires specific modifiers, enforce an exact match.
+		// If no modifiers are required, fire regardless of modifier state (backward compat).
+		const ModifiersState& req = b->m_modifiers;
+		if(req.bAlt || req.bCtrl || req.bShift || req.bGui) {
+			if(req.bAlt   != ev.state.bAlt)   continue;
+			if(req.bCtrl  != ev.state.bCtrl)  continue;
+			if(req.bShift != ev.state.bShift) continue;
+			if(req.bGui   != ev.state.bGui)   continue;
+		}
+		if(ev.down) {
+			b->nDown++;
+			if(!b->bDown) {
+				b->nDownOnce++;
+				b->bDown = true;
+			}
+		} else {
+			b->bDown = false;
+			b->nUp++;
+		}
+	}
+}
+
+
+///////////////////
+// Update down-once state for non-keyboard bindings (polled each frame)
+void CInput::updateDownOnceForNonKeyboard() {
+	for(std::vector<Binding>::iterator b = m_bindings.begin(); b != m_bindings.end(); ++b) {
+		if(!b->isUsed() || b->isKeyboard())
+			continue;
+
+		// HINT: It is possible that wasUp() and !Down (a case which is not covered in further code)
+		if(b->wasUp() && !b->bDown) {
+			b->nDownOnce++;
+			continue;
+		}
+
+		// HINT: It's possible that wasDown() > 0 and !isDown().
+		// That is the case when we press a key and release it directly after (in one frame).
+		// Though wasDown() > 0 doesn't mean directly isDownOnce because it also counts keypresses.
+		// HINT: It's also possible that wasDown() == 0 and isDown().
+		// That is the case when we have pressed the key in a previous frame and we still hold it
+		// and the keyrepeat-interval is bigger than FPS. (Rare case.)
+		if(b->wasDown() || b->isDown()) {
+			// wasUp() > 0 always means that it was down once (though it is not down anymore).
+			// Though the released key in wasUp() > 0 was probably already recognised before.
+			if(b->wasUp()) {
+				b->bDown = b->isDown();
+				if(b->bDown) // if it is again down, there is another new press
+					b->nDownOnce++;
+				continue;
+			}
+			// !Down means that we haven't recognised yet that it is down.
+			if(!b->bDown) {
+				b->bDown = b->isDown();
+				b->nDownOnce++;
+				continue;
+			}
+		}
+		else
+			b->bDown = false;
+	}
+}
+
+
+///////////////////
+// Update up state for non-keyboard bindings (polled each frame)
+void CInput::updateUpForNonKeyboard() {
+	for(std::vector<Binding>::iterator b = m_bindings.begin(); b != m_bindings.end(); ++b) {
+		if(!b->isUsed() || b->isKeyboard())
+			continue;
+		if(b->isDown() && !b->bDown)
+			b->nUp++;
+	}
 }
