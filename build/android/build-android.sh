@@ -169,5 +169,5 @@ if [ "$DO_INSTALL" -eq 1 ]; then
 fi
 
 if [ "$DO_RUN" -eq 1 ]; then
-    "$PLATFORM_TOOLS/adb" shell am start -n net.openlierox/net.openlierox.OpenLieroXActivity
+    "$PLATFORM_TOOLS/adb" shell am start -n openlierox.net/openlierox.net.OpenLieroXActivity
 fi
