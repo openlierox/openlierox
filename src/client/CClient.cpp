@@ -1203,11 +1203,9 @@ void CClient::Connect(const std::string& address)
 		strServerAddr_HumanReadable = strServerAddr + " (...)";
 		Timer("client connect DNS timeout", null, NULL, DNS_TIMEOUT * 1000 + 50, true).startHeadless();
 
-		if(!GetNetAddrFromNameAsync(address, cServerAddr)) {
-			iNetStatus = NET_DISCONNECTED;
-			bBadConnection = true;
-			strBadConnectMsg = "Unknown error while resolving address '" + address + "'";
-		}
+		iNetStatus = NET_DISCONNECTED;
+		bBadConnection = true;
+		strBadConnectMsg = "Invalid server address '" + address + "'";
 	}
 
 	// Connecting to a server behind a NAT?
@@ -1294,10 +1292,9 @@ void CClient::ConnectingBehindNAT()
 
 		// Resolve the UDP master server address
 		SetNetAddrValid(cServerAddr, false);
-		if(!GetNetAddrFromNameAsync(sUdpMasterserverAddress, cServerAddr)) {
-			iNetStatus = NET_DISCONNECTED;
-			bBadConnection = true;
-			strBadConnectMsg = "Unknown error while resolving UDP masterserver address '" + sUdpMasterserverAddress + "'";
+		NetworkAddr ignored;
+		if(!GetFromDnsCache(sUdpMasterserverAddress, cServerAddr, ignored)) {
+			GetNetAddrFromNameAsync(sUdpMasterserverAddress);
 			return;
 		}
 
@@ -2104,8 +2101,8 @@ bool CClient::RebindSocket()
 	if(!tSocket->isOpen())
 		return false;
 	tSocket->Close();
-	if(NegResult r = tSocket->OpenUnreliable(0)) {
-		errors << "CClient::RebindSocket: Could not open UDP socket! " << r.res.humanErrorMsg << endl;
+	if(!tSocket->OpenUnreliable(0)) {
+		errors << "CClient::RebindSocket: Could not open UDP socket! " << endl;
 		return false;
 	}
 	return true;

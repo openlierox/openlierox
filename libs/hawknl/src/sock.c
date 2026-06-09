@@ -20,8 +20,8 @@
   Or go to http://www.gnu.org/copyleft/lgpl.html
 */
 
-
 #define FD_SETSIZE      8192
+//#define NL_DEBUG        DEBUG
 
 #include <memory.h>
 #include <stdio.h>
@@ -99,6 +99,14 @@ typedef int socklen_t;
 #include "nlinternal.h"
 #include "sock.h"
 
+/* internally for TCP packets and UDP connections, all data is big endien,
+   so we force it so here using these macros */
+#undef writeShort
+#define writeShort(x, y, z)     {*((NLushort *)((NLbyte *)&x[y])) = htons(z); y += 2;}
+#undef readShort
+#define readShort(x, y, z)      {z = ntohs(*(NLushort *)((NLbyte *)&x[y])); y += 2;}
+
+
 #ifndef IN_MULTICAST
 #define IN_MULTICAST(i) (((unsigned long)(i) & 0xF0000000) == (unsigned long)0xE0000000)
 #endif
@@ -117,13 +125,16 @@ typedef int socklen_t;
 #define NLMAX( a, b )             ( ( a ) > ( b ) ? ( a ) : ( b ) )
 #define NLMIN( a, b )             ( ( a ) < ( b ) ? ( a ) : ( b ) )
 
-static volatile NLuint ouraddress, bindaddress;
 static volatile int backlog = SOMAXCONN;
 static volatile int multicastTTL = 1;
 static volatile NLboolean reuseaddress = NL_FALSE;
 static volatile NLboolean nlTCPNoDelay = NL_FALSE;
 
 static NLaddress *alladdr = NULL;
+static struct in6_addr bindaddress;
+static struct in6_addr in6addr_multicast;
+static struct in6_addr in6addr_ipv4mapped;
+static struct in6_addr in6addr_ipv4broadcast;
 
 typedef struct
 {
@@ -163,12 +174,12 @@ static NLushort sock_getNextPort(void)
 
 static NLint sock_bind(SOCKET socket, const struct sockaddr *a, int len)
 {
-    struct sockaddr_in  *addr = (struct sockaddr_in *)a;
+    struct sockaddr_in6 *addr = (struct sockaddr_in6 *)a;
     int                 ntries = 500; /* this is to prevent an infinite loop */
     NLboolean           found = NL_FALSE;
     
     /* check to see if the port is already specified */
-    if(addr->sin_port != 0)
+    if(addr->sin6_port != 0)
     {
         /* do the normal bind */
         return bind(socket, a, len);
@@ -177,7 +188,7 @@ static NLint sock_bind(SOCKET socket, const struct sockaddr *a, int len)
     /* let's find our own port number */
     while(ntries-- > 0)
     {
-        addr->sin_port = htons(sock_getNextPort());
+        addr->sin6_port = htons(sock_getNextPort());
         if(bind(socket, (struct sockaddr *)addr, len) != SOCKET_ERROR)
         {
             found = NL_TRUE;
@@ -189,18 +200,20 @@ static NLint sock_bind(SOCKET socket, const struct sockaddr *a, int len)
         return 0;
     }
     /* could not find a port, restore the port number back to 0 */
-    addr->sin_port = 0;
+    addr->sin6_port = 0;
     /*  return error */
     return SOCKET_ERROR;
 }
 
 static int sock_connect(SOCKET socket, const struct sockaddr* a, int len )
 {
-    struct sockaddr_in  addr;
+    struct sockaddr_in6  addr;
 
-    addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = INADDR_ANY;
-    addr.sin_port = 0;
+    memset(&addr, 0, sizeof(addr));
+
+    addr.sin6_family = AF_INET6;
+    memcpy(&addr.sin6_addr, &in6addr_any, sizeof(in6addr_any));
+    addr.sin6_port = 0;
 
     if(sock_bind(socket, (struct sockaddr *)&addr, (int)sizeof(addr)) == SOCKET_ERROR)
     {
@@ -386,15 +399,38 @@ static NLboolean sock_SetNonBlocking(SOCKET socket)
     return NL_TRUE;
 }
 
-static NLboolean sock_SetBroadcast(SOCKET socket)
+static NLboolean sock_SetBroadcast(SOCKET realsocket)
 {
     int i = 1;
-    
-    if(setsockopt(socket, SOL_SOCKET, SO_BROADCAST, (char *)&i, (int)sizeof(i)) == SOCKET_ERROR)
+    int default_iface = 0;
+
+    // Needed for IPv4 broadcast socket to work, for both IPv4 and dial-stack sockets
+    // I'm not sure whether it will work for IPv6 sockets on different OSes, but it's required on Linux
+#ifdef NL_DEBUG
+    printf("%s: sock %d setsockopt(SO_BROADCAST)\n", __FUNCTION__, realsocket);
+#endif
+    if(setsockopt(realsocket, SOL_SOCKET, SO_BROADCAST, (char *)&i, (int)sizeof(i)) == SOCKET_ERROR)
     {
-        nlSetError(NL_SYSTEM_ERROR);
-        return NL_FALSE;
+#ifdef NL_DEBUG
+        printf("%s: sock %d setsockopt(SO_BROADCAST) failed\n", __FUNCTION__, realsocket);
+#endif
+        //nlSetError(NL_SYSTEM_ERROR);
+        //return NL_FALSE;
     }
+
+#ifdef NL_DEBUG
+    printf("%s: sock %d setsockopt(IPV6_MULTICAST_IF)\n", __FUNCTION__, realsocket);
+#endif
+    // Enable IPv6 multicast
+    if(setsockopt(realsocket, IPPROTO_IPV6, IPV6_MULTICAST_IF, (char*)&default_iface, sizeof(default_iface)) == SOCKET_ERROR)
+    {
+#ifdef NL_DEBUG
+        printf("%s: sock %d setsockopt(IPV6_MULTICAST_IF) failed\n", __FUNCTION__, realsocket);
+#endif
+        //nlSetError(NL_SYSTEM_ERROR);
+        //return NL_FALSE;
+    }
+
     return NL_TRUE;
 }
 
@@ -422,36 +458,18 @@ static void sock_SetTCPNoDelay(SOCKET socket)
     }
 }
 
-static NLboolean sock_SetMulticastTTL(SOCKET socket, NLint ttl)
-{
-    unsigned char   cttl;
-    
-    /* make sure we have a valid TTL */
-    if(ttl > 255) ttl = 255;
-    if(ttl < 1) ttl = 1;
-    cttl = (unsigned char)ttl;
-    
-    /* first try setsockopt by passing a 'char', the Unix standard */
-    if(setsockopt(socket, IPPROTO_IP, IP_MULTICAST_TTL,
-        (char *)&cttl, (int)sizeof(cttl)) == SOCKET_ERROR)
-    {
-    /* if that failed, we might be on a Windows system
-        that requires an 'int' */
-        if(setsockopt(socket, IPPROTO_IP, IP_MULTICAST_TTL,
-            (char *)&ttl, (int)sizeof(ttl)) == SOCKET_ERROR)
-        {
-            nlSetError(NL_SYSTEM_ERROR);
-            return NL_FALSE;
-        }
-    }
-    return NL_TRUE;
-}
-
 static NLsocket sock_SetSocketOptions(NLsocket s)
 {
     nl_socket_t     *sock = nlSockets[s];
     NLenum          type = sock->type;
     SOCKET          realsocket = (SOCKET)sock->realsocket;
+    NLint           v6only = 0;
+    
+    if(setsockopt(realsocket, IPPROTO_IPV6, IPV6_V6ONLY, (char*)&v6only, sizeof(v6only)) == SOCKET_ERROR)
+    {
+        nlSetError(NL_SYSTEM_ERROR);
+        return INVALID_SOCKET;
+    }
     
     if(type == NL_RELIABLE || type == NL_RELIABLE_PACKETS)
     {
@@ -480,38 +498,67 @@ static NLsocket sock_SetSocketOptions(NLsocket s)
             return NL_INVALID;
         }
     }
+#ifdef NL_DEBUG
+    printf("%s: new socket %d type %d udp %d broadcast %d\n", __FUNCTION__, realsocket, (int)type, !sock->reliable, sock->type == NL_BROADCAST);
+#endif
     
     return s;
 }
 
-static NLuint sock_GetHostAddress(void)
+static void sock_SetSocketOptionsMulticast(NLsocket s)
 {
-    struct hostent  *local;
-    char            buff[MAXHOSTNAMELEN];
-    
-    if(gethostname(buff, MAXHOSTNAMELEN) == SOCKET_ERROR)
+    nl_socket_t     *sock = nlSockets[s];
+    NLenum          type = sock->type;
+    SOCKET          realsocket = (SOCKET)sock->realsocket;
+    // Join IPv6 multicast group, so we can receive IPv4 broadcast and IPv6 multicast packets
+    struct ipv6_mreq multicast;
+
+    if(type == NL_RELIABLE || type == NL_RELIABLE_PACKETS)
     {
-        return INADDR_NONE;
+        return;
     }
-    buff[MAXHOSTNAMELEN - 1] = '\0';
-    local = gethostbyname(buff);
-    if(!local)
-        return (NLuint)htonl(0x7f000001);
-    return *(NLuint *)local->h_addr_list[0];
+
+    memset(&multicast, 0, sizeof(multicast));
+    memcpy(&multicast.ipv6mr_multiaddr, &in6addr_multicast, sizeof(in6addr_multicast));
+    multicast.ipv6mr_interface = 0; // Any interface
+
+#ifdef NL_DEBUG
+    char tmp[128];
+    inet_ntop(AF_INET6, &multicast.ipv6mr_multiaddr, tmp, sizeof(tmp));
+    printf("%s: sock %d setsockopt(IPV6_JOIN_GROUP) addr %s\n", __FUNCTION__, realsocket, tmp);
+#endif
+
+    if(setsockopt(realsocket, IPPROTO_IPV6, IPV6_JOIN_GROUP, (char*)&multicast, sizeof(multicast)) == SOCKET_ERROR)
+    {
+#ifdef NL_DEBUG
+        printf("%s: sock %d setsockopt(IPV6_JOIN_GROUP) failed, trying again with in6addr_any\n", __FUNCTION__, realsocket);
+#endif
+        // Attempt again with wildcard address
+        memcpy(&multicast.ipv6mr_multiaddr, &in6addr_any, sizeof(in6addr_any));
+        multicast.ipv6mr_interface = 0; // Any interface
+        if(setsockopt(realsocket, IPPROTO_IPV6, IPV6_JOIN_GROUP, (char*)&multicast, sizeof(multicast)) == SOCKET_ERROR)
+        {
+#ifdef NL_DEBUG
+            printf("%s: sock %d setsockopt(IPV6_JOIN_GROUP) with in6addr_any failed\n", __FUNCTION__, realsocket);
+#endif
+            //nlSetError(NL_SYSTEM_ERROR);
+            //return NL_INVALID;
+        }
+    }
 }
 
 static NLushort sock_GetPort(SOCKET socket)
 {
-    struct sockaddr_in   addr;
+    struct sockaddr_in6  addr;
     socklen_t            len;
     
-    len = (socklen_t)sizeof(struct sockaddr_in);
+    len = (socklen_t)sizeof(struct sockaddr_in6);
     if(getsockname(socket, (struct sockaddr *) &addr, &len) == SOCKET_ERROR)
     {
         return 0;
     }
     
-    return ntohs(addr.sin_port);
+    return ntohs(addr.sin6_port);
 }
 
 NLboolean sock_Init(void)
@@ -541,13 +588,12 @@ NLboolean sock_Init(void)
     {
         return NL_FALSE;
     }
-    ouraddress = sock_GetHostAddress();
-    if(ouraddress == (NLuint)INADDR_NONE)
-    {
-        return NL_FALSE;
-    }
     
-    bindaddress = INADDR_ANY;
+    memcpy(&bindaddress, &in6addr_any, sizeof(in6addr_any));
+    inet_pton(AF_INET6, "ff04::4f70:656e:4c69:6572:6f58", &in6addr_multicast); // OpenLieroX IPv6 multicast address
+    inet_pton(AF_INET6, "::ffff:0.0.0.0", &in6addr_ipv4mapped);
+    inet_pton(AF_INET6, "::ffff:255.255.255.255", &in6addr_ipv4broadcast);
+
     return NL_TRUE;
 }
 
@@ -581,11 +627,11 @@ NLboolean sock_Listen(NLsocket socket)
         if(sock->localport == 0)
         {
             /* bind socket */
-            ((struct sockaddr_in *)&sock->addressin)->sin_family = AF_INET;
-            ((struct sockaddr_in *)&sock->addressin)->sin_addr.s_addr = bindaddress;
-            ((struct sockaddr_in *)&sock->addressin)->sin_port = 0;
+            ((struct sockaddr_in6 *)&sock->addressin)->sin6_family = AF_INET6;
+            memcpy(&((struct sockaddr_in6 *)&sock->addressin)->sin6_addr, &bindaddress, sizeof(bindaddress));
+            ((struct sockaddr_in6 *)&sock->addressin)->sin6_port = 0;
 
-            if(sock_bind((SOCKET)sock->realsocket, (struct sockaddr *)&sock->addressin, (int)sizeof(struct sockaddr)) == SOCKET_ERROR)
+            if(sock_bind((SOCKET)sock->realsocket, (struct sockaddr *)&sock->addressin, (int)sizeof(struct sockaddr_in6)) == SOCKET_ERROR)
             {
                 nlSetError(NL_SYSTEM_ERROR);
                 return NL_FALSE;
@@ -602,17 +648,18 @@ NLboolean sock_Listen(NLsocket socket)
     return NL_TRUE;
 }
 
-static SOCKET sock_AcceptUDP(NLsocket nlsocket, /*@out@*/struct sockaddr_in *newaddr)
+static SOCKET sock_AcceptUDP(NLsocket nlsocket, /*@out@*/struct sockaddr_in6 *newaddr)
 {
     nl_socket_t         *sock = nlSockets[nlsocket];
-    struct sockaddr_in  ouraddr;
+    struct sockaddr_in6 ouraddr;
     SOCKET              newsocket;
     NLushort            localport;
     NLbyte              buffer[NL_MAX_STRING_LENGTH];
-    socklen_t           len = (socklen_t)sizeof(struct sockaddr_in);
+    socklen_t           len = (socklen_t)sizeof(struct sockaddr_in6);
     NLint               slen = (NLint)sizeof(NL_CONNECT_STRING);
     NLbyte              reply = (NLbyte)0x00;
     NLint               count = 0;
+    NLint               v6only = 0;
     
     /* Get the packet and remote host address */
     if(recvfrom((SOCKET)sock->realsocket, buffer, (int)sizeof(buffer), 0,
@@ -629,18 +676,26 @@ static SOCKET sock_AcceptUDP(NLsocket nlsocket, /*@out@*/struct sockaddr_in *new
         return INVALID_SOCKET;
     }
     /* open up a new socket on this end */
-    newsocket = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    newsocket = socket(PF_INET6, SOCK_DGRAM, IPPROTO_UDP);
     if(newsocket == INVALID_SOCKET)
     {
         nlSetError(NL_SYSTEM_ERROR);
         (void)closesocket(newsocket);
         return INVALID_SOCKET;
     }
+
+    if(setsockopt(newsocket, IPPROTO_IPV6, IPV6_V6ONLY, (char*)&v6only, sizeof(v6only)) == SOCKET_ERROR)
+    {
+        nlSetError(NL_SYSTEM_ERROR);
+        (void)closesocket(newsocket);
+        return INVALID_SOCKET;
+    }
     
-    ouraddr.sin_family = AF_INET;
-    ouraddr.sin_addr.s_addr = bindaddress;
+    memset(&ouraddr, 0, sizeof(ouraddr));
+    ouraddr.sin6_family = AF_INET6;
+    memcpy(&ouraddr.sin6_addr, &bindaddress, sizeof(bindaddress));
     /* system assigned port number */
-    ouraddr.sin_port = 0;
+    ouraddr.sin6_port = 0;
     
     if(sock_bind(newsocket, (struct sockaddr *)&ouraddr, len) == SOCKET_ERROR)
     {
@@ -648,8 +703,17 @@ static SOCKET sock_AcceptUDP(NLsocket nlsocket, /*@out@*/struct sockaddr_in *new
         (void)closesocket(newsocket);
         return INVALID_SOCKET;
     }
+    sock_SetSocketOptionsMulticast(nlsocket);
     /* get the new port */
     localport = sock_GetPort(newsocket);
+#ifdef NL_DEBUG
+    char tmp[128];
+    NLaddress tmpaddr;
+    memcpy(&tmpaddr, &ouraddr, sizeof(struct sockaddr_in6));
+    tmpaddr.valid = NL_TRUE;
+    nlAddrToString(&tmpaddr, tmp);
+    printf("%s: sock %d bound to addr %s port %d\n", __FUNCTION__, newsocket, tmp, localport);
+#endif
     
     /* create the return message */
     writeShort(buffer, count, localport);
@@ -657,7 +721,7 @@ static SOCKET sock_AcceptUDP(NLsocket nlsocket, /*@out@*/struct sockaddr_in *new
     
     /* send back the reply with our new port */
     if(sendto((SOCKET)sock->realsocket, buffer, count, 0, (struct sockaddr *)newaddr,
-        (int)sizeof(struct sockaddr_in)) < count)
+        (int)sizeof(struct sockaddr_in6)) < count)
     {
         nlSetError(NL_SYSTEM_ERROR);
         (void)closesocket(newsocket);
@@ -666,7 +730,7 @@ static SOCKET sock_AcceptUDP(NLsocket nlsocket, /*@out@*/struct sockaddr_in *new
     /* send back a 0 length packet from our new port, needed for firewalls */
     if(sendto(newsocket, &reply, 0, 0,
         (struct sockaddr *)newaddr,
-        (int)sizeof(struct sockaddr_in)) < 0)
+        (int)sizeof(struct sockaddr_in6)) < 0)
     {
         nlSetError(NL_SYSTEM_ERROR);
         (void)closesocket(newsocket);
@@ -674,7 +738,7 @@ static SOCKET sock_AcceptUDP(NLsocket nlsocket, /*@out@*/struct sockaddr_in *new
     }
     /* connect the socket */
     if(connect(newsocket, (struct sockaddr *)newaddr,
-        (int)sizeof(struct sockaddr_in)) == SOCKET_ERROR)
+        (int)sizeof(struct sockaddr_in6)) == SOCKET_ERROR)
     {
         nlSetError(NL_SYSTEM_ERROR);
         (void)closesocket(newsocket);
@@ -690,7 +754,7 @@ NLsocket sock_AcceptConnection(NLsocket socket)
     nl_socket_t         *newsock = NULL;
     NLsocket            newsocket = NL_INVALID;
     SOCKET              realsocket = INVALID_SOCKET;
-    struct sockaddr_in  newaddr;
+    struct sockaddr_in6 newaddr;
     socklen_t           len = (socklen_t)sizeof(newaddr);
     
     memset(&newaddr, 0, sizeof(newaddr));
@@ -750,7 +814,7 @@ NLsocket sock_AcceptConnection(NLsocket socket)
     newsock = nlSockets[newsocket];
     
     /* update the remote address */
-    memcpy((char *)&newsock->addressin, (char *)&newaddr, sizeof(struct sockaddr_in));
+    memcpy((char *)&newsock->addressin, (char *)&newaddr, sizeof(struct sockaddr_in6));
     newsock->realsocket = (NLint)realsocket;
     newsock->localport = sock_GetPort(realsocket);
     newsock->remoteport = sock_GetPortFromAddr((NLaddress *)&newsock->addressin);
@@ -774,13 +838,13 @@ NLsocket sock_Open(NLushort port, NLenum type)
         
     case NL_RELIABLE: /* TCP */
     case NL_RELIABLE_PACKETS: /* TCP packets */
-        realsocket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+        realsocket = socket(PF_INET6, SOCK_STREAM, IPPROTO_TCP);
         break;
         
     case NL_UNRELIABLE: /* UDP */
     case NL_BROADCAST:  /* UDP broadcast */
     case NL_UDP_MULTICAST:  /* UDP multicast */
-        realsocket = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
+        realsocket = socket(PF_INET6, SOCK_DGRAM, IPPROTO_UDP);
         break;
         
     default:
@@ -820,17 +884,28 @@ NLsocket sock_Open(NLushort port, NLenum type)
     }
     else
     {
-        ((struct sockaddr_in *)&newsock->addressin)->sin_family = AF_INET;
-        ((struct sockaddr_in *)&newsock->addressin)->sin_addr.s_addr = bindaddress;
-        ((struct sockaddr_in *)&newsock->addressin)->sin_port = htons((unsigned short)port);
+        memset(((struct sockaddr_in6 *)&newsock->addressin), 0, sizeof(struct sockaddr_in6));
+        ((struct sockaddr_in6 *)&newsock->addressin)->sin6_family = AF_INET6;
+        memcpy(&(((struct sockaddr_in6 *)&newsock->addressin)->sin6_addr), &bindaddress, sizeof(bindaddress));
+        ((struct sockaddr_in6 *)&newsock->addressin)->sin6_port = htons((unsigned short)port);
+        newsock->addressin.valid = NL_TRUE;
         
-        if(sock_bind(realsocket, (struct sockaddr *)&newsock->addressin, (int)sizeof(struct sockaddr)) == SOCKET_ERROR)
+        if(sock_bind(realsocket, (struct sockaddr *)&newsock->addressin, (int)sizeof(struct sockaddr_in6)) == SOCKET_ERROR)
         {
             nlSetError(NL_SYSTEM_ERROR);
             nlUnlockSocket(newsocket, NL_BOTH);
             (void)sock_Close(newsocket);
             return NL_INVALID;
         }
+        newsock->localport = sock_GetPort(realsocket);
+
+#ifdef NL_DEBUG
+        char tmp[128];
+        nlAddrToString(&newsock->addressin, tmp);
+        printf("%s: sock %d bound to addr %s port %d\n", __FUNCTION__, realsocket, tmp, newsock->localport);
+#endif
+
+        sock_SetSocketOptionsMulticast(newsocket);
         if(type == NL_BROADCAST)
         {
             if(sock_SetBroadcast(realsocket) == NL_FALSE)
@@ -840,11 +915,12 @@ NLsocket sock_Open(NLushort port, NLenum type)
                 (void)sock_Close(newsocket);
                 return NL_INVALID;
             }
-            ((struct sockaddr_in *)&newsock->addressout)->sin_family = AF_INET;
-            ((struct sockaddr_in *)&newsock->addressout)->sin_addr.s_addr = INADDR_BROADCAST;
-            ((struct sockaddr_in *)&newsock->addressout)->sin_port = htons((unsigned short)port);
+            memset(((struct sockaddr_in6 *)&newsock->addressout), 0, sizeof(struct sockaddr_in6));
+            ((struct sockaddr_in6 *)&newsock->addressout)->sin6_family = AF_INET6;
+            memcpy(&((struct sockaddr_in6 *)&newsock->addressout)->sin6_addr, &in6addr_ipv4broadcast, sizeof(in6addr_ipv4broadcast));
+            ((struct sockaddr_in6 *)&newsock->addressout)->sin6_port = htons((unsigned short)port);
+            newsock->addressout.valid = NL_TRUE;
         }
-        newsock->localport = sock_GetPort(realsocket);
     }
     if(type == NL_RELIABLE_PACKETS)
     {
@@ -860,7 +936,7 @@ static NLboolean sock_ConnectUDP(NLsocket socket, const NLaddress *address)
     time_t          begin, t;
     
     if(sendto((SOCKET)sock->realsocket, (char *)NL_CONNECT_STRING, (NLint)sizeof(NL_CONNECT_STRING),
-        0, (struct sockaddr *)address, (int)sizeof(struct sockaddr_in))
+        0, (struct sockaddr *)address, (int)sizeof(struct sockaddr_in6))
         == SOCKET_ERROR)
     {
         if(sock->blocking == NL_TRUE)
@@ -885,7 +961,7 @@ static NLboolean sock_ConnectUDP(NLsocket socket, const NLaddress *address)
         NLint               slen = (NLint)(sizeof(NL_REPLY_STRING) + sizeof(newport));
         NLint               received;
         NLbyte              reply = (NLbyte)0;
-        socklen_t           len = (socklen_t)sizeof(struct sockaddr_in);
+        socklen_t           len = (socklen_t)sizeof(struct sockaddr_in6);
         
         received = recvfrom((SOCKET)sock->realsocket, (char *)buffer, (int)sizeof(buffer), 0,
             (struct sockaddr *)&sock->addressin, &len);
@@ -911,14 +987,14 @@ static NLboolean sock_ConnectUDP(NLsocket socket, const NLaddress *address)
             
             /* retrieve the port number */
             readShort(buffer, count, newport);
-            ((struct sockaddr_in *)&sock->addressin)->sin_port = htons(newport);
+            ((struct sockaddr_in6 *)&sock->addressin)->sin6_port = htons(newport);
             /* Lets check for the reply string */
             pbuffer[slen - 1] = (NLbyte)0; /* null terminate for peace of mind */
             pbuffer += sizeof(newport);
             if(strcmp(pbuffer, NL_REPLY_STRING) == 0)
             {
                 if(connect((SOCKET)sock->realsocket, (struct sockaddr *)&sock->addressin,
-                    (int)sizeof(struct sockaddr_in)) == SOCKET_ERROR)
+                    (int)sizeof(struct sockaddr_in6)) == SOCKET_ERROR)
                 {
                     if(sock->blocking == NL_TRUE)
                     {
@@ -996,41 +1072,6 @@ static NLboolean sock_ConnectUDPAsynch(NLsocket socket, const NLaddress *address
     return NL_TRUE;
 }
 
-static NLboolean sock_ConnectMulticast(NLsocket socket, const NLaddress *address)
-{
-    struct ip_mreq  mreq;
-    nl_socket_t     *sock = nlSockets[socket];
-    
-    if(sock->reliable == NL_TRUE)
-    {
-        nlSetError(NL_WRONG_TYPE);
-        return NL_FALSE;
-    }
-    if(!IN_MULTICAST(ntohl(((struct sockaddr_in *)address)->sin_addr.s_addr)))
-    {
-        nlSetError(NL_BAD_ADDR);
-        return NL_FALSE;
-    }
-    
-    memcpy((char *)&sock->addressin, (char *)address, sizeof(struct sockaddr_in));
-    memcpy((char *)&sock->addressout, (char *)address, sizeof(struct sockaddr_in));
-    
-    /* join the multicast group */
-    mreq.imr_multiaddr.s_addr = ((struct sockaddr_in *)address)->sin_addr.s_addr;
-    mreq.imr_interface.s_addr = bindaddress;
-    
-    if(setsockopt((SOCKET)sock->realsocket, IPPROTO_IP, IP_ADD_MEMBERSHIP,
-        (char *)&mreq, (int)sizeof(mreq)) == SOCKET_ERROR)
-    {
-        nlSetError(NL_SYSTEM_ERROR);
-        return NL_FALSE;
-    }
-    sock->localport = sock_GetPort((SOCKET)sock->realsocket);
-    sock->remoteport = sock_GetPortFromAddr((NLaddress *)&sock->addressout);
-    
-    return sock_SetMulticastTTL((SOCKET)sock->realsocket, multicastTTL);
-}
-
 NLboolean sock_Connect(NLsocket socket, const NLaddress *address)
 {
     nl_socket_t *sock = nlSockets[socket];
@@ -1041,7 +1082,7 @@ NLboolean sock_Connect(NLsocket socket, const NLaddress *address)
     {
         
         if(sock_connect((SOCKET)sock->realsocket, (struct sockaddr *)&sock->addressin,
-            (int)sizeof(struct sockaddr_in)) == SOCKET_ERROR)
+            (int)sizeof(struct sockaddr_in6)) == SOCKET_ERROR)
         {
             if(sock->blocking == NL_FALSE &&
                 (sockerrno == EWOULDBLOCK || sockerrno == EINPROGRESS))
@@ -1061,7 +1102,8 @@ NLboolean sock_Connect(NLsocket socket, const NLaddress *address)
     }
     else if(sock->type == NL_UDP_MULTICAST)
     {
-        return sock_ConnectMulticast(socket, &sock->addressin);
+        nlSetError(NL_SYSTEM_ERROR);
+        return NL_FALSE;
     }
     else if(sock->type == NL_UNRELIABLE)
     {
@@ -1084,16 +1126,10 @@ NLboolean sock_Connect(NLsocket socket, const NLaddress *address)
 void sock_Close(NLsocket socket)
 {
     nl_socket_t     *sock = nlSockets[socket];
-    struct ip_mreq  mreq;
     
     if(sock->type == NL_UDP_MULTICAST)
     {
         /* leave the multicast group */
-        mreq.imr_multiaddr.s_addr = ((struct sockaddr_in *)&sock->addressout)->sin_addr.s_addr;
-        mreq.imr_interface.s_addr = bindaddress;
-        
-        (void)setsockopt((SOCKET)sock->realsocket, IPPROTO_IP, IP_DROP_MEMBERSHIP,
-            (char *)&mreq, (int)sizeof(mreq));
     }
     if(sock->type == NL_RELIABLE_PACKETS)
     {
@@ -1483,7 +1519,7 @@ NLint sock_Read(NLsocket socket, NLvoid *buffer, NLint nbytes)
         }
         else
         {
-            socklen_t   len = (socklen_t)sizeof(struct sockaddr_in);
+            socklen_t   len = (socklen_t)sizeof(struct sockaddr_in6);
             
             count = recvfrom((SOCKET)sock->realsocket, (char *)buffer, nbytes, 0,
                 (struct sockaddr *)&sock->addressin, &len);
@@ -1721,13 +1757,11 @@ NLint sock_Write(NLsocket socket, const NLvoid *buffer, NLint nbytes)
         }
         if(sock->type == NL_BROADCAST)
         {
-            ((struct sockaddr_in *)&sock->addressin)->sin_addr.s_addr = INADDR_BROADCAST;
+            //memcpy(&((struct sockaddr_in6 *)&sock->addressin)->sin6_addr, &in6addr_multicast, sizeof(in6addr_multicast));
         }
         if(sock->type == NL_UDP_MULTICAST)
         {
-            count = sendto((SOCKET)sock->realsocket, (char *)buffer, nbytes, 0,
-                (struct sockaddr *)&sock->addressout,
-                (int)sizeof(struct sockaddr_in));
+            count = SOCKET_ERROR;
         }
         else if(sock->connected == NL_TRUE)
         {
@@ -1735,9 +1769,29 @@ NLint sock_Write(NLsocket socket, const NLvoid *buffer, NLint nbytes)
         }
         else
         {
+#ifdef NL_DEBUG
+            char tmp[128];
+            nlAddrToString(&sock->addressout, tmp);
+            printf("%s: sock %d len %d addr %s\n", __FUNCTION__, sock->realsocket, (int)nbytes, tmp);
+#endif
             count = sendto((SOCKET)sock->realsocket, (char *)buffer, nbytes, 0,
-                (struct sockaddr *)&sock->addressout,
-                (int)sizeof(struct sockaddr_in));
+                (struct sockaddr *)&sock->addressout, (int)sizeof(struct sockaddr_in6));
+
+            if(sock->type == NL_BROADCAST)
+            {
+                struct sockaddr_in6 broadcast;
+                memcpy(&broadcast, (struct sockaddr_in6 *)&sock->addressout, sizeof(broadcast));
+                memcpy(&broadcast.sin6_addr, &in6addr_multicast, sizeof(in6addr_multicast));
+                sendto((SOCKET)sock->realsocket, (char *)buffer, nbytes, 0,
+                    (struct sockaddr *)&broadcast, (int)sizeof(struct sockaddr_in6));
+#ifdef NL_DEBUG
+                NLaddress tmpaddr;
+                memcpy(&tmpaddr, &broadcast, sizeof(struct sockaddr_in6));
+                tmpaddr.valid = NL_TRUE;
+                nlAddrToString(&tmpaddr, tmp);
+                printf("%s: sock %d len %d addr %s\n", __FUNCTION__, sock->realsocket, (int)nbytes, tmp);
+#endif
+            }
         }
     }
     if(count == SOCKET_ERROR)
@@ -1749,50 +1803,107 @@ NLint sock_Write(NLsocket socket, const NLvoid *buffer, NLint nbytes)
 
 NLchar *sock_AddrToString(const NLaddress *address, NLchar *string)
 {
-    NLulong     addr;
-    NLushort    port;
-    
-    addr = ntohl(((struct sockaddr_in *)address)->sin_addr.s_addr);
-    port = ntohs(((struct sockaddr_in *)address)->sin_port);
-    if(port == 0)
+    if(((struct sockaddr_in6 *)address)->sin6_family != AF_INET6 || !address->valid)
     {
-        _stprintf(string, TEXT("%lu.%lu.%lu.%lu"), (addr >> 24) & 0xff, (addr >> 16)
-            & 0xff, (addr >> 8) & 0xff, addr & 0xff);
+        _stprintf(string, TEXT("%s"), "");
+        return NULL;
+    }
+
+    if(memcmp(&in6addr_ipv4mapped, &(((struct sockaddr_in6 *)address)->sin6_addr), 12) != 0)
+    {
+        NLushort port = ntohs(((struct sockaddr_in6 *)address)->sin6_port);
+        strcpy(string, "[");
+        inet_ntop(AF_INET6, &(((struct sockaddr_in6 *)address)->sin6_addr), string + 1, INET6_ADDRSTRLEN);
+        _stprintf(string + strlen(string), TEXT("]"));
+        if (port != 0)
+        {
+            _stprintf(string + strlen(string), TEXT(":%u"), port);
+        }
     }
     else
     {
-        _stprintf(string, TEXT("%lu.%lu.%lu.%lu:%u"), (addr >> 24) & 0xff, (addr >> 16)
-            & 0xff, (addr >> 8) & 0xff, addr & 0xff, port);
+        NLushort    port;
+        port = ntohs(((struct sockaddr_in6 *)address)->sin6_port);
+        if(port == 0)
+        {
+            _stprintf(string, TEXT("%u.%u.%u.%u"),
+                ((struct sockaddr_in6 *)address)->sin6_addr.s6_addr[12],
+                ((struct sockaddr_in6 *)address)->sin6_addr.s6_addr[13],
+                ((struct sockaddr_in6 *)address)->sin6_addr.s6_addr[14],
+                ((struct sockaddr_in6 *)address)->sin6_addr.s6_addr[15]);
+        }
+        else
+        {
+            _stprintf(string, TEXT("%u.%u.%u.%u:%u"),
+                ((struct sockaddr_in6 *)address)->sin6_addr.s6_addr[12],
+                ((struct sockaddr_in6 *)address)->sin6_addr.s6_addr[13],
+                ((struct sockaddr_in6 *)address)->sin6_addr.s6_addr[14],
+                ((struct sockaddr_in6 *)address)->sin6_addr.s6_addr[15],
+                port);
+        }
     }
     return string;
 }
 
 NLboolean sock_StringToAddr(const NLchar *string, NLaddress *address)
 {
-    NLulong     a1, a2, a3, a4;
-    NLulong     ipaddress, port = 0;
-    int         ret;
+    memset(address, 0, sizeof(struct sockaddr_in6));
+    ((struct sockaddr_in6 *)address)->sin6_family = AF_INET6;
 
-    ret = _stscanf((const NLchar *)string, (const NLchar *)TEXT("%lu.%lu.%lu.%lu:%lu"), &a1, &a2, &a3, &a4, &port);
-
-    if(a1 > 255 || a2 > 255 || a3 > 255 || a4 > 255 || port > 65535 || ret < 4)
+    if(string[0] == '[')
     {
-        /* bad address */
-        ((struct sockaddr_in *)address)->sin_family = AF_INET;
-        ((struct sockaddr_in *)address)->sin_addr.s_addr = INADDR_NONE;
-        ((struct sockaddr_in *)address)->sin_port = 0;
-        nlSetError(NL_BAD_ADDR);
-        address->valid = NL_FALSE;
-        return NL_FALSE;
+        NLchar addrPart[INET6_ADDRSTRLEN];
+        const NLchar *addrPartEnd;
+        NLulong port = 0;
+
+        string += 1;
+        addrPartEnd = strchr(string, ']');
+        if(addrPartEnd == NULL || addrPartEnd - string >= INET6_ADDRSTRLEN || addrPartEnd == string)
+        {
+            nlSetError(NL_BAD_ADDR);
+            address->valid = NL_FALSE;
+            return NL_FALSE;
+        }
+        strncpy(addrPart, string, addrPartEnd - string);
+        addrPart[addrPartEnd - string] = '\0';
+        if(inet_pton(AF_INET6, addrPart, &(((struct sockaddr_in6 *)address)->sin6_addr)) != 1)
+        {
+            nlSetError(NL_BAD_ADDR);
+            address->valid = NL_FALSE;
+            return NL_FALSE;
+        }
+        _stscanf(addrPartEnd, (const NLchar *)TEXT("]:%lu"), &port);
+        ((struct sockaddr_in6 *)address)->sin6_port = htons((NLushort)port);
+        address->valid = NL_TRUE;
+        return NL_TRUE;
     }
     else
     {
-        ipaddress = (a1 << 24) | (a2 << 16) | (a3 << 8) | a4;
-        ((struct sockaddr_in *)address)->sin_family = AF_INET;
-        ((struct sockaddr_in *)address)->sin_addr.s_addr = htonl(ipaddress);
-        ((struct sockaddr_in *)address)->sin_port = htons((NLushort)port);
-        address->valid = NL_TRUE;
-        return NL_TRUE;
+        NLulong     a1, a2, a3, a4;
+        NLulong     port = 0;
+        int         ret;
+
+        ret = _stscanf((const NLchar *)string, (const NLchar *)TEXT("%lu.%lu.%lu.%lu:%lu"), &a1, &a2, &a3, &a4, &port);
+
+        if(a1 > 255 || a2 > 255 || a3 > 255 || a4 > 255 || port > 65535 || ret < 4)
+        {
+            /* bad address */
+            ((struct sockaddr_in6 *)address)->sin6_port = 0;
+            nlSetError(NL_BAD_ADDR);
+            address->valid = NL_FALSE;
+            return NL_FALSE;
+        }
+        else
+        {
+            memcpy(&(((struct sockaddr_in6 *)address)->sin6_addr), &in6addr_ipv4mapped, sizeof(in6addr_ipv4mapped));
+            ((struct sockaddr_in6 *)address)->sin6_addr.s6_addr[12] = a1;
+            ((struct sockaddr_in6 *)address)->sin6_addr.s6_addr[13] = a2;
+            ((struct sockaddr_in6 *)address)->sin6_addr.s6_addr[14] = a3;
+            ((struct sockaddr_in6 *)address)->sin6_addr.s6_addr[15] = a4;
+            ((struct sockaddr_in6 *)address)->sin6_port = htons((NLushort)port);
+            address->valid = NL_TRUE;
+            return NL_TRUE;
+        }
     }
 }
 
@@ -1802,9 +1913,9 @@ NLboolean sock_GetLocalAddr(NLsocket socket, NLaddress *address)
     socklen_t   len;
     
     memset(address, 0, sizeof(NLaddress));
-    ((struct sockaddr_in *)address)->sin_family = AF_INET;
+    ((struct sockaddr_in6 *)address)->sin6_family = AF_INET6;
     address->valid = NL_TRUE;
-    len = (socklen_t)sizeof(struct sockaddr_in);
+    len = (socklen_t)sizeof(struct sockaddr_in6);
     /* if the socket is connected, this will get us
     the correct address on a multihomed system*/
     if(getsockname((SOCKET)sock->realsocket, (struct sockaddr *)address, &len) == SOCKET_ERROR)
@@ -1817,279 +1928,29 @@ NLboolean sock_GetLocalAddr(NLsocket socket, NLaddress *address)
             return NL_FALSE;
         }
     }
-    
-    /* if not connected, substitute the NIC address */
-    if(((struct sockaddr_in *)address)->sin_addr.s_addr == INADDR_ANY)
-    {
-        ((struct sockaddr_in *)address)->sin_addr.s_addr = ouraddress;
-    }
     sock_SetAddrPort(address, sock->localport);
     return NL_TRUE;
-}
-
-NLaddress *sock_GetAllLocalAddr(NLint *count)
-{
-    struct hostent  *local;
-    char            buff[MAXHOSTNAMELEN];
-    int             i = 0;
-    
-    if(gethostname(buff, MAXHOSTNAMELEN) == SOCKET_ERROR)
-    {
-        nlSetError(NL_SYSTEM_ERROR);
-        return NULL;
-    }
-    buff[MAXHOSTNAMELEN - 1] = '\0';
-    local = gethostbyname(buff);
-    if(local == NULL)
-    {
-        if(sockerrno == ENETDOWN)
-        {
-            nlSetError(NL_SYSTEM_ERROR);
-            return NULL;
-        }
-    }
-    /* count the number of returned IP addresses */
-    *count = 0;
-    if(local != NULL)
-    {
-        while(local->h_addr_list[i++] != NULL)
-        {
-            (*count)++;
-        }
-    }
-    /* allocate storage for address */
-    if(alladdr != NULL)
-    {
-        free(alladdr);
-    }
-    if(*count == 0)
-    {
-        *count = 1;
-        alladdr = (NLaddress *)malloc(sizeof(NLaddress));
-        memset(alladdr, 0, sizeof(NLaddress));
-        
-        /* fill in the localhost address */
-        ((struct sockaddr_in *)alladdr)->sin_family = AF_INET;
-        ((struct sockaddr_in *)alladdr)->sin_addr.s_addr = (NLuint)htonl(0x7f000001);
-        alladdr->valid = NL_TRUE;
-    }
-    else
-    {
-        alladdr = (NLaddress *)malloc(sizeof(NLaddress) * *count);
-        memset(alladdr, 0, sizeof(NLaddress) * *count);
-        
-        /* fill in the addresses */
-        i = 0;
-        while(local->h_addr_list[i] != NULL)
-        {
-            NLaddress *addr = &alladdr[i];
-            
-            ((struct sockaddr_in *)addr)->sin_family = AF_INET;
-            ((struct sockaddr_in *)addr)->sin_addr.s_addr = *(NLuint *)local->h_addr_list[i];
-            addr->valid = NL_TRUE;
-            i++;
-        }
-    }
-    return alladdr;
 }
 
 NLboolean sock_SetLocalAddr(const NLaddress *address)
 {
     /* should we check against all the local addresses? */
-    bindaddress = ouraddress = (NLuint)((struct sockaddr_in *)address)->sin_addr.s_addr;
-    return NL_TRUE;
-}
-
-NLchar *sock_GetNameFromAddr(const NLaddress *address, NLchar *name)
-{
-    struct hostent  *hostentry;
-    NLchar          tempname[MAXHOSTNAMELEN];
-    
-    hostentry = gethostbyaddr((char *)&((struct sockaddr_in *)address)->sin_addr,
-        (int)sizeof(struct in_addr), AF_INET);
-    if(hostentry != NULL)
-    {
-        NLushort port = sock_GetPortFromAddr(address);
-#ifdef _UNICODE
-        NLchar temp[MAXHOSTNAMELEN];
-        /* convert from multibyte char string to wide char string */
-        mbstowcs(temp, (const char *)hostentry->h_name, MAXHOSTNAMELEN);
-        temp[MAXHOSTNAMELEN - 1] = '\0';
-#else
-        NLchar *temp = (NLchar *)hostentry->h_name;
-#endif
-        if(port != 0)
-        {
-            _sntprintf(tempname, (size_t)(NL_MAX_STRING_LENGTH), (const NLchar *)TEXT("%s:%hu"), (const NLchar *)temp, port);
-        }
-        else
-        {
-            _tcsncpy(tempname, (const NLchar *)temp, (size_t)(NL_MAX_STRING_LENGTH));
-        }
-        tempname[NL_MAX_STRING_LENGTH - 1] = (NLchar)'\0';
-    }
-    else
-    {
-        if(((struct sockaddr_in *)address)->sin_addr.s_addr == (unsigned long)INADDR_NONE)
-        {
-            _tcsncpy(tempname, (const NLchar *)TEXT("Bad address"), (size_t)(NL_MAX_STRING_LENGTH));
-        }
-        else
-        {
-            (void)sock_AddrToString(address, tempname);
-        }
-    }
-    /* special copy in case this was called as sock_GetNameFromAddrAsync */
-    name[0] = (NLchar)'\0';
-    _tcsncpy(&name[1], (const NLchar *)&tempname[1], (size_t)(NL_MAX_STRING_LENGTH - 1));
-    name[0] = tempname[0];
-    return name;
-}
-
-static void *sock_GetNameFromAddrAsyncInt(void /*@owned@*/ * addr)
-{
-    NLaddress_ex_t *address = (NLaddress_ex_t *)addr;
-    
-    (void)sock_GetNameFromAddr(address->address, address->name);
-    free(address->address);
-    free(address);
-    return NULL;
-}
-
-NLboolean sock_GetNameFromAddrAsync(const NLaddress *address, NLchar *name)
-{
-    NLaddress_ex_t  *addr;
-    
-    memset(name, 0, sizeof(NLchar) * NL_MAX_STRING_LENGTH);
-    addr = (NLaddress_ex_t *)malloc(sizeof(NLaddress_ex_t));
-    if(addr == NULL)
-    {
-        nlSetError(NL_OUT_OF_MEMORY);
-        return NL_FALSE;
-    }
-    addr->address = (NLaddress *)malloc(sizeof(NLaddress));
-    if(addr->address == NULL)
-    {
-        nlSetError(NL_OUT_OF_MEMORY);
-        free(addr);
-        return NL_FALSE;
-    }
-    memcpy(addr->address, address, sizeof(NLaddress));
-    addr->name = name;
-    if(nlThreadCreate(sock_GetNameFromAddrAsyncInt, (void *)addr, NL_FALSE) == (NLthreadID)NL_INVALID)
-    {
-        return NL_FALSE;
-    }
-    return NL_TRUE;
-}
-
-NLboolean sock_GetAddrFromName(const NLchar *name, NLaddress *address)
-{
-    struct hostent *hostentry;
-    NLushort    port = 0;
-    int			pos;
-    NLbyte      temp[NL_MAX_STRING_LENGTH];
-    
-    address->valid = NL_FALSE;
-    /* first check to see if we have a numeric address already */
-    (void)sock_StringToAddr(name, address);
-    /* clear out an NL_BAD_ADDR error */
-    if(nlGetError() == NL_BAD_ADDR)
-    {
-        nlSetError(NL_NO_ERROR);
-    }
-    if(((struct sockaddr_in *)address)->sin_addr.s_addr != (unsigned long)INADDR_NONE)
-    {
-        /* we are already done! */
-        address->valid = NL_TRUE;
-        return NL_TRUE;
-    }
-    
-#ifdef _UNICODE
-    /* convert from wide char string to multibyte char string */
-    (void)wcstombs(temp, (const NLchar *)name, NL_MAX_STRING_LENGTH);
-#else
-    strncpy(temp, name, NL_MAX_STRING_LENGTH);
-#endif
-    temp[NL_MAX_STRING_LENGTH - 1] = (NLbyte)'\0';
-    pos = (int)strcspn(temp, (const char *)":");
-    if(pos > 0)
-    {
-        NLbyte      *p = &temp[pos+1];
-
-        temp[pos] = (NLbyte)'\0';
-        (void)sscanf(p, "%hu", &port);
-    }
-    hostentry = gethostbyname((const char *)temp);
-
-    if(hostentry != NULL)
-    {
-        ((struct sockaddr_in *)address)->sin_family = AF_INET;
-        ((struct sockaddr_in *)address)->sin_port = htons(port);
-        ((struct sockaddr_in *)address)->sin_addr.s_addr = *(NLulong *)hostentry->h_addr_list[0];
-        address->valid = NL_TRUE;
-    }
-    else
-    {
-        ((struct sockaddr_in *)address)->sin_family = AF_INET;
-        ((struct sockaddr_in *)address)->sin_addr.s_addr = INADDR_NONE;
-        ((struct sockaddr_in *)address)->sin_port = 0;
-        nlSetError(NL_SYSTEM_ERROR);
-        return NL_FALSE;
-    }
-    return NL_TRUE;
-}
-
-static void *sock_GetAddrFromNameAsyncInt(void /*@owned@*/ *addr)
-{
-    NLaddress_ex_t *address = (NLaddress_ex_t *)addr;
-    
-    (void)sock_GetAddrFromName(address->name, address->address);
-    address->address->valid = NL_TRUE;
-    free(address->name);
-    free(address);
-    return NULL;
-}
-
-NLboolean sock_GetAddrFromNameAsync(const NLchar *name, NLaddress *address)
-{
-    NLaddress_ex_t  *addr;
-    
-    address->valid = NL_FALSE;
-    addr = (NLaddress_ex_t *)malloc(sizeof(NLaddress_ex_t));
-    if(addr == NULL)
-    {
-        nlSetError(NL_OUT_OF_MEMORY);
-        return NL_FALSE;
-    }
-    addr->name = (NLchar *)malloc(NL_MAX_STRING_LENGTH);
-    if(addr->name == NULL)
-    {
-        nlSetError(NL_OUT_OF_MEMORY);
-        free(addr);
-        return NL_FALSE;
-    }
-    _tcsncpy(addr->name, name, (size_t)NL_MAX_STRING_LENGTH);
-    addr->name[NL_MAX_STRING_LENGTH - 1] = '\0';
-    addr->address = address;
-    if(nlThreadCreate(sock_GetAddrFromNameAsyncInt, (void *)addr, NL_FALSE) == (NLthreadID)NL_INVALID)
-    {
-        return NL_FALSE;
-    }
+    bindaddress = ((struct sockaddr_in6 *)address)->sin6_addr;
     return NL_TRUE;
 }
 
 NLboolean sock_AddrCompare(const NLaddress *address1, const NLaddress *address2)
 {
-    if(((struct sockaddr_in *)address1)->sin_family != ((struct sockaddr_in *)address2)->sin_family)
+    if(((struct sockaddr_in6 *)address1)->sin6_family != ((struct sockaddr_in6 *)address2)->sin6_family)
         return NL_FALSE;
     
-    if(((struct sockaddr_in *)address1)->sin_addr.s_addr
-        != ((struct sockaddr_in *)address2)->sin_addr.s_addr)
+    if(memcmp(&((struct sockaddr_in6 *)address1)->sin6_addr,
+              &(((struct sockaddr_in6 *)address2)->sin6_addr),
+              sizeof(struct in6_addr)) != 0)
         return NL_FALSE;
     
-    if(((struct sockaddr_in *)address1)->sin_port
-        != ((struct sockaddr_in *)address2)->sin_port)
+    if(((struct sockaddr_in6 *)address1)->sin6_port
+        != ((struct sockaddr_in6 *)address2)->sin6_port)
         return NL_FALSE;
     
     return NL_TRUE;
@@ -2097,12 +1958,12 @@ NLboolean sock_AddrCompare(const NLaddress *address1, const NLaddress *address2)
 
 NLushort sock_GetPortFromAddr(const NLaddress *address)
 {
-    return ntohs(((struct sockaddr_in *)address)->sin_port);
+    return ntohs(((struct sockaddr_in6 *)address)->sin6_port);
 }
 
 void sock_SetAddrPort(NLaddress *address, NLushort port)
 {
-    ((struct sockaddr_in *)address)->sin_port = htons((NLushort)port);
+    ((struct sockaddr_in6 *)address)->sin6_port = htons((NLushort)port);
 }
 
 NLint sock_GetSystemError(void)

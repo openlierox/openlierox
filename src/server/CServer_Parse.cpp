@@ -1010,7 +1010,7 @@ void GameServer::ParseConnectionlessPacket(const SmartPointer<NetworkSocket>& tS
 	else if (cmd == "lx::traverse")
 		ParseTraverse(tSocket, bs, ip);
 	else if (cmd == "lx::registered")
-		ParseServerRegistered(tSocket);
+		ParseServerRegistered(tSocket, bs);
 	else  {
 		warnings << "GameServer::ParseConnectionlessPacket: unknown packet \"" << cmd << "\"" << endl;
 		bs->SkipAll(); // Safety: ignore any data behind this unknown packet
@@ -1996,18 +1996,31 @@ void GameServer::ParseTraverse(const SmartPointer<NetworkSocket>& tSocket, CByte
 }
 
 // Server sent us "lx::registered", that means it's alive - record that
-void GameServer::ParseServerRegistered(const SmartPointer<NetworkSocket>& tSocket)
+void GameServer::ParseServerRegistered(const SmartPointer<NetworkSocket>& tSocket, CBytestream *bs)
 {
 	if( tUdpMasterServers.size() == 0 )
 		return;
-	NetworkAddr addr;
-	std::string domain = tUdpMasterServers[0].substr( 0, tUdpMasterServers[0].find(":") );
-	int port = atoi(tUdpMasterServers[0].substr( tUdpMasterServers[0].find(":") + 1 ));
-	if( !GetFromDnsCache(domain, addr) )
+	NetworkAddr addr, addr6;
+	std::string domain = tUdpMasterServers[0].substr( 0, tUdpMasterServers[0].rfind(":") );
+	int port = atoi(tUdpMasterServers[0].substr( tUdpMasterServers[0].rfind(":") + 1 ));
+	if( !GetFromDnsCache(domain, addr, addr6) )
 		return;
 	SetNetAddrPort( addr, port );
+	SetNetAddrPort( addr6, port );
 		
-	if( tSocket->remoteAddress() == addr )
+	if( tSocket->remoteAddress() == addr || tSocket->remoteAddress() == addr6 )
 		iFirstUdpMasterServerNotRespondingCount = 0;
+
+	if( bs->isPosAtEnd() )
+		return;
+	std::string myAddr = bs->readString();
+
+	if( myAddr == "" )
+		return;
+	if (IsNetAddrV6(myAddr) == 0) {
+		sServerAddressV6 = myAddr;
+	} else {
+		sServerAddressV4 = myAddr;
+	}
 }
 

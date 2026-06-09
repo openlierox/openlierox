@@ -61,16 +61,17 @@ bool	IsNetAddrValid(const NetworkAddr& addr);
 bool	IsNetAddrAvailable(const NetworkAddr& addr);
 bool	SetNetAddrValid(NetworkAddr& addr, bool valid);
 void	ResetNetAddr(NetworkAddr& addr);
-Result	StringToNetAddr(const std::string& string, NetworkAddr& addr, std::string* errorStr = NULL);
+bool	IsNetAddrV6(const NetworkAddr& addr);
+bool	IsNetAddrV6(const std::string& addr);
+bool	StringToNetAddr(const std::string& string, NetworkAddr& addr, std::string* errorStr = NULL);
 NetworkAddr StringToNetAddr(const std::string& string);
-Result	NetAddrToString(const NetworkAddr& addr, std::string& string);
+bool	NetAddrToString(const NetworkAddr& addr, std::string& string);
 std::string NetAddrToString(const NetworkAddr& addr);
 unsigned short GetNetAddrPort(const NetworkAddr& addr);
-Result	SetNetAddrPort(NetworkAddr& addr, unsigned short port, std::string* errorStr = NULL);
+bool	SetNetAddrPort(NetworkAddr& addr, unsigned short port, std::string* errorStr = NULL);
 bool	AreNetAddrEqual(const NetworkAddr& addr1, const NetworkAddr& addr2);
-bool	GetNetAddrFromNameAsync(const std::string& name, NetworkAddr& addr);
-void	AddToDnsCache(const std::string& name, const NetworkAddr& addr, TimeDiff expireTime = TimeDiff(600.0f));
-bool	GetFromDnsCache(const std::string& name, NetworkAddr& addr);
+bool	GetNetAddrFromNameAsync(const std::string& name);
+bool	GetFromDnsCache(const std::string& name, NetworkAddr& addr4, NetworkAddr& addr6);
 
 
 
@@ -134,21 +135,21 @@ public:
 	Port remotePort() const;
 	NetworkAddr localAddress() const;
 	NetworkAddr remoteAddress() const;
-	Result setRemoteAddress(const NetworkAddr& addr);
+	bool setRemoteAddress(const NetworkAddr& addr);
 	void reapplyRemoteAddress();
 	
-	Result OpenReliable(Port port);
-	Result OpenUnreliable(Port port);
-	Result OpenBroadcast(Port port);
+	bool OpenReliable(Port port);
+	bool OpenUnreliable(Port port);
+	bool OpenBroadcast(Port port);
 	void Close();
 	void Clear() { if(isOpen()) Close(); }
 	
-	Result Connect(const NetworkAddr& addr);
-	Result Listen();
+	bool Connect(const NetworkAddr& addr);
+	bool Listen();
 	
 	bool isReady() const;
 	int Write(const void* buffer, int nbytes);
-	int Write(const std::string& buffer) { return Write(buffer.data(), (int)buffer.size()); }
+	int Write(const std::string& buffer) { return Write(buffer.data(), buffer.size()); }
 	int Read(void* buffer, int nbytes);
 	
 	bool isDataAvailable(); // Slow!

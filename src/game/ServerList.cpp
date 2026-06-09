@@ -406,8 +406,12 @@ void ServerList::wantsToJoin(const std::string& Nick, server_t::Ptr svr)
 		if(udpmasterserver) {
 			NetworkAddr masterserverAddr;
 			SetNetAddrValid(masterserverAddr, false);
-			if( ! GetNetAddrFromNameAsync( udpmasterserver.name, masterserverAddr ) )
+			NetworkAddr ignored;
+
+			if( ! GetFromDnsCache( udpmasterserver.name, masterserverAddr, ignored ) ) {
+				GetNetAddrFromNameAsync( udpmasterserver.name );
 				return;
+			}
 			
 			for( int count = 0; !IsNetAddrValid(masterserverAddr) && count < 5; count++ )
 				SDL_Delay(20);
@@ -445,8 +449,12 @@ void ServerList::getServerInfo(server_t::Ptr svr)
 		if(udpmasterserver) {
 			NetworkAddr masterserverAddr;
 			SetNetAddrValid(masterserverAddr, false);
-			if( ! GetNetAddrFromNameAsync( udpmasterserver.name, masterserverAddr ) )
+			NetworkAddr ignored;
+
+			if( ! GetFromDnsCache( udpmasterserver.name, masterserverAddr, ignored ) ) {
+				GetNetAddrFromNameAsync( udpmasterserver.name );
 				return;
+			}
 			
 			for( int count = 0; !IsNetAddrValid(masterserverAddr) && count < 5; count++ )
 				SDL_Delay(20);
@@ -534,8 +542,8 @@ void ServerList::refreshServer(server_t::Ptr s, bool updategui)
 		SetNetAddrPort(s->sAddress, oldPort);
 		
 		SetNetAddrValid(s->sAddress, false);
-		size_t f = s->szAddress.find(":");
-		GetNetAddrFromNameAsync(s->szAddress.substr(0, f), s->sAddress);
+		size_t f = s->szAddress.rfind(":");
+		GetNetAddrFromNameAsync(s->szAddress.substr(0, f));
 	} else {
 		s->bAddrReady = true;
 		size_t f = s->szAddress.find(":");
@@ -972,10 +980,15 @@ bool ServerList::parsePacket(CBytestream *bs, const SmartPointer<NetworkSocket>&
 		
 		else if(cmd == "lx::serverlist2") // This should not happen, we have another thread for polling UDP servers
 		{
-			parseUdpServerlist(bs, 0);
+			parseUdpServerlist(bs, 0, false);
 			update = true;
 		}
 		
+		else if(cmd == "lx::serverlist3") // This should not happen, we have another thread for polling UDP servers
+		{
+			parseUdpServerlist(bs, 0, true);
+			update = true;
+		}
 	}
 	
 	return update;
@@ -1166,16 +1179,17 @@ Result UdpUpdater::SvrList_UpdaterFunc()
 	{
 		std::string& server = *it;
 		NetworkAddr addr;
-		if (server.find(':') == std::string::npos)
+		NetworkAddr addr6;
+		if (server.rfind(':') == std::string::npos)
 			server += ":23450";  // Default port
 		
 		// Split to domain and port
-		std::string domain = server.substr(0, server.find(':'));
-		int port = atoi(server.substr(server.find(':') + 1));
+		std::string domain = server.substr(0, server.rfind(':'));
+		int port = atoi(server.substr(server.rfind(':') + 1));
 		
 		// Resolve the address
-		if (!GetNetAddrFromNameAsync(domain, addr)) {
-			errors << "update from UDP masterserver: domain '" << domain << "' invalid" << endl;
+		if (!GetFromDnsCache(domain, addr, addr6)) {
+			GetNetAddrFromNameAsync(domain);
 			continue;
 		}
 		
@@ -1187,7 +1201,7 @@ Result UdpUpdater::SvrList_UpdaterFunc()
 				break;
 		}
 		
-		if( !IsNetAddrValid(addr) )
+		if( !IsNetAddrValid(addr) && !IsNetAddrValid(addr6) )
 		{
 			notes << "UDP masterserver failed: cannot resolve domain name " << domain << endl;
 			continue;
@@ -1195,47 +1209,56 @@ Result UdpUpdater::SvrList_UpdaterFunc()
 		
 		// Setup the socket
 		SetNetAddrPort(addr, port);
-		sock.setRemoteAddress(addr);
-		
-		// Send the getserverlist packet
-		CBytestream bs;
-		bs.writeInt(-1, 4);
-		bs.writeString("lx::getserverlist2");
-		if(!bs.Send(&sock)) {
-			warnings << "error while sending data to UDP masterserver '" << server << "', ignoring" << endl;
-			continue;
-		}
-		bs.Clear();
-		
-		//notes << "Sent getserverlist to " << server << endl;
-		
-		// Wait for the reply
-		AbsTime timeoutTime = GetTime() + 5.0f;
-		bool firstPacket = true;
-		while( true ) {
-			while (GetTime() <= timeoutTime)  {
-				if(breakSignal) return "break";
-				
-				SDL_Delay(40); // TODO: do it event based
-				
-				// Got a reply?
-				if (bs.Read(&sock))  {
-					//notes << "Got a reply from " << server << endl;
-					break;
-				}				
-			}
+		SetNetAddrPort(addr6, port);
+		for (int af = 0; af < 2; af++, addr = addr6)
+		{
+			if (!IsNetAddrValid(addr))
+				continue;
 
-			// Parse the reply
-			if (bs.GetLength() && bs.readInt(4) == -1 && bs.readString() == "lx::serverlist2") {
-				std::string errStr = m_list->parseUdpServerlist(&bs, UdpServerIndex);
-				if(errStr != "")
-					errors << "Error reading data from UDP masterserver " << server << ": " << errStr << endl;
-				timeoutTime = GetTime() + 0.5f;	// Check for another packet
-				firstPacket = false;
-			} else  {
-				if( firstPacket )
-					warnings << "Error getting serverlist from " << server << endl;
-				break;
+			sock.setRemoteAddress(addr);
+
+			// Send the getserverlist packet
+			CBytestream bs;
+			bs.writeInt(-1, 4);
+			bs.writeString(af ? "lx::getserverlist3" : "lx::getserverlist2");
+			if(!bs.Send(&sock)) {
+				warnings << "error while sending data to UDP masterserver " << server << " " << NetAddrToString(addr) << ", ignoring" << endl;
+				continue;
+			}
+			bs.Clear();
+
+			notes << "Sent " << (af ? "lx::getserverlist3" : "lx::getserverlist2") << " to " << server << endl;
+
+			// Wait for the reply
+			AbsTime timeoutTime = GetTime() + 5.0f;
+			bool firstPacket = true;
+			while( true ) {
+				while (GetTime() <= timeoutTime)  {
+					if(breakSignal) return "break";
+					
+					SDL_Delay(40); // TODO: do it event based
+					
+					// Got a reply?
+					if (bs.Read(&sock))  {
+						//notes << "Got a reply from " << server << endl;
+						break;
+					}				
+				}
+
+				// Parse the reply
+				std::string response;
+				if (bs.GetLength() && bs.readInt(4) == -1 && (response = bs.readString()).find("lx::serverlist") == 0) {
+					notes << "Got " << response << " from " << server << endl;
+					std::string errStr = m_list->parseUdpServerlist(&bs, UdpServerIndex, response == "lx::serverlist3");
+					if(errStr != "")
+						errors << "Error reading data from UDP masterserver " << server << ": " << errStr << endl;
+					timeoutTime = GetTime() + 0.5f;	// Check for another packet
+					firstPacket = false;
+				} else  {
+					if( firstPacket )
+						warnings << "Error getting serverlist from " << server << endl;
+					break;
+				}
 			}
 		}
 	}
@@ -1249,7 +1272,7 @@ void ServerList::updateUDPList()
 	taskManager->start(new UdpUpdater(this), TaskManager::QT_QueueToSameTypeAndBreakCurrent);
 }
 
-std::string ServerList::parseUdpServerlist(CBytestream *bs, int UdpMasterserverIndex)
+std::string ServerList::parseUdpServerlist(CBytestream *bs, int UdpMasterserverIndex, bool replyV3)
 {
 	// Look the the list and find which server returned the ping
 	int amount = bs->readByte();
@@ -1271,17 +1294,21 @@ std::string ServerList::parseUdpServerlist(CBytestream *bs, int UdpMasterserverI
 		int state = bs->readByte();
 		Version version = bs->readString(64);
 		bool allowConnectDuringGame = bs->readBool();
+		std::string v4addr;
+		if( replyV3 )
+			v4addr = bs->readString();
+		TrimSpaces(v4addr);
 		
 		// UDP server info is updated once per 40 seconds, so if we have more recent entry ignore it
 		server_t::Ptr svr = findServerStr(addr, name);
-		if( svr )
-		{
+		if( svr ) {
 			//hints << "Menu_SvrList_ParseUdpServerlist(): got duplicate " << name << " " << addr << " pong " << svr->bgotPong << " query " << svr->bgotQuery << endl;
-			if( !svr->bgotPong )
+			if( !svr->bgotPong ) {
 				mergeWithNewInfo(svr, addr, name, UdpMasterserverIndex);
+			}
+		} else {
+			svr = addServer(addr, false, name, UdpMasterserverIndex);
 		}
-		else
-			svr = addServer( addr, false, name, UdpMasterserverIndex );
 		
 		svr->nNumPlayers = players;
 		svr->nMaxPlayers = maxplayers;
@@ -1294,6 +1321,29 @@ std::string ServerList::parseUdpServerlist(CBytestream *bs, int UdpMasterserverI
 		svr->tVersion = version;
 		svr->bAllowConnectDuringGame = allowConnectDuringGame;
 		svr->bBehindNat = true;
+
+		if( v4addr != "" ) {
+			svr = findServerStr(v4addr, name);
+			if( svr ) {
+				if( !svr->bgotPong ) {
+					mergeWithNewInfo(svr, v4addr, name, UdpMasterserverIndex);
+				}
+			} else {
+				svr = addServer(v4addr, false, name, UdpMasterserverIndex);
+			}
+			
+			svr->nNumPlayers = players;
+			svr->nMaxPlayers = maxplayers;
+			svr->nState = state;
+			svr->nPing = -2;
+			svr->nQueries = 0;
+			svr->bgotPong = false;
+			svr->bgotQuery = false;
+			svr->bProcessing = false;
+			svr->tVersion = version;
+			svr->bAllowConnectDuringGame = allowConnectDuringGame;
+			svr->bBehindNat = true;
+		}
 	}
 	
 	return "";
@@ -1447,7 +1497,7 @@ void ServerListUpdater::updateServerList() {
 				
 			} else if (http_result == HTTP_PROC_ERROR)  {
 				if (http.GetError().iError != HTTP_NO_ERROR)
-					errors << "HTTP ERROR: " << http.GetError().sErrorMsg << endl;
+					errors << "HTTP ERROR: " << http.GetUrl() << " : " << http.GetError().sErrorMsg << endl;
 				// Jump to next server
 				SentRequest = false;
 				CurServer++;

@@ -75,12 +75,12 @@ static nl_netdriver_t netdrivers[] =
         sock_AddrToString,
         sock_StringToAddr,
         sock_GetLocalAddr,
-        sock_GetAllLocalAddr,
+        NULL,
         sock_SetLocalAddr,
-        sock_GetNameFromAddr,
-        sock_GetNameFromAddrAsync,
-        sock_GetAddrFromName,
-        sock_GetAddrFromNameAsync,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
         sock_AddrCompare,
         sock_GetPortFromAddr,
         sock_SetAddrPort,
@@ -1129,21 +1129,6 @@ NL_EXP NLboolean NL_APIENTRY nlGetLocalAddr(NLsocket socket, NLaddress *address)
     return NL_FALSE;
 }
 
-NL_EXP NLaddress * NL_APIENTRY nlGetAllLocalAddr(/*@out@*/ NLint *count)
-{
-    if(driver)
-    {
-        if(count == NULL)
-        {
-            nlSetError(NL_NULL_POINTER);
-            return NULL;
-        }
-        return driver->GetAllLocalAddr(count);
-    }
-    nlSetError(NL_NO_NETWORK);
-    return NULL;
-}
-
 NL_EXP NLboolean NL_APIENTRY nlSetLocalAddr(const NLaddress *address)
 {
     if(driver)
@@ -1154,92 +1139,6 @@ NL_EXP NLboolean NL_APIENTRY nlSetLocalAddr(const NLaddress *address)
             return NL_FALSE;
         }
         return driver->SetLocalAddr(address);
-    }
-    nlSetError(NL_NO_NETWORK);
-    return NL_FALSE;
-}
-
-/*
-   Resolves the name from the address.
-*/
-
-NL_EXP /*@null@*/ NLchar* NL_APIENTRY nlGetNameFromAddr(const NLaddress *address, NLchar *name)
-{
-    if(driver)
-    {
-        if((name == NULL) || (address == NULL))
-        {
-            nlSetError(NL_NULL_POINTER);
-            return NULL;
-        }
-        return (driver->GetNameFromAddr(address, name));
-    }
-    nlSetError(NL_NO_NETWORK);
-    return NULL;
-}
-
-/*
-   Resolves the name from the address asynchronously.
-*/
-
-NL_EXP NLboolean NL_APIENTRY nlGetNameFromAddrAsync(const NLaddress *address, NLchar *name)
-{
-    if(driver)
-    {
-        if((name == NULL) || (address == NULL))
-        {
-            nlSetError(NL_NULL_POINTER);
-            return NL_FALSE;
-        }
-        return driver->GetNameFromAddrAsync(address, name);
-    }
-    nlSetError(NL_NO_NETWORK);
-    return NL_FALSE;
-}
-
-/*
-   Get the address from a host name.
-*/
-
-NL_EXP NLboolean NL_APIENTRY nlGetAddrFromName(const NLchar *name, NLaddress *address)
-{
-    if(driver)
-    {
-        if((name == NULL) || (address == NULL))
-        {
-            nlSetError(NL_NULL_POINTER);
-            return NL_FALSE;
-        }
-        if(isSafeString(name) == NL_FALSE)
-        {
-            nlSetError(NL_STRING_OVER_RUN);
-            return NL_FALSE;
-        }
-        return driver->GetAddrFromName(name, address);
-    }
-    nlSetError(NL_NO_NETWORK);
-    return NL_FALSE;
-}
-
-/*
-   Get the address from a host name asynchronously.
-*/
-
-NL_EXP NLboolean NL_APIENTRY nlGetAddrFromNameAsync(const NLchar *name, NLaddress *address)
-{
-    if(driver)
-    {
-        if((name == NULL) || (address == NULL))
-        {
-            nlSetError(NL_NULL_POINTER);
-            return NL_FALSE;
-        }
-        if(isSafeString(name) == NL_FALSE)
-        {
-            nlSetError(NL_STRING_OVER_RUN);
-            return NL_FALSE;
-        }
-        return driver->GetAddrFromNameAsync(name, address);
     }
     nlSetError(NL_NO_NETWORK);
     return NL_FALSE;

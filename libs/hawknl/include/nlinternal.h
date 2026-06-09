@@ -93,12 +93,6 @@ extern time_t time(time_t *timer);
 #endif /* !UNICODE */
 #endif /* _INC_TCHAR */
 
-/* internally for TCP packets and UDP connections, all data is big endien,
-   so we force it so here using these macros */
-#undef writeShort
-#define writeShort(x, y, z)     {*((NLushort *)((NLbyte *)&x[y])) = htons(z); y += 2;}
-#undef readShort
-#define readShort(x, y, z)      {z = ntohs(*(NLushort *)((NLbyte *)&x[y])); y += 2;}
 
 #define NL_FIRST_GROUP          (200000 + 1)
 

@@ -35,10 +35,11 @@ extern "C" {
 
 /* define NL_SAFE_COPY for Sparc and other processors that do not allow non-aligned
    memory access. Needed for read* and write* macros */
-/*#define NL_SAFE_COPY */
+/* Always defined, because of Android */
+#define NL_SAFE_COPY
 
 /* undefine this to remove IPX code, Windows only  */
-//#define NL_INCLUDE_IPX
+// #define NL_INCLUDE_IPX
 
 /* undefine this to remove loopback code */
 #define NL_INCLUDE_LOOPBACK
@@ -60,7 +61,6 @@ extern "C" {
 /* also, many CE devices will not allow non-aligned memory access */
 #if defined (_WIN32_WCE)
 #define NL_WIN_THREADS
-#define NL_SAFE_COPY
 #undef NL_INCLUDE_IPX
 #endif
 
@@ -84,7 +84,11 @@ extern "C" {
   #define NL_APIENTRY __stdcall
   #define NL_CALLBACK __cdecl
   #ifdef __GNUC__
-    #define NL_INLINE static inline
+    #ifdef __MINGW32__
+      #define NL_INLINE static inline
+    #else
+      #define NL_INLINE extern __inline__
+    #endif
   #else
     #define NL_INLINE __inline
   #endif /* __GNUC__ */
@@ -151,7 +155,7 @@ typedef char NLchar;
 
 typedef struct _NLaddress
 {
-     NLubyte    addr[32];       /* large enough to hold IPv6 address */
+     NLubyte    addr[56];       /* large enough to hold IPv6 address = strlen("[ABCD:ABCD:ABCD:ABCD:ABCD:ABCD:192.168.158.190]:12345") */
      NLenum     driver;         /* driver type, not used yet */
      NLboolean  valid;          /* set to NL_TRUE when address is valid */
 } NLaddress;
@@ -193,8 +197,8 @@ typedef struct _NLtime
 
 /* Network types */
 /* Only one can be selected at a time */
-#define NL_IP                   0x0003  /* all platforms */
-#define NL_IPV6                 0x0004  /* not yet implemented, IPv6 address family */
+#define NL_IP                   0x0003  /* ipv6+ipv4 dual-stack socket */
+//#define NL_IPV6                 0x0004  /* not yet implemented, IPv6 address family */
 #define NL_LOOP_BACK            0x0005  /* all platforms, for single player client/server emulation with no network */
 #define NL_IPX                  0x0006  /* Windows only */
 #define NL_SERIAL               0x0007  /* not yet implemented, Windows and Linux only? */
@@ -338,17 +342,7 @@ NL_EXP NLboolean NL_APIENTRY nlSetRemoteAddr(NLsocket socket, const NLaddress *a
 
 NL_EXP NLboolean NL_APIENTRY nlGetLocalAddr(NLsocket socket, /*@out@*/ NLaddress *address);
 
-NL_EXP NLaddress* NL_APIENTRY nlGetAllLocalAddr(/*@out@*/ NLint *count);
-
 NL_EXP NLboolean NL_APIENTRY nlSetLocalAddr(const NLaddress *address);
-
-NL_EXP /*@null@*/ NLchar* NL_APIENTRY nlGetNameFromAddr(const NLaddress *address, /*@returned@*/ /*@out@*/ NLchar *name);
-
-NL_EXP NLboolean NL_APIENTRY nlGetNameFromAddrAsync(const NLaddress *address, /*@out@*/ NLchar *name);
-
-NL_EXP NLboolean NL_APIENTRY nlGetAddrFromName(const NLchar *name, /*@out@*/ NLaddress *address);
-
-NL_EXP NLboolean NL_APIENTRY nlGetAddrFromNameAsync(const NLchar *name, /*@out@*/ NLaddress *address);
 
 NL_EXP NLboolean NL_APIENTRY nlAddrCompare(const NLaddress *address1, const NLaddress *address2);
 

@@ -36,7 +36,6 @@ struct nl_cond_t
 };
 
 #ifndef __MINGW32__
-/* MSVC-only: mingw's time.h already provides struct timespec */
 struct timespec {
 	long tv_sec;
 	long tv_nsec;

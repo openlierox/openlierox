@@ -33,7 +33,7 @@
 #endif /* _MSC_VER */
 
 #define WIN32_LEAN_AND_MEAN
-#include <winsock.h>
+#include <ws2tcpip.h>
 
 #ifdef _MSC_VER
 #pragma warning (default:4201)

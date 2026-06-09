@@ -43,9 +43,10 @@ bool IRCClient::initNet()
 
 	// Get the address
 	ResetNetAddr(m_chatServerAddr);
-	if(!GetNetAddrFromNameAsync(m_chatServerAddrStr, m_chatServerAddr))	 {
-		errors("Wrong IRC server addr: %s" + m_chatServerAddrStr + "\n");
-		return false;
+	NetworkAddr ignored; // irc.quakenet.org has no IPv6 address, and I don't want to use irc.ipv6.quakenet.org
+
+	if(!GetFromDnsCache(m_chatServerAddrStr, m_chatServerAddr, ignored)) {
+		GetNetAddrFromNameAsync(m_chatServerAddrStr);
 	}
 
 	return true;

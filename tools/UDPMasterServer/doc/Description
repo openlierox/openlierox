@@ -20,3 +20,5 @@ or by "lx::connecthere" directly from host, and will try to connect there.
 That algorithm will work with port restricted NATs that will preserve port numbers when changing destination IP:port - 
 http://en.wikipedia.org/wiki/UDP_hole_punching
 Also it will work for symmetric NAT hosts and external IP / portforwarded clients.
+
+To start IPv6 masterserver, run udpmasterserver -6 [port]
