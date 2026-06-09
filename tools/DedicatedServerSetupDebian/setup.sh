@@ -27,7 +27,7 @@ cd tools/UDPMasterServer
 cd ../..
 
 {
-  crontab -l
+  crontab -l || echo ''
   echo ''
   echo '@reboot while true; do $HOME/openlierox/tools/UDPMasterServer/bin/udpmasterserver; sleep 1; done'
   echo '@reboot while true; do $HOME/openlierox/tools/UDPMasterServer/bin/udpmasterserver -6; sleep 1; done'
@@ -35,3 +35,5 @@ cd ../..
   echo '0 */6 * * * killall openlierox; sleep 1; killall -9 openlierox'
   echo '0 2 * * * find $HOME/.OpenLieroX/logs -mtime +7 -type f -delete'
 } | crontab -
+
+echo "Setup done, now reboot your server"
