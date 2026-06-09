@@ -30,6 +30,7 @@
 #include "DeprecatedGUI/CBrowser.h"
 #include "DeprecatedGUI/CTextButton.h"
 #include "sound/SoundsBase.h"
+#include "game/ServerList.h"
 
 
 namespace DeprecatedGUI {
@@ -134,6 +135,9 @@ void Menu_MainFrame()
                 if( ev->iEventMsg == TBT_CLICKED ) {
 					PlaySoundSample(sfxGeneral.smpClick);
 				    Menu_MainShutdown();
+				    // Refresh the master server lists in the background so the
+				    // server list shown in the Internet menu is up to date.
+				    DownloadMasterServerListFiles();
 				    Menu_NetInitialize();
 				    return;
                 }

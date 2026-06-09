@@ -214,7 +214,28 @@ add_subdirectory("${DEPS_DIR}/libgd"        "${CMAKE_BINARY_DIR}/libgd")
 unset(BUILD_SHARED_LIBS CACHE)
 
 # ---------------------------------------------------------------------
-# libcurl (HTTP only — no SSL/HTTPS for now)
+# mbedTLS — provides the HTTPS backend for libcurl below. Android has no
+# usable system curl, and curl's other TLS backends (OpenSSL, Schannel,
+# Secure Transport) aren't available here, so we link a small static
+# mbedTLS into the curl build.
+# ---------------------------------------------------------------------
+set(ENABLE_PROGRAMS OFF CACHE BOOL "")
+set(ENABLE_TESTING OFF CACHE BOOL "")
+set(USE_STATIC_MBEDTLS_LIBRARY ON CACHE BOOL "")
+set(USE_SHARED_MBEDTLS_LIBRARY OFF CACHE BOOL "")
+set(MBEDTLS_FATAL_WARNINGS OFF CACHE BOOL "")
+add_subdirectory("${DEPS_DIR}/mbedtls"      "${CMAKE_BINARY_DIR}/mbedtls")
+
+# Pre-fill the variables curl's FindMbedTLS.cmake looks up so it picks up
+# the in-tree subproject above instead of searching the NDK sysroot. The
+# library names resolve to the add_subdirectory targets at link time.
+set(MBEDTLS_INCLUDE_DIRS "${DEPS_DIR}/mbedtls/include" CACHE PATH    "" FORCE)
+set(MBEDTLS_LIBRARY      mbedtls            CACHE FILEPATH "" FORCE)
+set(MBEDX509_LIBRARY     mbedx509           CACHE FILEPATH "" FORCE)
+set(MBEDCRYPTO_LIBRARY   mbedcrypto         CACHE FILEPATH "" FORCE)
+
+# ---------------------------------------------------------------------
+# libcurl — HTTP + HTTPS via mbedTLS.
 # ---------------------------------------------------------------------
 set(BUILD_CURL_EXE OFF CACHE BOOL "")
 set(BUILD_LIBCURL_DOCS OFF CACHE BOOL "")
@@ -226,7 +247,13 @@ set(CURL_USE_LIBPSL OFF CACHE BOOL "")
 set(CURL_USE_LIBSSH2 OFF CACHE BOOL "")
 set(CURL_USE_OPENSSL OFF CACHE BOOL "")
 set(CURL_USE_GSSAPI OFF CACHE BOOL "")
-set(CURL_USE_MBEDTLS OFF CACHE BOOL "")
+set(CURL_USE_MBEDTLS ON CACHE BOOL "")
+# We embed libcurl as a subproject and never install it. Skipping the
+# CMake export target avoids "export() / install(EXPORT CURLTargets ...)
+# requires target mbedtls that is not in any export set" - mbedTLS'
+# subproject targets aren't in any export set, and we have no use for
+# the exported curl targets anyway.
+set(CURL_ENABLE_EXPORT_TARGET OFF CACHE BOOL "")
 set(CURL_DISABLE_LDAP ON CACHE BOOL "")
 set(CURL_DISABLE_LDAPS ON CACHE BOOL "")
 set(CURL_DISABLE_PROXY OFF CACHE BOOL "")

@@ -101,6 +101,18 @@ if [ "$SKIP_DATA" -eq 0 ]; then
     rm -rf "$ANDROID_DIR/output/assets/gamedir"
     mkdir -p "$ANDROID_DIR/output/assets"
     cp -a "$OLX_ROOT/share/gamedir" "$ANDROID_DIR/output/assets/gamedir"
+    # Ship Mozilla's CA bundle next to the gamedir so libcurl's mbedTLS
+    # backend can verify HTTPS certificates (Android exposes no cert file
+    # in a format curl/mbedTLS can read). Fail loudly rather than silently
+    # producing an APK whose every https:// request rejects the peer.
+    if [ ! -f "$ANDROID_DIR/deps/cacert.pem" ]; then
+        echo "ERROR: $ANDROID_DIR/deps/cacert.pem is missing." >&2
+        echo "       HTTPS in the APK depends on it. Run" >&2
+        echo "       build/android/fetch-dependencies.sh (without --skip-fetch)" >&2
+        echo "       to download it from curl.se." >&2
+        exit 1
+    fi
+    cp "$ANDROID_DIR/deps/cacert.pem" "$ANDROID_DIR/output/assets/gamedir/cacert.pem"
     # Drop a marker so the runtime can check that the data was extracted.
     echo "$(cat "$OLX_ROOT/VERSION" 2>/dev/null || echo unknown)" \
         > "$ANDROID_DIR/output/assets/gamedir.version"

@@ -29,6 +29,7 @@
 
 #include "LieroX.h"
 #include "Debug.h"
+#include "FindFile.h"
 #include "Options.h"
 #include "HTTP.h"
 #include "Timer.h"
@@ -180,6 +181,7 @@ struct CurlThread : Action {
 CHttp::CHttp()
 {
 	ProcessingResult = HTTP_PROC_FINISHED;
+	HTTPStatusCode = 0;
 	DownloadStart = DownloadEnd = 0;
 	curlThread = NULL;
 }
@@ -225,6 +227,7 @@ CURL * CHttp::InitializeTransfer(const std::string& url, const std::string& prox
 	Proxy = proxy;
 	Useragent = GetFullGameName();
 	Data = "";
+	HTTPStatusCode = 0;
 	DownloadStart = DownloadEnd = tLX->currentTime;
 
 	CURL * curl = curl_easy_init();
@@ -235,6 +238,22 @@ CURL * CHttp::InitializeTransfer(const std::string& url, const std::string& prox
 	curl_easy_setopt( curl, CURLOPT_CONNECTTIMEOUT, (long) HTTP_TIMEOUT );
 	curl_easy_setopt( curl, CURLOPT_FOLLOWLOCATION, (long) 1 ); // Allow server to use 3XX Redirect codes
 	curl_easy_setopt( curl, CURLOPT_MAXREDIRS, (long) 25 ); // Some reasonable limit
+#ifdef CURLSSLOPT_NATIVE_CA
+	// Verify HTTPS certificates against the OS certificate store. Without this,
+	// the OpenSSL build of libcurl looks for a CA bundle file that is not
+	// shipped with the packaged Windows build, so every https:// request fails.
+	curl_easy_setopt( curl, CURLOPT_SSL_OPTIONS, (long) CURLSSLOPT_NATIVE_CA );
+#endif
+	// If a CA bundle is shipped with the game (e.g. the Android APK ships
+	// Mozilla's cacert.pem for libcurl's mbedTLS backend, which has no
+	// system cert store to fall back to), point curl at it. Returns "" on
+	// platforms where no bundle is shipped, in which case we leave the
+	// default verification path in place.
+	{
+		static const std::string caBundle = GetFullFileName("cacert.pem");
+		if(!caBundle.empty())
+			curl_easy_setopt( curl, CURLOPT_CAINFO, caBundle.c_str() );
+	}
 	//curl_easy_setopt( curl, CURLOPT_TIMEOUT, (long) HTTP_TIMEOUT ); // Do not set this if you don't want abort in the middle of large transfer
 	return curl;
 }
@@ -299,7 +318,10 @@ Result CurlThread::handle()
 			parent->Error.sErrorMsg = curl_easy_strerror(res);
 		}
 		parent->DownloadEnd = tLX->currentTime;
-		
+
+		// Remember the HTTP status code so callers can reject error responses.
+		curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &parent->HTTPStatusCode);
+
 		if( curlForm != NULL )
 			curl_formfree(curlForm);
 		curlForm = NULL;
