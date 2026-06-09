@@ -1,0 +1,19 @@
+This script will compile dedicated server and UDP masterserver,
+and put both of them into current user's crontab to run at boot.
+It should be run on a fresh Debian installation.
+It will also install all necessary packages using sudo -
+it expects passwordless sudo, such as inside the Docker container,
+so you need to enter the password once, or run it as root,
+in which case the dedicated server will run with root privileges,
+which is not secure and not recommended.
+It will also install Python 2, required for dedicated scripts.
+
+OpenLieroX must be copied to directory $HOME/openlierox.
+This script should be run from the Git root directory.
+
+cd $HOME
+git clone https://github.com/openlierox/openlierox -b 0.58
+cd $HOME/openlierox
+tools/DedicatedServerSetupDebian/setup.sh
+
+sudo reboot
