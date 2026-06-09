@@ -426,9 +426,6 @@ gui_event_t *CGuiLayout::Process()
 		widget = true;
 		
 		if(tMouse->Down) {
-			// Process the skin-defined code
-			cFocused->ProcessEvent(OnMouseDown);
-			
 			if( (ev = cFocused->MouseDown(tMouse, tMouse->Down)) >= 0) {
 				tEvent->iEventMsg = ev;
 				tEvent->iControlID = cFocused->getID();
@@ -439,10 +436,6 @@ gui_event_t *CGuiLayout::Process()
 		else if(tMouse->Up) {
 			bCanFocus = true;
 			bKeyboardNavigation = false; // Mouse click disables key navigation mode
-			// Process the skin defined code
-			// OnClick is only fired if mouseup was done over the widget
-			if(cFocused->InBox(tMouse->X,tMouse->Y))
-				cFocused->ProcessEvent(OnClick);
 			
 			if(cFocused->InBox(tMouse->X,tMouse->Y))
 				if( (ev = cFocused->MouseClicked(tMouse, tMouse->Up)) >= 0) {
@@ -526,51 +519,14 @@ gui_event_t *CGuiLayout::Process()
 
 				}
 
-				// Process the skin defined code
-				(*w)->ProcessEvent(OnMouseDown);
-
 				if( (ev = (*w)->MouseDown(tMouse, tMouse->Down)) >= 0) {
 					tEvent->iEventMsg = ev;
 					return tEvent;
 				}
 			}
 
-			// TODO: i don't understand that. mouseup should always only be sent to the widget where we have sent the mousedown
-			/*
-			// Mouse up event
-			if(tMouse->Up) {
-				bCanFocus = true;
-				widget = true;
-				if(cFocused)  {
-					if(cFocused->CanLoseFocus())  {
-						cFocused->setFocused(false);
-						(*w)->setFocused(true);
-						cFocused = *w;
-					}
-				}
-				else  {
-					(*w)->setFocused(true);
-					cFocused = *w;
-				}
-
-				// Process the skin defined code
-				(*w)->ProcessEvent(OnClick);
-
-				if( (ev = (*w)->MouseUp(tMouse, tMouse->Up)) >= 0) {
-					tEvent->iEventMsg = ev;
-					return tEvent;
-				}
-			}
-			 */
-
 			// Mouse over
 			if (*w != cMouseOverWidget)  {
-				(*w)->ProcessEvent(OnMouseOver);
-
-				// For the current Mouse over widget this means a mouse out event
-				if(cMouseOverWidget)
-					cMouseOverWidget->ProcessEvent(OnMouseOut);
-
 				cMouseOverWidget = *w;
 			}
 
@@ -588,7 +544,6 @@ gui_event_t *CGuiLayout::Process()
 
 	// If mouse is over empty space it means, it's not over any widget ;-)
 	if (cMouseOverWidget)  {
-		cMouseOverWidget->ProcessEvent(OnMouseOut);
 		cMouseOverWidget = NULL;
 	}
 

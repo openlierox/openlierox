@@ -218,6 +218,7 @@ private:
 private:
 	void	ShowTooltip(const std::string& text, int ms_x, int ms_y);
 	void	UpdateItemIDs();
+	void	MoveMouseToCurrentItem();
 
 public:
 	// Methods

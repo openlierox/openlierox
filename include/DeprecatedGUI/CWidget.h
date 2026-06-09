@@ -26,21 +26,6 @@ namespace DeprecatedGUI {
 // Widget messages
 enum { WDM_SETENABLE = -1 };
 
-// Generic event IDs
-enum {
-	OnMouseOver=0,
-	OnMouseOut,
-	OnMouseDown,
-	OnClick,
-	NumEvents
-};
-
-// Generic events
-class generic_events_t { public:
-	char Events[NumEvents][128];
-};
-
-
 // Widget types
 enum WidgetType_t {
 	wid_None=-1,
@@ -98,7 +83,6 @@ private:
 	bool				bEnabled;
 	int					iKeyboardNavigationOrder;
 
-	generic_events_t	tEvents;
 	CGuiLayoutBase		*cParent;
 
 
@@ -139,9 +123,6 @@ public:
 
 	bool			CanLoseFocus()				{ return bCanLoseFocus; }
 	void			setLoseFocus(bool _f)			{ bCanLoseFocus = _f; }
-
-	void			SetupEvents(generic_events_t *Events);	// Not used anywhere, should be removed
-	void			ProcessEvent(int Event);	// Not used anywhere, should be removed
 
 
 	// Virtual functions

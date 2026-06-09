@@ -22,6 +22,7 @@
 #include "Cursor.h"
 #include "Timer.h"
 #include "Sounds.h"
+#include "AuxLib.h"
 
 
 namespace DeprecatedGUI {
@@ -1025,6 +1026,10 @@ int	CListview::MouseOver(mouse_t *tMouse)
 
 	bNeedsRepaint = true; // Repaint required
 
+	if (Menu_IsKeyboardNavigationUsed() && getFocused()) {
+		MoveMouseToCurrentItem();
+	}
+
 	if( !bMouseOverEventEnabled )
 		return LV_NONE;
 
@@ -1486,6 +1491,44 @@ int	CListview::MouseWheelUp(mouse_t *tMouse)
 	return LV_NONE;
 }
 
+void CListview::MoveMouseToCurrentItem()
+{
+	if (!tSelected)
+		return;
+
+	// Go through the items
+	int y = iY + tLX->cFont.GetHeight() + 2;
+	if (!tColumns)
+		y = iY + 2;
+	lv_item_t *item = tItems;
+
+	for (int count = 0; item; item = item->tNext) {
+		if (count++ < cScrollbar.getValue())
+			continue;
+
+		y += item->iHeight;
+		if(y >= iY + iHeight)
+			return;
+
+		if (item == tSelected) {
+			struct RepositionMouse: public Action
+			{
+				int x, y;
+				RepositionMouse(int _x, int _y): x(_x), y(_y)
+				{
+				}
+				int handle()
+				{
+					SDL_WarpMouse(x, y);
+					return true;
+				}
+			};
+			doActionInMainThread( new RepositionMouse(iX + 3, y - 1) );
+			return;
+		}
+	}
+}
+
 /////////////////
 // Key down event
 int CListview::KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate)
@@ -1576,6 +1619,7 @@ int CListview::KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate
 		}
 
 		if (processed) {
+			MoveMouseToCurrentItem();
 			PlaySoundSample(sfxGeneral.smpClick);
 			return LV_CHANGED;
 		}
