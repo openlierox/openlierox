@@ -10,7 +10,7 @@ SERVER_PORT = 23400 # What port to start server on, 23400 is the default
 # Where to log what is happening
 LOG_FILE = "dedicated_control.log"
 
-MIN_PLAYERS = 2
+MIN_PLAYERS = 1
 MAX_TEAMS = 2 # Only blue and red teams
 TOO_FEW_PLAYERS_MESSAGE = "Waiting for %i players." % (MIN_PLAYERS)
 WAIT_BEFORE_SPAMMING_TOO_FEW_PLAYERS_MESSAGE = 30 # Seconds to wait before another "Game will start with %i players" message
