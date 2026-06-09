@@ -4,9 +4,10 @@ set -euo pipefail
 
 sudo bash -c "apt-get install -y build-essential git psmisc cmake \
   libsdl1.2-dev libsdl-mixer1.2-dev libsdl-image1.2-dev \
-  libsdl2-dev libsdl2-mixer-dev libsdl2-image-dev libgd2-noxpm-dev \
+  libsdl2-dev libsdl2-mixer-dev libsdl2-image-dev libgd-dev \
   zlib1g-dev libzip-dev libxml2-dev libcurl4-gnutls-dev \
-  libboost-dev libboost-system-dev libopenal-dev libalut-dev libvorbis-dev ; \
+  libboost-dev libboost-system-dev libopenal-dev libalut-dev libvorbis-dev \
+  zlib1g-dev libreadline-dev && \
   apt-get build-dep -y python3"
 
 curl -fsSL https://pyenv.run | bash
