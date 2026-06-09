@@ -1012,10 +1012,17 @@ void Menu_GameSettings()
 			maxWidth = tLX->cFont.GetWidth(it->second.shortDesc);
 	}
 	
-	features->AddColumn("", 60 + 10); 
-	features->AddColumn("", maxWidth + 10); 
-	features->AddColumn("", 190); 
-	
+	features->AddColumn("", 60 + 10);
+	features->AddColumn("", maxWidth + 10);
+	features->AddColumn("", 190);
+
+	if( Menu_IsKeyboardNavigationUsed() ) {
+		// Expand every group, so all settings are reachable with the keyboard
+		for( int group = 0; group < GIG_Size; group++ ) {
+			tLXOptions->iGameInfoGroupsShown[group] = true;
+		}
+	}
+
 	initFeaturesList(features);
 
 	cGameSettings.Add( new CLabel("", tLX->clNormalLabel), gs_FeaturesListLabel, 95 - 35, 390, 450 + 70, 40);
@@ -1467,7 +1474,7 @@ bool Menu_GameSettings_Frame()
 						featuresLabel->setText( splitStringWithNewLine(desc, (size_t)-1, 450, tLX->cFont) );
 					}
 				}
-				if( ev->iEventMsg == LV_CHANGED )
+				if( ev->iEventMsg == LV_CHANGED && !Menu_IsKeyboardNavigationUsed() )
 				{
 					for( int group = 0; group < GIG_Size; group++ )
 						if( features->getMouseOverSIndex() == GameInfoGroupDescriptions[group][0] ) {

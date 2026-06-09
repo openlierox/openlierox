@@ -1542,6 +1542,22 @@ int CListview::KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate
 			return LV_WIDGETEVENT;
 	}
 
+	if (tSelected) {
+		// Go through every witget in a current list row, return if one of them widget returns non-empty event
+		for(lv_subitem_t *sub = tSelected->tSubitems; sub; sub=sub->tNext) {
+			if (sub->bVisible && sub->tWidget && sub->iType == LVS_WIDGET && sub->tWidget->getEnabled()) {
+				int eventMsg = sub->tWidget->KeyDown(c, keysym, modstate);
+				if (eventMsg >= 0) {
+					tLastWidgetEvent.cWidget = sub->tWidget;
+					tLastWidgetEvent.iControlID = sub->tWidget->getID();
+					tLastWidgetEvent.iEventMsg = eventMsg;
+					sub->tWidget->setFocused(true);
+					return LV_WIDGETEVENT;
+				}
+			}
+		}
+	}
+
 	// TODO: why is this here?
 //	if (c == iLastChar && c)
 //		return LV_NONE;
@@ -1689,6 +1705,22 @@ int CListview::KeyUp(UnicodeChar c, int keysym, const ModifiersState& modstate)
 		tLastWidgetEvent.iEventMsg = tFocusedSubWidget->KeyUp(c, keysym, modstate);
 		if (tLastWidgetEvent.iEventMsg != -1)
 			return LV_WIDGETEVENT;
+	}
+
+	if (tSelected) {
+		// Go through every witget in a current list row, return if one of them widget returns non-empty event
+		for(lv_subitem_t *sub = tSelected->tSubitems; sub; sub=sub->tNext) {
+			if (sub->bVisible && sub->tWidget && sub->iType == LVS_WIDGET && sub->tWidget->getEnabled()) {
+				int eventMsg = sub->tWidget->KeyUp(c, keysym, modstate);
+				if (eventMsg >= 0) {
+					tLastWidgetEvent.cWidget = sub->tWidget;
+					tLastWidgetEvent.iControlID = sub->tWidget->getID();
+					tLastWidgetEvent.iEventMsg = eventMsg;
+					sub->tWidget->setFocused(true);
+					return LV_WIDGETEVENT;
+				}
+			}
+		}
 	}
 
 	return LV_NONE;
