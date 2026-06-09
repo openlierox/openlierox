@@ -135,6 +135,7 @@ public:
 		tItems = NULL;
 		tLastItem = NULL;
 		tSelected = NULL;
+		tPreviousMouseSelection = NULL;
 		iItemCount=0;
 		bGotScrollbar = false;
 		iType = wid_Listview;
@@ -190,6 +191,7 @@ private:
 	
 	AbsTime			fLastMouseUp;
 	int				iClickedSub;
+	lv_item_t		*tPreviousMouseSelection;
 
 	// Scrollbar
 	CScrollbar		cScrollbar;
@@ -259,6 +261,12 @@ public:
 	}
 	void	AddSubitem(int iType, const std::string& sText, const SmartPointer<SDL_Surface> & img, CWidget *wid, int iVAlign, Color iColour, const std::string& tooltip = "") {
 		AddSubitem(iType, sText, DynDrawFromSurface(img), wid, iVAlign, iColour, tooltip);		
+	}
+	void	AddSubitem(const std::string& sText, int iVAlign = VALIGN_MIDDLE, const std::string& tooltip = "") {
+		AddSubitem(LVS_TEXT, sText, (DynDrawIntf*)NULL, NULL, iVAlign, tooltip);
+	}
+	void	AddSubitem(const std::string& sText, int iVAlign, Color iColour, const std::string& tooltip = "") {
+		AddSubitem(LVS_TEXT, sText, (DynDrawIntf*)NULL, NULL, iVAlign, iColour, tooltip);
 	}
 
 	void	RemoveItem(int iIndex);

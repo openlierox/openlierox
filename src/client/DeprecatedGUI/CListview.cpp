@@ -831,6 +831,7 @@ void CListview::Clear()
 	tItems = NULL;
 	tLastItem = NULL;
 	tSelected = NULL;
+	tPreviousMouseSelection = NULL;
 	tFocusedSubWidget = NULL;
 	tMouseOverSubWidget = NULL;
 	holdedWidget = NULL;
@@ -1407,6 +1408,11 @@ int	CListview::MouseUp(mouse_t *tMouse, int nDown)
 			if(event != LV_DOUBLECLK)
 				fLastMouseUp = tLX->currentTime;
 
+			if (tSelected == tPreviousMouseSelection && tSelected != NULL && event == LV_CHANGED) {
+				event = LV_ENTER; // Click selected row for text lists to perform an action
+			}
+			tPreviousMouseSelection = tSelected;
+
 			return event;
 		}
 
@@ -1506,52 +1512,72 @@ int CListview::KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate
 
 	iLastChar = c;
 
-	// Down arrow
+	int moveRows = 0;
 	if (keysym == SDLK_DOWN) {
-		if (tSelected) {
-			if (tSelected->tNext)  {
-				tSelected->bSelected = false;
-				tSelected = tSelected->tNext;
-				tSelected->bSelected = true;
-				iLastChar = SDLK_DOWN;
-				if (bGotScrollbar)
-					if (tSelected->_iID >= (cScrollbar.getItemsperbox()-1 + cScrollbar.getValue()))
-						cScrollbar.setValue( cScrollbar.getValue()+1 );
-				PlaySoundSample(sfxGeneral.smpClick);
-				return LV_CHANGED;
-			}
-		} else {
-			tSelected = tItems;
-			if(tSelected) {
-				tSelected->bSelected = true;
-				if (bGotScrollbar)
-					cScrollbar.setValue(0);
-				PlaySoundSample(sfxGeneral.smpClick);
-				return LV_CHANGED;
-			}
-		}
+		moveRows++;
+	}
+	if (keysym == SDLK_UP)  {
+		moveRows--;
+	}
+	if (keysym == SDLK_PAGEDOWN) {
+		moveRows += 10;
+	}
+	if (keysym == SDLK_PAGEUP)  {
+		moveRows -= 10;
 	}
 
+	if (moveRows != 0) {
+		bool processed = 0;
 
-	// Up arrow
-	if (keysym == SDLK_UP)  {
-		lv_item_t *i = tItems;
-		if (tItems)  {
-			int idx = 0;
-			for ( ; i && i->tNext; i=i->tNext, idx++ )  {
-				if (i->tNext == tSelected) {
-					if (tSelected)
-						tSelected->bSelected = false;
-					tSelected = i;
+		// Down arrow
+		for (; moveRows > 0; moveRows--) {
+			if (tSelected) {
+				if (tSelected->tNext)  {
+					tSelected->bSelected = false;
+					tSelected = tSelected->tNext;
 					tSelected->bSelected = true;
-					iLastChar = SDLK_UP;
+					iLastChar = SDLK_DOWN;
 					if (bGotScrollbar)
-						if (cScrollbar.getValue() > idx)
-							cScrollbar.setValue( cScrollbar.getValue()-1 );
-					PlaySoundSample(sfxGeneral.smpClick);
-					return LV_CHANGED;
+						if (tSelected->_iID >= (cScrollbar.getItemsperbox()-1 + cScrollbar.getValue()))
+							cScrollbar.setValue( cScrollbar.getValue()+1 );
+					processed = true;
+				}
+			} else {
+				tSelected = tItems;
+				if(tSelected) {
+					tSelected->bSelected = true;
+					if (bGotScrollbar)
+						cScrollbar.setValue(0);
+					processed = true;
 				}
 			}
+		}
+
+		// Up arrow
+		for (; moveRows < 0; moveRows++) {
+			lv_item_t *i = tItems;
+			if (tItems)  {
+				int idx = 0;
+				for ( ; i && i->tNext; i=i->tNext, idx++ )  {
+					if (i->tNext == tSelected) {
+						if (tSelected)
+							tSelected->bSelected = false;
+						tSelected = i;
+						tSelected->bSelected = true;
+						iLastChar = SDLK_UP;
+						if (bGotScrollbar)
+							if (cScrollbar.getValue() > idx)
+									cScrollbar.setValue( cScrollbar.getValue()-1 );
+						PlaySoundSample(sfxGeneral.smpClick);
+						processed = true;
+					}
+				}
+			}
+		}
+
+		if (processed) {
+			PlaySoundSample(sfxGeneral.smpClick);
+			return LV_CHANGED;
 		}
 	}
 
