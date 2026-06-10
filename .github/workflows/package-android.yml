@@ -108,7 +108,6 @@ jobs:
         with:
           name: ${{ steps.apk.outputs.name }}
           path: build/android/output/openlierox-*-android.apk
-          archive: false
           if-no-files-found: error
 
       - name: Publish to Play Store
