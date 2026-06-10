@@ -85,6 +85,29 @@ jobs:
           EOF
           )"
 
+          # Some package pipelines (windows, linux-bundle) produce a folder
+          # rather than a single file, so the downloaded artifact is a
+          # directory. gh can only upload files, so zip up any top-level
+          # directories and collect the resulting flat list of assets.
+          shopt -s nullglob
+          ASSETS=()
+          for entry in dist/*; do
+            if [ -d "$entry" ]; then
+              ( cd dist && zip -r -q "$(basename "$entry").zip" "$(basename "$entry")" )
+              ASSETS+=("${entry}.zip")
+            else
+              ASSETS+=("$entry")
+            fi
+          done
+
+          if [ ${#ASSETS[@]} -eq 0 ]; then
+            echo "No artifacts found to publish" >&2
+            exit 1
+          fi
+
+          echo "Publishing assets:"
+          printf '  %s\n' "${ASSETS[@]}"
+
           # Recreate the rolling release/tag so it points at this commit and
           # carries only the current build's artifacts.
           gh release delete "$TAG" --cleanup-tag --yes 2>/dev/null || true
@@ -94,4 +117,4 @@ jobs:
             --notes "$NOTES" \
             --prerelease \
             --target "$GITHUB_SHA" \
-            dist/*
+            "${ASSETS[@]}"
