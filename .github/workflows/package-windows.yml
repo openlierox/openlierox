@@ -53,13 +53,21 @@ jobs:
       - name: Package
         run: ./.github/workflows/package-windows.sh
 
-      - name: Detect bundle filename
+      # Zip the bundle in the build job (like mac and linux-bundle) so a single
+      # ready-to-publish archive is uploaded rather than a loose directory that
+      # the release job has to re-zip.
+      - name: Archive bundle
         id: bundle
-        run: echo "name=$(basename distrib/openlierox-*-win64*)" >> "$GITHUB_OUTPUT"
+        run: |
+          set -euo pipefail
+          cd distrib
+          dir="$(basename openlierox-*-win64)"
+          zip -r -q "${dir}.zip" "$dir"
+          echo "name=${dir}.zip" >> "$GITHUB_OUTPUT"
 
       - name: Upload openlierox-win64
         uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.bundle.outputs.name }}
-          path: distrib/openlierox-*-win64*
+          path: distrib/openlierox-*-win64.zip
           if-no-files-found: error
