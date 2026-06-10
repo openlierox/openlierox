@@ -1216,7 +1216,7 @@ void GameServer::RegisterServerUdp()
 				continue;
 			// No NAT on IPv6, use proper port
 			NetworkSocket * sock = af ? tSockets[0].get() : tSockets[f].get();
-			//notes << "Registering on UDP masterserver " << tUdpMasterServers[f] << endl;
+			notes << "Registering on UDP masterserver " << tUdpMasterServers[f] << " " << NetAddrToString(addr) << endl;
 			SetNetAddrPort( addr, port );
 			sock->setRemoteAddress( addr );
 

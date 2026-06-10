@@ -2090,6 +2090,9 @@ void GameServer::ParseServerRegistered(const SmartPointer<NetworkSocket>& tSocke
 {
 	if( tUdpMasterServers.size() == 0 )
 		return;
+
+	notes << "Registered on UDP masterserver " << NetAddrToString(tSocket->remoteAddress()) << endl;
+
 	NetworkAddr addr, addr6;
 	std::string domain = tUdpMasterServers[0].substr( 0, tUdpMasterServers[0].rfind(':') );
 	int port = atoi(tUdpMasterServers[0].substr( tUdpMasterServers[0].rfind(':') + 1 ));
