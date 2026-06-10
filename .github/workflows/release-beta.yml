@@ -89,10 +89,11 @@ jobs:
           EOF
           )"
 
-          # Some package pipelines (windows, linux-bundle) produce a folder
-          # rather than a single file, so the downloaded artifact is a
-          # directory. gh can only upload files, so zip up any top-level
-          # directories and collect the resulting flat list of assets.
+          # Every package pipeline now uploads a single ready-to-publish file
+          # (the bundle pipelines zip themselves so file permissions / the
+          # executable bit survive). The directory handling below is kept as a
+          # safety net: gh can only upload files, so any top-level directory is
+          # zipped first before collecting the flat list of assets.
           shopt -s nullglob
           ASSETS=()
           for entry in dist/*; do
