@@ -16,10 +16,6 @@ permissions:
 jobs:
   # Reuse the existing build pipelines. secrets: inherit lets the Android
   # job reach the signing / Play Store secrets just like before.
-  android:
-    uses: ./.github/workflows/package-android.yml
-    secrets: inherit
-
   linux-bundle:
     uses: ./.github/workflows/package-linux-bundle.yml
     secrets: inherit
