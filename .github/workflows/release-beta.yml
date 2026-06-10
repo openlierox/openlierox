@@ -1,0 +1,101 @@
+name: Beta Release
+
+# Runs whenever a PR is merged (i.e. a push lands) on a release branch.
+# It builds every platform by reusing the existing package-* pipelines,
+# then publishes/refreshes a rolling pre-release on GitHub with all the
+# freshly built artifacts attached.
+on:
+  push:
+    branches:
+      - master
+      - 0.59
+
+permissions:
+  contents: write
+
+jobs:
+  # Reuse the existing build pipelines. secrets: inherit lets the Android
+  # job reach the signing / Play Store secrets just like before.
+  android:
+    uses: ./.github/workflows/package-android.yml
+    secrets: inherit
+
+  linux-bundle:
+    uses: ./.github/workflows/package-linux-bundle.yml
+    secrets: inherit
+
+  linux-deb:
+    uses: ./.github/workflows/package-linux-deb.yml
+    secrets: inherit
+
+  mac:
+    uses: ./.github/workflows/package-mac.yml
+    secrets: inherit
+
+  windows:
+    uses: ./.github/workflows/package-windows.yml
+    secrets: inherit
+
+  release:
+    name: Publish beta release
+    needs: [android, linux-bundle, linux-deb, mac, windows]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          # Full history so git can compute an unambiguous --short length.
+          fetch-depth: 0
+
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v7
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Determine version and tag
+        id: meta
+        run: |
+          set -euo pipefail
+          VERSION="$(./get_version.sh)"
+          # 7-char hash: GitHub-native convention, effectively unique for
+          # identifying which commit a release was built from.
+          SHORT_SHA="$(git rev-parse --short=7 "$GITHUB_SHA")"
+          # One rolling pre-release per release branch, refreshed each merge.
+          TAG="${GITHUB_REF_NAME}-beta-latest"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "short_sha=${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "Artifacts to publish:"
+          ls -la dist
+
+      - name: Publish rolling beta pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.meta.outputs.tag }}
+          VERSION: ${{ steps.meta.outputs.version }}
+          SHORT_SHA: ${{ steps.meta.outputs.short_sha }}
+        run: |
+          set -euo pipefail
+
+          NOTES="$(cat <<EOF
+          Automated beta build of OpenLieRoX **${VERSION}**.
+
+          - Branch: \`${GITHUB_REF_NAME}\`
+          - Commit: ${GITHUB_SHA}
+
+          This is a rolling pre-release that is refreshed on every merge. The
+          attached artifacts always reflect the latest build of this branch.
+          EOF
+          )"
+
+          # Recreate the rolling release/tag so it points at this commit and
+          # carries only the current build's artifacts.
+          gh release delete "$TAG" --cleanup-tag --yes 2>/dev/null || true
+
+          gh release create "$TAG" \
+            --title "OpenLieRoX ${VERSION} (latest beta, ${SHORT_SHA})" \
+            --notes "$NOTES" \
+            --prerelease \
+            --target "$GITHUB_SHA" \
+            dist/*
