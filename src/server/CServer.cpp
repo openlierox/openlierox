@@ -173,7 +173,7 @@ int GameServer::StartServer()
 	
 	for( int i = 1; i < MAX_SERVER_SOCKETS; i++ )
 	{
-		tSockets[i]->OpenUnreliable(0);
+		tSockets[i]->OpenUnreliable(tLXOptions->iNetworkPort + i);
 		if(!tSockets[i]->isOpen()) {
 			hints << "Server: we cannot open a random port!" << endl;
 			SetError("Server Error: Could not open UDP socket");
