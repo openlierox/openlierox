@@ -2,10 +2,8 @@ name: Build Android
 
 on:
   pull_request:
-  push:
-    branches:
-      - master
-      - 0.59
+  # Reusable: invoked by release-beta.yml on merges to master/0.59.
+  workflow_call:
 
 jobs:
   build-android:
