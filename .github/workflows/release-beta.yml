@@ -34,7 +34,7 @@ jobs:
 
   release:
     name: Publish beta release
-    needs: [android, linux-bundle, linux-deb, mac, windows]
+    needs: [linux-bundle, linux-deb, mac, windows]
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
