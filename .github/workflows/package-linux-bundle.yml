@@ -48,13 +48,22 @@ jobs:
       - name: Package
         run: ./.github/workflows/package-linux-bundle.sh
 
-      - name: Detect bundle filename
+      # actions/upload-artifact does not preserve the Unix executable bit, so
+      # we zip the bundle ourselves first (zip stores file permissions) and
+      # upload the single archive. The +x bit on the openlierox binary then
+      # survives the artifact round-trip into the final release asset.
+      - name: Archive bundle (preserves executable bit)
         id: bundle
-        run: echo "name=$(basename distrib/openlierox-*-linux-bundle*)" >> "$GITHUB_OUTPUT"
+        run: |
+          set -euo pipefail
+          cd distrib
+          dir="$(basename openlierox-*-linux-bundle)"
+          zip -r -y -q "${dir}.zip" "$dir"
+          echo "name=${dir}.zip" >> "$GITHUB_OUTPUT"
 
       - name: Upload openlierox-linux-bundle
         uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.bundle.outputs.name }}
-          path: distrib/openlierox-*-linux-bundle*
+          path: distrib/openlierox-*-linux-bundle.zip
           if-no-files-found: error
