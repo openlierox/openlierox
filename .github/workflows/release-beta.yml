@@ -16,6 +16,10 @@ permissions:
 jobs:
   # Reuse the existing build pipelines. secrets: inherit lets the Android
   # job reach the signing / Play Store secrets just like before.
+  android:
+    uses: ./.github/workflows/package-android.yml
+    secrets: inherit
+
   linux-bundle:
     uses: ./.github/workflows/package-linux-bundle.yml
     secrets: inherit
@@ -34,7 +38,7 @@ jobs:
 
   release:
     name: Publish beta release
-    needs: [linux-bundle, linux-deb, mac, windows]
+    needs: [android, linux-bundle, linux-deb, mac, windows]
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
@@ -75,7 +79,7 @@ jobs:
           set -euo pipefail
 
           NOTES="$(cat <<EOF
-          Automated beta build of OpenLieRoX **${VERSION}**.
+          Automated beta build of OpenLieroX **${VERSION}**.
 
           - Branch: \`${GITHUB_REF_NAME}\`
           - Commit: ${GITHUB_SHA}
@@ -113,7 +117,7 @@ jobs:
           gh release delete "$TAG" --cleanup-tag --yes 2>/dev/null || true
 
           gh release create "$TAG" \
-            --title "OpenLieRoX ${VERSION} (latest beta, ${SHORT_SHA})" \
+            --title "OpenLieroX ${VERSION} (latest beta, ${SHORT_SHA})" \
             --notes "$NOTES" \
             --prerelease \
             --target "$GITHUB_SHA" \
