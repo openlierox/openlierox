@@ -222,6 +222,7 @@ bool GameOptions::Init() {
 #else
 			false )
 #endif
+		( tLXOptions->sTouchscreenLayout, "Game.TouchscreenLayout", "classic" )
 		( tLXOptions->bAntilagMovementPrediction, "Game.AntilagMovementPrediction", true )
 		( tLXOptions->sLastSelectedPlayer, "Game.LastSelectedPlayer", "" )
 		( tLXOptions->sLastSelectedPlayer2, "Game.LastSelectedPlayer2", "" )

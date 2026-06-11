@@ -279,6 +279,16 @@ add_subdirectory("${DEPS_DIR}/curl"         "${CMAKE_BINARY_DIR}/curl")
 unset(BUILD_SHARED_LIBS CACHE)
 
 # ---------------------------------------------------------------------
+# yaml-cpp — parses share/gamedir/touchscreen/*.yaml at runtime.
+# ---------------------------------------------------------------------
+set(YAML_CPP_BUILD_TOOLS OFF CACHE BOOL "")
+set(YAML_CPP_BUILD_TESTS OFF CACHE BOOL "")
+set(YAML_CPP_BUILD_CONTRIB OFF CACHE BOOL "")
+set(YAML_CPP_INSTALL OFF CACHE BOOL "")
+set(YAML_BUILD_SHARED_LIBS OFF CACHE BOOL "")
+add_subdirectory("${DEPS_DIR}/yaml-cpp"     "${CMAKE_BINARY_DIR}/yaml-cpp")
+
+# ---------------------------------------------------------------------
 # OpenLieroX itself
 # ---------------------------------------------------------------------
 file(GLOB_RECURSE OLX_SRCS
@@ -352,6 +362,7 @@ target_link_libraries(main PRIVATE
     vorbisfile
     gd_static
     libcurl_static
+    yaml-cpp
     log
     android
     GLESv1_CM

@@ -49,6 +49,13 @@ void Update();
 // controls in the way. The next SDL_FINGERDOWN re-enables the UI.
 void NotifyExternalInput();
 
+// If the active touch layout specifies a minimap position, write it
+// to outX/outY (top-left in logical 640x480 coords) and return true.
+// Callers (the HUD draw path) use this to reposition the minimap so it
+// doesn't overlap the action buttons. Returns false when the layout
+// hasn't specified one — the caller is then free to pick its own default.
+bool GetMinimapPosition(int& outX, int& outY);
+
 } // namespace TouchControls
 
 #endif // __OLX_TOUCHCONTROLS_H__

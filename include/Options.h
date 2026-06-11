@@ -287,6 +287,7 @@ public:
 	bool	bMouseAiming;
 	int		iMouseSensity;
 	bool	bTouchscreenControls;	// On-screen buttons for finger input. Default on for Android.
+	std::string sTouchscreenLayout;	// Name of layout file under share/gamedir/touchscreen/<name>.yaml.
 	bool	bAntilagMovementPrediction;
 	std::string	sLastSelectedPlayer;
 	std::string	sLastSelectedPlayer2;

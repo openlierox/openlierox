@@ -7,34 +7,25 @@
  *  Two layouts:
  *
  *    LM_PLAYING (default in-game)
- *      - Most of the screen (x < kVJoyAreaRight logical, flush against
+ *      - Most of the screen (x < gVJoyAreaRight logical, flush against
  *        the right-edge action-button column) is an INVISIBLE virtual joystick.
  *        First finger landing there sets an anchor; dragging from the
  *        anchor presses Left/Right (movement) and Up/Down (aim).
- *        Both axes use the same generous threshold (≈ 2x worm width):
- *        |dx| > walk_sensitivity for Left/Right, |dy| > aim_sensitivity
- *        for Up/Down. That way the player can hold the stick slightly
- *        off-center without unintended walking or aim-creep. The
- *        motion-vector arrow turns red once the horizontal component
- *        crosses walk_sensitivity, otherwise it's yellow. The anchor
- *        is FIXED at the touch-down point for the entire lifetime of
- *        the touch — release and re-engage if you want a new anchor.
- *      - Right half hosts: Jump, Rope, Fire, plus Prev-Weapon and
- *        Next-Weapon (one-shot taps that synthesise SelectWeapon +
- *        Left/Right).
+ *        Both axes use the same generous threshold (~2x worm width):
+ *        |dx| > gWalkSensitivity for Left/Right, |dy| > gAimSensitivity
+ *        for Up/Down.
+ *      - Right half hosts: Jump, Rope, Fire, plus Prev/Next-Weapon
+ *        (one-shot taps that synthesise SelectWeapon + Left/Right).
  *
  *    LM_WEAPON_SELECT (during the per-round weapon picker — i.e. while
- *      the first local human worm has bWeaponsReady == false; in
- *      split-screen we ignore player 2's readiness since touch only
- *      drives player 1)
- *      - Joystick is OFF (the menu wants discrete taps, not a continuous
- *        axis).
- *      - Visible Up/Down/Left/Right arrow buttons drive the menu, and a
- *        Fire button confirms ('Done').
+ *      the first local human worm has bWeaponsReady == false)
+ *      - Joystick is OFF.
+ *      - Visible D-pad drives the menu; Random + DONE on the right edge.
  *
- *  Touch presses are turned into synthetic SDL key events for the
- *  player-1 bindings in options.cfg, so the existing CInput pipeline
- *  picks them up exactly like real keypresses.
+ *  Button positions and the vjoy tunables are loaded from
+ *  share/gamedir/touchscreen/<Game.TouchscreenLayout>.yaml at Init().
+ *  If that file is missing or malformed, hardcoded defaults take over
+ *  so the build stays self-contained.
  *
  *  code under LGPL
  */
@@ -43,17 +34,26 @@
 
 #include <SDL.h>
 #include <cmath>
+#include <fstream>
 #include <map>
+#include <sstream>
+#include <string>
+#include <vector>
+
+#include <yaml-cpp/yaml.h>
 
 #include "AuxLib.h"
 #include "CClient.h"
 #include "CInput.h"
 #include "Color.h"
 #include "CWormHuman.h"
+#include "Debug.h"
+#include "FindFile.h"
 #include "GfxPrimitives.h"
 #include "InputEvents.h"
 #include "LieroX.h"
 #include "Options.h"
+#include "SmartPointer.h"
 #include "TouchScreenInput.h"
 #include "game/CWorm.h"
 #include "game/Game.h"
@@ -64,16 +64,7 @@ namespace TouchControls {
 
 namespace {
 
-// --- Layout (logical 640x480) -------------------------------------------
-
-constexpr int kVJoyAreaRight = 525;   // right edge of invisible joystick zone — flush against the action-button column
-
-// Drag distance from the anchor (logical pixels) needed to fire each
-// direction. About 2x the 20-px worm sprite width — the worm character
-// length the user perceives — so small wobbles in either axis don't
-// nudge the worm or the aim.
-constexpr int walk_sensitivity = 40;  // |dx| past this → Left/Right (move)
-constexpr int aim_sensitivity  = 40;  // |dy| past this → Up/Down (aim)
+// --- Layout types ------------------------------------------------------
 
 enum LayoutMode {
 	LM_PLAYING,
@@ -93,46 +84,296 @@ struct Button {
 	int x, y, w, h;
 	int sinIndex;          // for BA_HOLD: SIN_* index. Ignored for tap actions.
 	ButtonAction action;
-	const char* label;
+	std::string label;
+	// Optional artwork. `image` is the filename inside
+	// share/gamedir/touchscreen/images/; when set, the renderer blits
+	// the surface (scaled to the button rect) instead of drawing the
+	// fill+border+label. `imagePressed` is loaded automatically from
+	// "<basename>_pressed<.ext>" if that file exists and is rendered
+	// while the button is held.
+	std::string image;
+	SmartPointer<SDL_Surface> imageNormal;
+	SmartPointer<SDL_Surface> imagePressed;
 };
 
-// In-game: invisible joystick + visible action buttons + menu in the corner.
-// Right-edge column groups the most-used actions for the right thumb:
-// ROPE at top, FIRE in the middle, JUMP at the bottom. Prev/Next weapon
-// share a row in the gap between ROPE and FIRE (PREV left half, NEXT right).
-//   MENU(560,5)
-//                ROPE(525, 50, 110x110)
-//   PREV(525,165, 55x50) | NEXT(580,165, 55x50)
-//                FIRE(525,220, 110x180)
-//                JUMP(525,405, 110x70)
-static const Button gPlayingButtons[] = {
-	{ 560,   5,  75,  40, 0,         BA_TAP_ESCAPE,    "MENU" },
-	{ 525, 165,  55,  50, 0,         BA_TAP_PREV_WEAP, "<<"   },
-	{ 580, 165,  55,  50, 0,         BA_TAP_NEXT_WEAP, ">>"   },
-	{ 525,  50, 110, 110, SIN_ROPE,  BA_HOLD,          "ROPE" },
-	{ 525, 220, 110, 180, SIN_SHOOT, BA_HOLD,          "FIRE" },
-	{ 525, 405, 110,  70, SIN_JUMP,  BA_HOLD,          "JUMP" },
-};
-constexpr int kPlayingButtonCount = sizeof(gPlayingButtons) / sizeof(Button);
+// Upper bound on buttons per layout — sizes the per-button finger
+// counter. Layouts that try to exceed it are rejected by the loader.
+constexpr int kMaxButtons = 32;
 
-// Weapon-select: visible D-pad on the lower-left; on the right edge,
-// RANDOM stacked above DONE.
-static const Button gWeaponSelectButtons[] = {
-	{ 560,   5, 75, 40, 0,         BA_TAP_ESCAPE,    "MENU"   },
-	{  60, 240, 80, 70, SIN_UP,    BA_HOLD,          "^"      },
-	{  60, 400, 80, 70, SIN_DOWN,  BA_HOLD,          "v"      },
-	{   0, 320, 80, 70, SIN_LEFT,  BA_HOLD,          "<"      },
-	{ 140, 320, 80, 70, SIN_RIGHT, BA_HOLD,          ">"      },
-	{ 525, 240,110, 95, 0,         BA_TAP_RANDOMIZE, "Random" },
-	{ 525, 345,110, 95, 0,         BA_TAP_DONE,      "DONE"   },
-};
-constexpr int kWeaponSelectButtonCount = sizeof(gWeaponSelectButtons) / sizeof(Button);
 
-// Maximum buttons across layouts — sizes the per-button state arrays.
-constexpr int kMaxButtons =
-	(kPlayingButtonCount > kWeaponSelectButtonCount) ? kPlayingButtonCount : kWeaponSelectButtonCount;
+// --- Runtime layout state ----------------------------------------------
+//
+// Populated by Init() from the YAML layout file, or — if loading fails —
+// from applyHardcodedDefaults(). All gameplay reads go through these.
 
-// --- State -------------------------------------------------------------
+static int  gVJoyAreaRight    = 525;
+static int  gWalkSensitivity  = 40;
+static int  gAimSensitivity   = 40;
+static bool gShowButtonBorder = true;
+
+// Optional minimap-position override. When the active layout specifies
+// `minimap: { x, y }`, the HUD draw path reads it through
+// GetMinimapPosition() and uses those coords instead of its default.
+static bool gMinimapOverride  = false;
+static int  gMinimapX         = 0;
+static int  gMinimapY         = 0;
+
+static std::vector<Button> gPlayingButtons;
+static std::vector<Button> gWeaponSelectButtons;
+
+
+// --- Hardcoded defaults ------------------------------------------------
+//
+// Mirrors share/gamedir/touchscreen/rightside.yaml. Used when the YAML
+// file is missing, unreadable, or malformed.
+
+static void applyHardcodedDefaults() {
+	gVJoyAreaRight    = 525;
+	gWalkSensitivity  = 40;
+	gAimSensitivity   = 40;
+	gShowButtonBorder = true;
+	gMinimapOverride  = false;
+	gMinimapX         = 0;
+	gMinimapY         = 0;
+
+	// In-game:
+	//   MENU(560,5) | ROPE(525, 50, 110x110)
+	//   PREV(525,165, 55x50) + NEXT(580,165, 55x50)
+	//   FIRE(525,220, 110x180) | JUMP(525,405, 110x70)
+	gPlayingButtons = {
+		{ 560,   5,  75,  40, 0,         BA_TAP_ESCAPE,    "MENU" },
+		{ 525, 165,  55,  50, 0,         BA_TAP_PREV_WEAP, "<<"   },
+		{ 580, 165,  55,  50, 0,         BA_TAP_NEXT_WEAP, ">>"   },
+		{ 525,  50, 110, 110, SIN_ROPE,  BA_HOLD,          "ROPE" },
+		{ 525, 220, 110, 180, SIN_SHOOT, BA_HOLD,          "FIRE" },
+		{ 525, 405, 110,  70, SIN_JUMP,  BA_HOLD,          "JUMP" },
+	};
+	// Weapon-select: D-pad lower-left, Random + DONE on the right edge.
+	gWeaponSelectButtons = {
+		{ 560,   5, 75, 40, 0,         BA_TAP_ESCAPE,    "MENU"   },
+		{  60, 240, 80, 70, SIN_UP,    BA_HOLD,          "^"      },
+		{  60, 400, 80, 70, SIN_DOWN,  BA_HOLD,          "v"      },
+		{   0, 320, 80, 70, SIN_LEFT,  BA_HOLD,          "<"      },
+		{ 140, 320, 80, 70, SIN_RIGHT, BA_HOLD,          ">"      },
+		{ 525, 240,110, 95, 0,         BA_TAP_RANDOMIZE, "Random" },
+		{ 525, 345,110, 95, 0,         BA_TAP_DONE,      "DONE"   },
+	};
+}
+
+
+// --- Image loading -----------------------------------------------------
+
+// Return <basename>_pressed<.ext> for a path like
+// "touchscreen/images/jump.png" → "touchscreen/images/jump_pressed.png".
+static std::string pressedVariantPath(const std::string& path) {
+	const size_t dot   = path.find_last_of('.');
+	const size_t slash = path.find_last_of('/');
+	if(dot == std::string::npos || (slash != std::string::npos && dot < slash))
+		return path + "_pressed";
+	return path.substr(0, dot) + "_pressed" + path.substr(dot);
+}
+
+// Cache surfaces by relPath so the same image used on multiple buttons
+// (and across re-Inits) only hits disk once. A cached null is kept for
+// genuinely-missing files so we don't re-try them every frame.
+static SmartPointer<SDL_Surface> loadCachedImage(const std::string& relPath) {
+	static std::map<std::string, SmartPointer<SDL_Surface>> cache;
+	auto it = cache.find(relPath);
+	if(it != cache.end()) return it->second;
+	SmartPointer<SDL_Surface> surf = LoadGameImage(relPath, true);
+	cache[relPath] = surf;
+	return surf;
+}
+
+
+// --- YAML loader -------------------------------------------------------
+
+static bool parseAction(const std::string& s, ButtonAction& outAction, bool& outNeedsBinding) {
+	static const std::map<std::string, ButtonAction> actionMap = {
+		{"hold",        BA_HOLD},
+		{"menu",        BA_TAP_ESCAPE},
+		{"prev_weapon", BA_TAP_PREV_WEAP},
+		{"next_weapon", BA_TAP_NEXT_WEAP},
+		{"randomize",   BA_TAP_RANDOMIZE},
+		{"done",        BA_TAP_DONE},
+	};
+	auto it = actionMap.find(s);
+	if(it == actionMap.end()) return false;
+	outAction = it->second;
+	outNeedsBinding = (it->second == BA_HOLD);
+	return true;
+}
+
+static bool parseBinding(const std::string& s, int& outSin) {
+	static const std::map<std::string, int> bindingMap = {
+		{"up", SIN_UP}, {"down", SIN_DOWN},
+		{"left", SIN_LEFT}, {"right", SIN_RIGHT},
+		{"shoot", SIN_SHOOT}, {"fire", SIN_SHOOT},  // 'fire' = alias
+		{"jump", SIN_JUMP}, {"rope", SIN_ROPE},
+		{"selweap", SIN_SELWEAP}, {"select_weapon", SIN_SELWEAP},
+		{"strafe", SIN_STRAFE},
+		{"weapon1", SIN_WEAPON1}, {"weapon2", SIN_WEAPON2},
+		{"weapon3", SIN_WEAPON3}, {"weapon4", SIN_WEAPON4},
+		{"weapon5", SIN_WEAPON5},
+	};
+	auto it = bindingMap.find(s);
+	if(it == bindingMap.end()) return false;
+	outSin = it->second;
+	return true;
+}
+
+static bool parseButtons(const YAML::Node& node, const std::string& section, std::vector<Button>& out) {
+	if(!node.IsSequence()) {
+		warnings << "TouchControls: '" << section << "' is not a sequence" << endl;
+		return false;
+	}
+	out.clear();
+	int i = 0;
+	for(const auto& bn : node) {
+		if(!bn.IsMap()) {
+			warnings << "TouchControls: " << section << "[" << i << "] is not a map" << endl;
+			return false;
+		}
+		Button b{};
+		try {
+			b.x = bn["x"].as<int>();
+			b.y = bn["y"].as<int>();
+			b.w = bn["w"].as<int>();
+			b.h = bn["h"].as<int>();
+		} catch(const YAML::Exception&) {
+			warnings << "TouchControls: " << section << "[" << i << "] missing or bad x/y/w/h" << endl;
+			return false;
+		}
+		if(bn["label"])
+			b.label = bn["label"].as<std::string>();
+		if(!bn["action"]) {
+			warnings << "TouchControls: " << section << "[" << i << "] missing 'action'" << endl;
+			return false;
+		}
+		std::string actionStr = bn["action"].as<std::string>();
+		bool needsBinding = false;
+		if(!parseAction(actionStr, b.action, needsBinding)) {
+			warnings << "TouchControls: " << section << "[" << i << "] unknown action '"
+			         << actionStr << "'" << endl;
+			return false;
+		}
+		if(needsBinding) {
+			if(!bn["binding"]) {
+				warnings << "TouchControls: " << section << "[" << i
+				         << "] action=hold needs 'binding'" << endl;
+				return false;
+			}
+			std::string bindStr = bn["binding"].as<std::string>();
+			if(!parseBinding(bindStr, b.sinIndex)) {
+				warnings << "TouchControls: " << section << "[" << i
+				         << "] unknown binding '" << bindStr << "'" << endl;
+				return false;
+			}
+		} else {
+			b.sinIndex = 0;
+		}
+		// Optional image: relative to share/gamedir/touchscreen/images/.
+		// The pressed-state variant is loaded automatically if it exists.
+		if(bn["image"]) {
+			b.image = bn["image"].as<std::string>();
+			const std::string normalPath = "touchscreen/images/" + b.image;
+			b.imageNormal = loadCachedImage(normalPath);
+			if(!b.imageNormal.get()) {
+				warnings << "TouchControls: " << section << "[" << i
+				         << "] image not found: " << normalPath
+				         << " (button will render as text)" << endl;
+			} else {
+				b.imagePressed = loadCachedImage(pressedVariantPath(normalPath));
+				// Missing pressed variant is fine; renderer falls back to normal.
+			}
+		}
+		out.push_back(std::move(b));
+		i++;
+	}
+	return true;
+}
+
+// Load layout from share/gamedir/touchscreen/<name>.yaml. Returns true
+// if the file parsed cleanly and the runtime state has been replaced.
+// On any failure, leaves the existing runtime state untouched and logs
+// the reason.
+static bool loadLayoutFromYaml(const std::string& name) {
+	const std::string relPath = "touchscreen/" + name + ".yaml";
+	std::ifstream f;
+	if(!OpenGameFileR(f, relPath)) {
+		notes << "TouchControls: layout '" << relPath << "' not found, using defaults" << endl;
+		return false;
+	}
+	std::stringstream buf;
+	buf << f.rdbuf();
+	try {
+		YAML::Node root = YAML::Load(buf.str());
+		if(!root.IsMap()) {
+			warnings << "TouchControls: YAML root is not a map in " << relPath << endl;
+			return false;
+		}
+		// Parse into locals first; only commit if everything succeeds.
+		int  vjoyAreaRight    = gVJoyAreaRight;
+		int  walkSensitivity  = gWalkSensitivity;
+		int  aimSensitivity   = gAimSensitivity;
+		bool showButtonBorder = gShowButtonBorder;
+		if(root["vjoy"]) {
+			const YAML::Node& v = root["vjoy"];
+			if(v["area_right"])       vjoyAreaRight   = v["area_right"].as<int>();
+			if(v["walk_sensitivity"]) walkSensitivity = v["walk_sensitivity"].as<int>();
+			if(v["aim_sensitivity"])  aimSensitivity  = v["aim_sensitivity"].as<int>();
+		}
+		if(root["button-border"]) showButtonBorder = root["button-border"].as<bool>();
+		bool minimapOverride = false;
+		int  minimapX        = 0;
+		int  minimapY        = 0;
+		if(root["minimap"]) {
+			const YAML::Node& m = root["minimap"];
+			if(m["x"] && m["y"]) {
+				minimapX = m["x"].as<int>();
+				minimapY = m["y"].as<int>();
+				minimapOverride = true;
+			} else {
+				warnings << "TouchControls: 'minimap' needs both 'x' and 'y'" << endl;
+				return false;
+			}
+		}
+		std::vector<Button> playing;
+		std::vector<Button> weaponSel;
+		const bool hasPlaying  = (bool)root["playing"];
+		const bool hasWeaponSel = (bool)root["weapon_select"];
+		if(hasPlaying && !parseButtons(root["playing"], "playing", playing))
+			return false;
+		if(hasWeaponSel && !parseButtons(root["weapon_select"], "weapon_select", weaponSel))
+			return false;
+		if((int)playing.size() > kMaxButtons || (int)weaponSel.size() > kMaxButtons) {
+			warnings << "TouchControls: too many buttons in " << relPath
+			         << " (max " << kMaxButtons << " per layout)" << endl;
+			return false;
+		}
+		// Commit.
+		gVJoyAreaRight    = vjoyAreaRight;
+		gWalkSensitivity  = walkSensitivity;
+		gAimSensitivity   = aimSensitivity;
+		gShowButtonBorder = showButtonBorder;
+		gMinimapOverride  = minimapOverride;
+		gMinimapX         = minimapX;
+		gMinimapY         = minimapY;
+		if(hasPlaying)    gPlayingButtons      = std::move(playing);
+		if(hasWeaponSel)  gWeaponSelectButtons = std::move(weaponSel);
+		notes << "TouchControls: loaded layout '" << name << "' ("
+		      << gPlayingButtons.size() << " playing buttons, "
+		      << gWeaponSelectButtons.size() << " weapon-select buttons)" << endl;
+		return true;
+	} catch(const YAML::Exception& e) {
+		warnings << "TouchControls: YAML parse error in " << relPath
+		         << ": " << e.what() << endl;
+		return false;
+	}
+}
+
+
+// --- Runtime state -----------------------------------------------------
 
 // Touch is currently always wired to local player 1.
 constexpr int kTouchPlayer = 1;
@@ -165,13 +406,8 @@ static bool       gUIActive  = true;
 
 // --- Layout selection --------------------------------------------------
 
-static const Button* currentButtons(int* outCount) {
-	if(gMode == LM_WEAPON_SELECT) {
-		*outCount = kWeaponSelectButtonCount;
-		return gWeaponSelectButtons;
-	}
-	*outCount = kPlayingButtonCount;
-	return gPlayingButtons;
+static const std::vector<Button>& currentButtons() {
+	return (gMode == LM_WEAPON_SELECT) ? gWeaponSelectButtons : gPlayingButtons;
 }
 
 static LayoutMode detectLayoutMode() {
@@ -179,8 +415,7 @@ static LayoutMode detectLayoutMode() {
 	// player"). The layout follows that worm's picker state: as soon as
 	// they confirm their loadout, switch back to the gameplay layout
 	// even if a split-screen second player is still picking on the
-	// keyboard. Other local worms' readiness is irrelevant to the touch
-	// UI.
+	// keyboard.
 	if(game.state < Game::S_Preparing) return LM_PLAYING;
 	for_each_iterator(CWorm*, w, game.localWorms()) {
 		if(dynamic_cast<CWormHumanInputHandler*>(w->get()->inputHandler())) {
@@ -192,10 +427,6 @@ static LayoutMode detectLayoutMode() {
 
 
 // --- SIN_* → Action mapping --------------------------------------------
-//
-// Every BA_HOLD button references a SIN_* index (so the existing button
-// table format keeps working). Translating it to a binding-independent
-// TouchScreenInput::Action is a one-line lookup.
 
 static bool sinToAction(int sinIndex, TouchScreenInput::Action& outAction) {
 	using A = TouchScreenInput::Action;
@@ -217,26 +448,25 @@ static bool sinToAction(int sinIndex, TouchScreenInput::Action& outAction) {
 // --- Button state machine ----------------------------------------------
 
 static int hitTestButton(int lx, int ly) {
-	int n;
-	const Button* b = currentButtons(&n);
+	const auto& btns = currentButtons();
+	const int n = (int)btns.size();
 	for(int i = 0; i < n; i++) {
-		if(lx >= b[i].x && lx < b[i].x + b[i].w
-		&& ly >= b[i].y && ly < b[i].y + b[i].h)
+		if(lx >= btns[i].x && lx < btns[i].x + btns[i].w
+		&& ly >= btns[i].y && ly < btns[i].y + btns[i].h)
 			return i;
 	}
 	return -1;
 }
 
 static void setButtonPressed(int i, bool pressed) {
-	int n;
-	const Button* btns = currentButtons(&n);
-	if(i < 0 || i >= n) return;
+	const auto& btns = currentButtons();
+	if(i < 0 || i >= (int)btns.size() || i >= kMaxButtons) return;
 	const Button& b = btns[i];
 	using TouchScreenInput::Action;
 	using TouchScreenInput::StateChange;
 
 	// Tap actions emit a single Down event on the leading edge of the first
-	// finger. The game logic reads it via wasActionTapped(); no Up event
+	// finger. The game logic reads them via wasActionTapped(); no Up event
 	// is needed because the consumer treats taps as edge-triggered.
 	if(b.action == BA_TAP_PREV_WEAP || b.action == BA_TAP_NEXT_WEAP
 	|| b.action == BA_TAP_ESCAPE   || b.action == BA_TAP_RANDOMIZE
@@ -254,9 +484,6 @@ static void setButtonPressed(int i, bool pressed) {
 			case BA_TAP_DONE:      a = Action::ConfirmWeapons;   break;
 			default: return;
 			}
-			// Tap = leading edge only. Down+Up in the same frame so
-			// isActionDown(<tap action>) never latches "true" between
-			// frames; wasActionTapped is the right read for these.
 			TouchScreenInput::pushEvent(kTouchPlayer, a, StateChange::Down);
 			TouchScreenInput::pushEvent(kTouchPlayer, a, StateChange::Up);
 		}
@@ -297,20 +524,12 @@ static void vjoyUpdate(int lx, int ly) {
 	using A = TouchScreenInput::Action;
 	gVJoy.curX = lx;
 	gVJoy.curY = ly;
-
-	// Anchor is fixed at touch-down for the entire lifetime of the touch
-	// — no recentering. Direction is derived from the raw delta against
-	// a small deadzone.
 	const int dx = lx - gVJoy.anchorX;
 	const int dy = ly - gVJoy.anchorY;
-
-	// Both axes use a generous threshold (~2x worm width) so the player
-	// can hold the joystick slightly off-center without unintended walking
-	// or aim-creep.
-	setVJoyDir(gVJoy.heldL, dx < -walk_sensitivity, A::Left);
-	setVJoyDir(gVJoy.heldR, dx >  walk_sensitivity, A::Right);
-	setVJoyDir(gVJoy.heldU, dy < -aim_sensitivity,  A::Up);
-	setVJoyDir(gVJoy.heldD, dy >  aim_sensitivity,  A::Down);
+	setVJoyDir(gVJoy.heldL, dx < -gWalkSensitivity, A::Left);
+	setVJoyDir(gVJoy.heldR, dx >  gWalkSensitivity, A::Right);
+	setVJoyDir(gVJoy.heldU, dy < -gAimSensitivity,  A::Up);
+	setVJoyDir(gVJoy.heldD, dy >  gAimSensitivity,  A::Down);
 }
 
 static void vjoyRelease() {
@@ -327,16 +546,14 @@ static void vjoyRelease() {
 static void releaseAllButtons() {
 	using TouchScreenInput::Action;
 	using TouchScreenInput::StateChange;
+	const auto& btns = currentButtons();
+	const int n = (int)btns.size();
 	for(int i = 0; i < kMaxButtons; i++) {
 		// Only HOLD buttons need a synthetic Up; tap actions self-balance.
-		if(gFingerCount[i] > 0) {
-			int n;
-			const Button* btns = currentButtons(&n);
-			if(i < n && btns[i].action == BA_HOLD) {
-				Action a;
-				if(sinToAction(btns[i].sinIndex, a))
-					TouchScreenInput::pushEvent(kTouchPlayer, a, StateChange::Up);
-			}
+		if(gFingerCount[i] > 0 && i < n && btns[i].action == BA_HOLD) {
+			Action a;
+			if(sinToAction(btns[i].sinIndex, a))
+				TouchScreenInput::pushEvent(kTouchPlayer, a, StateChange::Up);
 		}
 		gFingerCount[i] = 0;
 	}
@@ -349,11 +566,10 @@ static void releaseAll() {
 }
 
 
-// --- Render helper -----------------------------------------------------
+// --- Render helpers ----------------------------------------------------
 
 // Visualise the invisible joystick: anchor dot, line to the current
-// finger position, and a small arrowhead at the tip — so the player can
-// see the motion vector they're producing.
+// finger position, and a small arrowhead at the tip.
 static void renderVJoy(SDL_Surface* dst) {
 	if(!gVJoy.active) return;
 
@@ -362,26 +578,24 @@ static void renderVJoy(SDL_Surface* dst) {
 	const int cx = gVJoy.curX;
 	const int cy = gVJoy.curY;
 
-	// Red once the horizontal component exceeds walk_sensitivity —
+	// Red once the horizontal component exceeds gWalkSensitivity —
 	// signals that the worm will actually move, not just aim.
 	const int hdx = cx - ax;
-	const bool willWalk = (hdx > walk_sensitivity) || (hdx < -walk_sensitivity);
+	const bool willWalk = (hdx > gWalkSensitivity) || (hdx < -gWalkSensitivity);
 	const Color stickColor  = willWalk ? Color(255,  90,  60, 230)
 	                                   : Color(255, 220,  80, 220);
 	const Color anchorColor (255, 255, 255, 200);
 
-	// Anchor: 6x6 marker at the touch-down point.
 	DrawRectFillA(dst, ax - 3, ay - 3, ax + 4, ay + 4, anchorColor, anchorColor.a);
 
 	const float dx = (float)(cx - ax);
 	const float dy = (float)(cy - ay);
 	const float len = std::sqrt(dx * dx + dy * dy);
-	if(len < 4.0f) return;  // too short to draw an arrow
+	if(len < 4.0f) return;
 
 	const float nx = dx / len;
 	const float ny = dy / len;
 
-	// Draw a thick shaft as 3 parallel lines, offset perpendicular by 1px.
 	const float px = -ny;
 	const float py =  nx;
 	for(int o = -1; o <= 1; o++) {
@@ -390,15 +604,11 @@ static void renderVJoy(SDL_Surface* dst) {
 		DrawLine(dst, ax + ox, ay + oy, cx + ox, cy + oy, stickColor);
 	}
 
-	// Arrowhead: two lines from the tip, rotated ±30° from the
-	// reverse-direction vector (-nx,-ny).
 	const float kHeadLen = 14.0f;
 	const float cos30 = 0.8660254f;
 	const float sin30 = 0.5f;
-	// rotate (-n) by +30°
 	const float lx = -nx * cos30 - (-ny) * sin30;
 	const float ly = -nx * sin30 + (-ny) * cos30;
-	// rotate (-n) by -30°
 	const float rx = -nx * cos30 + (-ny) * sin30;
 	const float ry =  nx * sin30 + (-ny) * cos30;
 	const int hlx = cx + (int)(lx * kHeadLen);
@@ -410,14 +620,26 @@ static void renderVJoy(SDL_Surface* dst) {
 }
 
 static void renderButton(SDL_Surface* dst, const Button& b, bool pressed) {
+	// Image-based button: blit the artwork scaled into the rect; swap to
+	// the pressed-state image when the button is held (and a pressed
+	// variant was loaded). Skip the fill/border/label fall-through.
+	if(b.imageNormal.get()) {
+		const SmartPointer<SDL_Surface>& img =
+			(pressed && b.imagePressed.get()) ? b.imagePressed : b.imageNormal;
+		DrawImageResampledAdv(dst, img, 0, 0, b.x, b.y,
+		                      img.get()->w, img.get()->h, b.w, b.h);
+		return;
+	}
+
 	Color fill   = pressed ? Color(255, 220, 80) : Color(40, 40, 40);
 	Uint8 alpha  = pressed ? 180 : 90;
 	Color border = Color(220, 220, 220);
 
 	DrawRectFillA(dst, b.x, b.y, b.x + b.w, b.y + b.h, fill, alpha);
-	DrawRect    (dst, b.x, b.y, b.x + b.w - 1, b.y + b.h - 1, border);
+	if(gShowButtonBorder)
+		DrawRect(dst, b.x, b.y, b.x + b.w - 1, b.y + b.h - 1, border);
 
-	if(tLX && b.label) {
+	if(tLX && !b.label.empty()) {
 		int tw = tLX->cFont.GetWidth(b.label);
 		int th = tLX->cFont.GetHeight();
 		int tx = b.x + (b.w - tw) / 2;
@@ -433,6 +655,16 @@ static void renderButton(SDL_Surface* dst, const Button& b, bool pressed) {
 
 void Init() {
 	if(gInited) return;
+	// Start with defaults so the rest of the code always has a usable
+	// layout to query — even if option lookup or YAML loading fails.
+	applyHardcodedDefaults();
+	if(tLXOptions && !tLXOptions->sTouchscreenLayout.empty()) {
+		if(!loadLayoutFromYaml(tLXOptions->sTouchscreenLayout)) {
+			// Loader already logged the reason; reset to defaults in case
+			// a partial parse modified some runtime state mid-way.
+			applyHardcodedDefaults();
+		}
+	}
 	for(int i = 0; i < kMaxButtons; i++)
 		gFingerCount[i] = 0;
 	gFingerToButton.clear();
@@ -468,9 +700,16 @@ bool IsActive() {
 
 void NotifyExternalInput() {
 	if(!gUIActive) return;
-	if(!isTouchAllowed()) return;  // nothing to hide outside gameplay
+	if(!isTouchAllowed()) return;
 	gUIActive = false;
-	releaseAll();  // pushes Up events for any held touch actions
+	releaseAll();
+}
+
+bool GetMinimapPosition(int& outX, int& outY) {
+	if(!gMinimapOverride) return false;
+	outX = gMinimapX;
+	outY = gMinimapY;
+	return true;
 }
 
 bool HandleFingerEvent(const SDL_TouchFingerEvent& ev) {
@@ -485,14 +724,14 @@ bool HandleFingerEvent(const SDL_TouchFingerEvent& ev) {
 	if(ev.type == SDL_FINGERDOWN && !gUIActive)
 		gUIActive = true;
 
-	if(!gUIActive) return false;  // FINGERMOTION/UP while hidden — drop
+	if(!gUIActive) return false;
 
 	const int lx = (int)(ev.x * 640.0f);
 	const int ly = (int)(ev.y * 480.0f);
 
 	if(ev.type == SDL_FINGERDOWN) {
 		// In playing mode, the left half is the joystick.
-		if(gMode == LM_PLAYING && lx < kVJoyAreaRight && !gVJoy.active) {
+		if(gMode == LM_PLAYING && lx < gVJoyAreaRight && !gVJoy.active) {
 			gVJoy.active   = true;
 			gVJoy.finger   = ev.fingerId;
 			gVJoy.anchorX  = lx;
@@ -557,18 +796,15 @@ void Update() {
 		if(anyHeld) releaseAll();
 	}
 
-	// Drain any events pushed during this ProcessEvents tick (touch finger
-	// events that arrived this frame, plus any Up events emitted by
-	// releaseAll above). The game-logic readers downstream will see the
-	// up-to-date held state and pending taps.
+	// Drain any events pushed during this ProcessEvents tick.
 	TouchScreenInput::processFrame();
 }
 
 void Render(SDL_Surface* dst) {
 	if(!IsActive() || dst == NULL) return;
-	int n;
-	const Button* btns = currentButtons(&n);
-	for(int i = 0; i < n; i++)
+	const auto& btns = currentButtons();
+	const int n = (int)btns.size();
+	for(int i = 0; i < n && i < kMaxButtons; i++)
 		renderButton(dst, btns[i], gFingerCount[i] > 0);
 	if(gMode == LM_PLAYING)
 		renderVJoy(dst);
