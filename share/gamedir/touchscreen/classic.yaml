@@ -28,7 +28,6 @@
 # Coordinates are in OLX's logical 640x480 frame.
 
 name: Classic
-preview: previews/classic.png
 description: >
   Modeled after the original commandergenius OpenLieroX Android port:
   action buttons clustered on the right, Keen-theme icons. Prev/Next

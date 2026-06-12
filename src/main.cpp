@@ -58,7 +58,6 @@
 #include "DeprecatedGUI/Graphics.h"
 #include "DeprecatedGUI/Menu.h"
 #include "DeprecatedGUI/CChatWidget.h"
-#include "TouchControls.h"
 
 #include "breakpad/ExtractInfo.h"
 
@@ -80,9 +79,6 @@
 
 
 static bool enableStdinCLI = true;
-// Set by -generate-previews; renders every share/gamedir/touchscreen/*.yaml
-// into a PNG and exits without entering the main game loop.
-static bool bGeneratePreviews = false;
 
 static void ParseArguments_BeforeInit(int argc, char *argv[]);
 static void ParseArguments_AfterInit(int argc, char *argv[]);
@@ -377,11 +373,7 @@ startpoint:
 	}
 	startupCommands.clear(); // don't execute them again
 
-	if(bGeneratePreviews) {
-		TouchControls::GenerateAllLayoutPreviews();
-	} else {
-		doMainLoop();
-	}
+	doMainLoop();
 	
 	quitLuaGlobal();
 
@@ -485,13 +477,6 @@ static void ParseArguments_AfterInit(int argc, char *argv[])
         if( stricmp(a, "-dedicated") == 0 ) {
             bDedicated = true;
 			bDisableSound = true;
-        } else
-
-        // -generate-previews
-        // Render every share/gamedir/touchscreen/*.yaml into a 640x480 PNG
-        // under share/gamedir/touchscreen/previews/<name>.png and exit.
-        if( stricmp(a, "-generate-previews") == 0 ) {
-            bGeneratePreviews = true;
         } else
 
 		// -dedscript

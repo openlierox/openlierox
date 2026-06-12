@@ -768,10 +768,17 @@ bool IsTouchDeviceAvailable() {
 	return false;
 }
 
-// Render the LM_PLAYING view of one layout into `dst`. Backs up + restores
-// the runtime layout state around the call so the caller's "active" layout
-// is unaffected. Used only by GenerateAllLayoutPreviews().
-static void renderPreviewToSurface(SDL_Surface* dst, const std::string& layoutName) {
+// Render the LM_PLAYING view of `layoutName` onto a freshly-allocated
+// 640x480 surface and return it. Used by the options menu to populate
+// each layout-selection tile — there is no on-disk preview PNG, the
+// thumbnail comes straight out of whatever the YAML currently says.
+//
+// Backs up + restores the runtime layout state around the call so the
+// active layout (held in the gXxx globals) is unaffected.
+static SmartPointer<SDL_Surface> renderLayoutPreviewSurface(const std::string& layoutName) {
+	SmartPointer<SDL_Surface> surf = gfxCreateSurfaceAlpha(640, 480);
+	if(!surf.get()) return surf;
+
 	// Snapshot active layout state.
 	const int  bakVJoy   = gVJoyAreaRight;
 	const int  bakWalk   = gWalkSensitivity;
@@ -783,13 +790,17 @@ static void renderPreviewToSurface(SDL_Surface* dst, const std::string& layoutNa
 	std::vector<Button> bakPlaying     = gPlayingButtons;
 	std::vector<Button> bakWeaponSel   = gWeaponSelectButtons;
 
-	// Swap in the target layout.
+	// Swap in the target layout. If the file is missing or malformed,
+	// fall back to the hardcoded defaults so the tile still shows
+	// something usable.
 	applyHardcodedDefaults();
 	if(!loadLayoutFromYaml(layoutName))
 		applyHardcodedDefaults();
 
-	// Background: dark slate so the buttons read. Faint outline of the
-	// vjoy zone + a dashed-ish minimap box give the geometry context.
+	// Background dark slate so the buttons read against it. A faint
+	// outline of the vjoy zone and a box for the minimap give spatial
+	// context without dominating the thumbnail.
+	SDL_Surface* dst = surf.get();
 	DrawRectFill(dst, 0, 0, dst->w, dst->h, Color(30, 38, 48));
 	DrawRect(dst, 0, 0, gVJoyAreaRight - 1, dst->h - 1, Color(60, 80, 100));
 	if(gMinimapOverride) {
@@ -809,35 +820,8 @@ static void renderPreviewToSurface(SDL_Surface* dst, const std::string& layoutNa
 	gMinimapY         = bakMmY;
 	gPlayingButtons      = std::move(bakPlaying);
 	gWeaponSelectButtons = std::move(bakWeaponSel);
-}
 
-void GenerateAllLayoutPreviews() {
-	SDL_Surface* surf = SDL_CreateRGBSurfaceWithFormat(0, 640, 480, 32, SDL_PIXELFORMAT_RGBA8888);
-	if(!surf) {
-		warnings << "GenerateAllLayoutPreviews: SDL_CreateRGBSurface failed: "
-		         << SDL_GetError() << endl;
-		return;
-	}
-
-	// OLX is launched from share/gamedir/ (see start.sh), so a relative
-	// `touchscreen/previews/...` path lands inside the source tree where
-	// the YAML files live. CreateRecDir takes an absolute path, so build
-	// one from cwd.
-	CreateRecDir("touchscreen/previews/", false);
-
-	std::vector<LayoutInfo> layouts = GetAvailableLayouts();
-	for(const LayoutInfo& info : layouts) {
-		renderPreviewToSurface(surf, info.fileName);
-		const std::string outPath = "touchscreen/previews/" + info.fileName + ".png";
-		if(IMG_SavePNG(surf, outPath.c_str()) != 0) {
-			warnings << "GenerateAllLayoutPreviews: IMG_SavePNG(" << outPath
-			         << ") failed: " << IMG_GetError() << endl;
-		} else {
-			notes << "GenerateAllLayoutPreviews: wrote " << outPath << endl;
-		}
-	}
-
-	SDL_FreeSurface(surf);
+	return surf;
 }
 
 std::vector<LayoutInfo> GetAvailableLayouts() {
@@ -856,10 +840,9 @@ std::vector<LayoutInfo> GetAvailableLayouts() {
 	std::sort(fileNames.begin(), fileNames.end());
 	fileNames.erase(std::unique(fileNames.begin(), fileNames.end()), fileNames.end());
 
-	// Then open each YAML once to read `name:` and load `preview:`. We
-	// only need the metadata fields, so a tiny inline parse — failures
-	// (missing file, parse error, missing image) just leave the matching
-	// LayoutInfo field empty / null.
+	// For each YAML: read `name:` for the display label, and render a
+	// live preview surface from the layout data. No on-disk PNG file —
+	// the thumbnail always reflects the current YAML.
 	std::vector<LayoutInfo> result;
 	result.reserve(fileNames.size());
 	for(const std::string& fname : fileNames) {
@@ -872,18 +855,14 @@ std::vector<LayoutInfo> GetAvailableLayouts() {
 			buf << f.rdbuf();
 			try {
 				YAML::Node root = YAML::Load(buf.str());
-				if(root.IsMap()) {
-					if(root["name"])
-						info.displayName = root["name"].as<std::string>();
-					if(root["preview"]) {
-						const std::string previewRel = root["preview"].as<std::string>();
-						info.preview = LoadGameImage("touchscreen/" + previewRel, true);
-					}
-				}
+				if(root.IsMap() && root["name"])
+					info.displayName = root["name"].as<std::string>();
 			} catch(const YAML::Exception&) {
-				// Malformed YAML — keep the fallback display name and null preview.
+				// Malformed YAML — keep the fallback display name; the
+				// renderer below will use hardcoded defaults.
 			}
 		}
+		info.preview = renderLayoutPreviewSurface(fname);
 		result.push_back(std::move(info));
 	}
 	return result;

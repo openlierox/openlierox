@@ -78,23 +78,16 @@ struct LayoutInfo {
 	                                        // saved into Game.TouchscreenLayout.
 	std::string               displayName;  // YAML `name:` field; falls back to
 	                                        // fileName when absent.
-	SmartPointer<SDL_Surface> preview;      // PNG referenced by YAML `preview:`,
-	                                        // loaded via LoadGameImage. Null when
-	                                        // the field is absent or the load fails
-	                                        // — the menu draws a "No preview" tile
-	                                        // in that case.
+	SmartPointer<SDL_Surface> preview;      // 640x480 thumbnail rendered live
+	                                        // from the YAML layout data — no
+	                                        // on-disk PNG. Null only when the
+	                                        // surface allocation failed; the menu
+	                                        // draws a "No preview" tile then.
 };
 
 // Every share/gamedir/touchscreen/*.yaml, sorted alphabetically by file
 // name. Used by the options menu to build the layout-selection tiles.
 std::vector<LayoutInfo> GetAvailableLayouts();
-
-// Render the playing layout for every share/gamedir/touchscreen/*.yaml
-// into a 640x480 PNG under share/gamedir/touchscreen/previews/<name>.png.
-// Used by the `-generate-previews` CLI mode to refresh layout thumbnails
-// without having to interactively start a game and screenshot it.
-// Must be called after SDL video / tLX are initialised.
-void GenerateAllLayoutPreviews();
 
 } // namespace TouchControls
 

@@ -9,7 +9,6 @@
 # corner (x, y) with size (w, h).
 
 name: Right-side
-preview: previews/rightside.png
 description: >
   Joystick on the left, action buttons on the right. During the weapon
   picker the left half becomes a D-pad and Random/Done sit on the right.
