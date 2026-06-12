@@ -622,14 +622,25 @@ static void renderVJoy(SDL_Surface* dst) {
 }
 
 static void renderButton(SDL_Surface* dst, const Button& b, bool pressed) {
-	// Image-based button: blit the artwork scaled into the rect; swap to
-	// the pressed-state image when the button is held (and a pressed
-	// variant was loaded). Skip the fill/border/label fall-through.
+	// Image-based button: blit the artwork at a fixed square size,
+	// centred in the rect; swap to the pressed-state image when the
+	// button is held (and a pressed variant was loaded). The icon
+	// doesn't follow the button rect — a bigger button just gets more
+	// negative space around the same icon. Background fill / border /
+	// label still apply (controlled by gShowButtonBorder etc.) so the
+	// hit area is visible during preview.
 	if(b.imageNormal.get()) {
 		const SmartPointer<SDL_Surface>& img =
 			(pressed && b.imagePressed.get()) ? b.imagePressed : b.imageNormal;
-		DrawImageResampledAdv(dst, img, 0, 0, b.x, b.y,
-		                      img.get()->w, img.get()->h, b.w, b.h);
+		constexpr int kMaxIconSize = 60;
+		const int iconSize = std::min({b.w, b.h, kMaxIconSize});
+		const int iconX = b.x + (b.w - iconSize) / 2;
+		const int iconY = b.y + (b.h - iconSize) / 2;
+		DrawImageResampledAdv(dst, img, 0, 0, iconX, iconY,
+		                      img.get()->w, img.get()->h, iconSize, iconSize);
+		// Optional outline still respected so previews can show the rect.
+		if(gShowButtonBorder)
+			DrawRect(dst, b.x, b.y, b.x + b.w - 1, b.y + b.h - 1, Color(220, 220, 220));
 		return;
 	}
 
