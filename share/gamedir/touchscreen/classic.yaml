@@ -80,7 +80,7 @@ playing:
   - { x: 532, y: 380, w: 108, h: 100, action: hold, binding: jump,        label: "JUMP", image: jump.png    }
 
 # Weapon picker (LM_WEAPON_SELECT).
-# Same picker UI as the rightside layout — D-pad on the lower-left,
+# Same picker UI as the right-aligned layout — D-pad on the lower-left,
 # Random / DONE stacked on the right edge. (Classic OLX itself never
 # had a randomise shortcut; we adopt the modern UI here so all layouts
 # share the same picker.)

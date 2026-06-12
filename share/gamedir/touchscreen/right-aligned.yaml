@@ -1,4 +1,4 @@
-# rightside.yaml — touch-screen layout with action buttons on the right.
+# right-aligned.yaml — touch-screen layout with action buttons on the right.
 #
 # Invisible virtual joystick covers the left half of the screen; action
 # buttons stack along the right edge. During weapon select, the left
@@ -8,7 +8,7 @@
 # physical screen at draw time. Each button is positioned by top-left
 # corner (x, y) with size (w, h).
 
-name: Right-side
+name: Right-aligned
 description: >
   Joystick on the left, action buttons on the right. During the weapon
   picker the left half becomes a D-pad and Random/Done sit on the right.

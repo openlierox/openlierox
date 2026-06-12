@@ -560,7 +560,7 @@ void CClient::Draw(const SmartPointer<SDL_Surface>& bmpDest)
 		// When the on-screen touch controls are visible, the active
 		// layout can override the minimap position so it doesn't sit
 		// under the action buttons. If the layout doesn't specify one,
-		// fall back to "just left of the rightside-style action column".
+		// fall back to "just left of the right-aligned-style action column".
 		if(TouchControls::IsActive()) {
 			int mx, my;
 			if(TouchControls::GetMinimapPosition(mx, my)) {

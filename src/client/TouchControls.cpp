@@ -126,7 +126,7 @@ static std::vector<Button> gWeaponSelectButtons;
 
 // --- Hardcoded defaults ------------------------------------------------
 //
-// Mirrors share/gamedir/touchscreen/rightside.yaml. Used when the YAML
+// Mirrors share/gamedir/touchscreen/right-aligned.yaml. Used when the YAML
 // file is missing, unreadable, or malformed.
 
 static void applyHardcodedDefaults() {
