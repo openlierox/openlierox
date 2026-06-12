@@ -21,6 +21,8 @@
 #include "LieroX.h"
 #include "GfxPrimitives.h"
 #include "InputEvents.h"
+#include "TouchControls.h"
+#include "TouchScreenInput.h"
 #include "game/CWorm.h"
 #include "MathLib.h"
 #include "Entity.h"
@@ -46,15 +48,54 @@
 #define powf(x,y) ((float)pow((double)x,(double)y))
 #endif
 
+// Is this the first local human worm right now? Touch input only
+// drives that worm so split-screen player 2 stays controlled by their
+// own keyboard/gamepad bindings. Computed at read time so we don't
+// depend on setupInputs() having run yet (the weapon picker frame can
+// fire before SetupGameInputs in some startup paths).
+static bool isFirstLocalHumanWorm(const CWorm* worm) {
+	for_each_iterator(CWorm*, w, game.localWorms()) {
+		if(dynamic_cast<CWormHumanInputHandler*>(w->get()->inputHandler()))
+			return w->get() == worm;
+	}
+	return false;
+}
+
 ///////////////////
 // Get the input from a human worm
 void CWormHumanInputHandler::getInput() {
 	// HINT: we are calling this from simulateWorm
 
+	// Touch-screen actions are read as a binding-independent parallel
+	// channel. We OR them into the CInput state below so a tap on the
+	// touch UI fires the action regardless of what the keyboard/gamepad
+	// is currently bound to. processFrame() ran in TouchControls::Update
+	// earlier in the same gameloop tick, so the state is fresh.
+	//
+	// Touch only drives the *first* local player; in split-screen the
+	// second worm ignores the touch channel so one player tapping the
+	// screen doesn't move both worms.
+	using TA = TouchScreenInput::Action;
+	const bool touchForThisWorm = isFirstLocalHumanWorm(m_worm);
+	const bool tLeft        = touchForThisWorm && TouchScreenInput::isActionDown(1, TA::Left);
+	const bool tRight       = touchForThisWorm && TouchScreenInput::isActionDown(1, TA::Right);
+	const bool tUp          = touchForThisWorm && TouchScreenInput::isActionDown(1, TA::Up);
+	const bool tDown        = touchForThisWorm && TouchScreenInput::isActionDown(1, TA::Down);
+	const bool tFire        = touchForThisWorm && TouchScreenInput::isActionDown(1, TA::Fire);
+	const bool tJump        = touchForThisWorm && TouchScreenInput::isActionDown(1, TA::Jump);
+	const bool tSelWeap     = touchForThisWorm && TouchScreenInput::isActionDown(1, TA::SelectWeapon);
+	const bool tStrafe      = touchForThisWorm && TouchScreenInput::isActionDown(1, TA::Strafe);
+	const bool tJumpTap     = touchForThisWorm && TouchScreenInput::wasActionTapped(1, TA::Jump);
+	const bool tLeftTap     = touchForThisWorm && TouchScreenInput::wasActionTapped(1, TA::Left);
+	const bool tRightTap    = touchForThisWorm && TouchScreenInput::wasActionTapped(1, TA::Right);
+	const bool tRopeTap     = touchForThisWorm && TouchScreenInput::wasActionTapped(1, TA::Rope);
+	const bool tPrevWeapTap = touchForThisWorm && TouchScreenInput::wasActionTapped(1, TA::PreviousWeapon);
+	const bool tNextWeapTap = touchForThisWorm && TouchScreenInput::wasActionTapped(1, TA::NextWeapon);
+
 	// do it here to ensure that it is called exactly once in a frame (needed because of intern handling)
-	const bool jump = cJump.isDownOnce();
-	const bool leftOnce = cLeft.isDownOnce();
-	const bool rightOnce = cRight.isDownOnce();
+	const bool jump      = cJump.isDownOnce()  || tJumpTap;
+	const bool leftOnce  = cLeft.isDownOnce()  || tLeftTap;
+	const bool rightOnce = cRight.isDownOnce() || tRightTap;
 
 	if(!m_worm->getAlive()) {
 		if(m_worm->bCanRespawnNow && jump)
@@ -148,10 +189,10 @@ void CWormHumanInputHandler::getInput() {
 			aimLikeLX56 = true;
 		}
 		
-		if(cUp.isDown() && !cUp.isJoystickThrottle()) { // Up
+		if((cUp.isDown() || tUp) && !cUp.isJoystickThrottle()) { // Up
 			m_worm->fAngleSpeed -= aimAccel * dt.seconds();
 			if(!aimLikeLX56) CLAMP_DIRECT(m_worm->fAngleSpeed, -aimMaxSpeed, aimMaxSpeed);
-		} else if(cDown.isDown() && !cDown.isJoystickThrottle()) { // Down
+		} else if((cDown.isDown() || tDown) && !cDown.isJoystickThrottle()) { // Down
 			m_worm->fAngleSpeed += aimAccel * dt.seconds();
 			if(!aimLikeLX56) CLAMP_DIRECT(m_worm->fAngleSpeed, -aimMaxSpeed, aimMaxSpeed);
 		} else {			
@@ -204,7 +245,7 @@ void CWormHumanInputHandler::getInput() {
 				if(mouse_dx > 0) m_worm->lastMoveTime = tLX->currentTime;
 			}
 			ws->bMove = true;
-			if(!cClient->isHostAllowingStrafing() || !cStrafe.isDown())
+			if(!cClient->isHostAllowingStrafing() || !(cStrafe.isDown() || tStrafe))
 				m_worm->iFaceDirectionSide = m_worm->iMoveDirectionSide;
 
 		} else {
@@ -254,9 +295,13 @@ void CWormHumanInputHandler::getInput() {
 		} */
 
 		const float carveDelay = 0.2f;
+		// On touch, the player can't tap-to-carve precisely, so hold-to-walk
+		// auto-carves through dirt — same behaviour as joystick/mouseControl.
+		const bool touchAutoCarve = TouchControls::IsActive();
 
 		if(		(mouseControl && ws->bMove && m_worm->iMoveDirectionSide == DIR_LEFT)
 			||	( cLeft.isJoystickDown() /*|| (cLeft.isKeyboard() && leftOnce)*/ && !cSelWeapon.isDown())
+			||	(touchAutoCarve && (cLeft.isDown() || tLeft) && !(cSelWeapon.isDown() || tSelWeap))
 			) {
 
 			if(tLX->currentTime - m_worm->fLastCarve >= carveDelay) {
@@ -268,6 +313,7 @@ void CWormHumanInputHandler::getInput() {
 
 		if(		(mouseControl && ws->bMove && m_worm->iMoveDirectionSide == DIR_RIGHT)
 			||	( cRight.isJoystickDown() /*|| (cRight.isKeyboard() && rightOnce)*/ && !cSelWeapon.isDown())
+			||	(touchAutoCarve && (cRight.isDown() || tRight) && !(cSelWeapon.isDown() || tSelWeap))
 			) {
 
 			if(tLX->currentTime - m_worm->fLastCarve >= carveDelay) {
@@ -280,14 +326,14 @@ void CWormHumanInputHandler::getInput() {
 
 	
 	const bool allowCombo = cClient->getGameLobby()[FT_WeaponCombos];
-	
-	ws->bShoot = cShoot.isDown();
+
+	ws->bShoot = cShoot.isDown() || tFire;
 
 	if(m_worm->getWeaponSlotsCount() > 0 && (!ws->bShoot || allowCombo)) {
 		//
 		// Weapon changing
 		//
-		if(cSelWeapon.isDown()) {
+		if(cSelWeapon.isDown() || tSelWeap) {
 			// TODO: was is the intention of this var? if weapon change, then it's wrong
 			// if cSelWeapon.isDown(), then we don't need it
 
@@ -300,6 +346,14 @@ void CWormHumanInputHandler::getInput() {
 			if (change == 0 && cSelWeapon.isJoystickDownOnce())  {
 				m_worm->iCurrentWeapon++;
 				MOD(m_worm->iCurrentWeapon, m_worm->getWeaponSlotsCount());
+				change = 1;
+			}
+
+			// Show the weapon name above the worm for a moment when it
+			// actually cycled — same hint the SIN_WEAPON1..5 quick-keys give.
+			if(change != 0) {
+				m_worm->bForceWeapon_Name = true;
+				m_worm->fForceWeapon_Time = tLX->currentTime + 0.75f;
 			}
 		}
 
@@ -316,16 +370,28 @@ void CWormHumanInputHandler::getInput() {
 			}
 		}
 
+		// Touch dedicated Prev/Next-weapon buttons — cycle directly
+		// without requiring SelectWeapon to be held.
+		if(tPrevWeapTap || tNextWeapTap) {
+			int change = (tNextWeapTap ? 1 : 0) - (tPrevWeapTap ? 1 : 0);
+			if(change != 0) {
+				m_worm->iCurrentWeapon += change;
+				MOD(m_worm->iCurrentWeapon, m_worm->getWeaponSlotsCount());
+				m_worm->bForceWeapon_Name = true;
+				m_worm->fForceWeapon_Time = tLX->currentTime + 0.75f;
+			}
+		}
+
 	}
 
 
-	if(!cSelWeapon.isDown()) {
-		if(cLeft.isDown()) {
+	if(!(cSelWeapon.isDown() || tSelWeap)) {
+		if(cLeft.isDown() || tLeft) {
 			ws->bMove = true;
 			m_worm->lastMoveTime = tLX->currentTime;
 
-			if(!cRight.isDown()) {
-				if(!cClient->isHostAllowingStrafing() || !cStrafe.isDown()) m_worm->iFaceDirectionSide = DIR_LEFT;
+			if(!(cRight.isDown() || tRight)) {
+				if(!cClient->isHostAllowingStrafing() || !(cStrafe.isDown() || tStrafe)) m_worm->iFaceDirectionSide = DIR_LEFT;
 				m_worm->iMoveDirectionSide = DIR_LEFT;
 			}
 
@@ -335,12 +401,12 @@ void CWormHumanInputHandler::getInput() {
 			}
 		}
 
-		if(cRight.isDown()) {
+		if(cRight.isDown() || tRight) {
 			ws->bMove = true;
 			m_worm->lastMoveTime = tLX->currentTime;
 
-			if(!cLeft.isDown()) {
-				if(!cClient->isHostAllowingStrafing() || !cStrafe.isDown()) m_worm->iFaceDirectionSide = DIR_RIGHT;
+			if(!(cLeft.isDown() || tLeft)) {
+				if(!cClient->isHostAllowingStrafing() || !(cStrafe.isDown() || tStrafe)) m_worm->iFaceDirectionSide = DIR_RIGHT;
 				m_worm->iMoveDirectionSide = DIR_RIGHT;
 			}
 
@@ -360,23 +426,23 @@ void CWormHumanInputHandler::getInput() {
 	const bool oldskool = tLXOptions->bOldSkoolRope;
 
 	// Jump
-	if( !(oldskool && cSelWeapon.isDown()) )  {
+	if( !(oldskool && (cSelWeapon.isDown() || tSelWeap)) )  {
 		ws->bJump |= jump;
 
 		if(jump && m_worm->cNinjaRope.get().isReleased())
 			m_worm->cNinjaRope.write().Clear();
 	}
-	
+
 	// Ninja Rope
 	if(oldskool) {
 		// Old skool style rope throwing
 		// Change-weapon & jump
 
-		if(!cSelWeapon.isDown() || !cJump.isDown())  {
+		if(!(cSelWeapon.isDown() || tSelWeap) || !(cJump.isDown() || tJump))  {
 			bRopeDown = false;
 		}
 
-		if(cSelWeapon.isDown() && cJump.isDown() && !bRopeDown) {
+		if((cSelWeapon.isDown() || tSelWeap) && (cJump.isDown() || tJump) && !bRopeDown) {
 			bRopeDownOnce = true;
 			bRopeDown = true;
 		}
@@ -395,7 +461,7 @@ void CWormHumanInputHandler::getInput() {
 	} else {
 		// Newer style rope throwing
 		// Seperate dedicated button for throwing the rope
-		if(cInpRope.isDownOnce()) {
+		if(cInpRope.isDownOnce() || tRopeTap) {
 
 			m_worm->cNinjaRope.write().Shoot(ninjaShootDir);
 			// Throw sound
@@ -444,8 +510,9 @@ struct HumanWormType : WormType {
 } PRF_HUMAN_instance;
 WormType* PRF_HUMAN = &PRF_HUMAN_instance;
 
-CWormHumanInputHandler::CWormHumanInputHandler(CWorm* w) : CWormInputHandler(w) {		
+CWormHumanInputHandler::CWormHumanInputHandler(CWorm* w) : CWormInputHandler(w) {
 	bRopeDown = bRopeDownOnce = false;
+	m_localPlayerSlot = -1;
 	gusInit();
 	
 	game.onNewPlayer( this );
@@ -464,8 +531,9 @@ void CWormHumanInputHandler::startGame() {
 
 ///////////////////
 // Setup the inputs
-void CWormHumanInputHandler::setupInputs(const PlyControls& Inputs)
+void CWormHumanInputHandler::setupInputs(const PlyControls& Inputs, int localPlayerSlot)
 {
+	m_localPlayerSlot = localPlayerSlot;
 	cUp.Setup(		Inputs[SIN_UP] );
 	cDown.Setup(	Inputs[SIN_DOWN] );
 	cLeft.Setup(	Inputs[SIN_LEFT] );
@@ -609,7 +677,10 @@ void CWormHumanInputHandler::doWeaponSelectionFrame(SDL_Surface * bmpDest, CView
 	//tLX->cOutlineFont.DrawCentre(bmpDest, centrex, t+30, tLX->clWeaponSelectionTitle, "Weapons Selection");
 	
 	bool bChat_Typing = cClient->isTyping();
-	
+
+	// Touch only drives the first local player in split-screen.
+	const bool touchForThisWorm = isFirstLocalHumanWorm(m_worm);
+
 	int y = t + 100;
 	for(size_t i=0;i<m_worm->tWeapons.size();i++) {
 		
@@ -628,6 +699,12 @@ void CWormHumanInputHandler::doWeaponSelectionFrame(SDL_Surface * bmpDest, CView
 		// Changing weapon
 		if(m_worm->iCurrentWeapon == (int)i && !bChat_Typing && game.gameScript()->GetNumWeapons() > 0) {
 			int change = cRight.wasDown() - cLeft.wasDown();
+			if(touchForThisWorm) {
+				// tapCount() returns (and consumes) every queued tap, so a
+				// burst of taps during a slow frame still moves N rows.
+				change += TouchScreenInput::tapCount(1, TouchScreenInput::Action::Right);
+				change -= TouchScreenInput::tapCount(1, TouchScreenInput::Action::Left);
+			}
 			if(cSelWeapon.isDown()) change *= 6; // jump with multiple speed if selWeapon is pressed
 			int id = m_worm->tWeapons[i].weapon() ? m_worm->tWeapons[i].weapon()->ID : 0;
 			if(change > 0) while(change) {
@@ -655,29 +732,43 @@ void CWormHumanInputHandler::doWeaponSelectionFrame(SDL_Surface * bmpDest, CView
 		
     // Note: The extra weapon weapon is the 'random' button
 	if(m_worm->iCurrentWeapon == (int)m_worm->tWeapons.size()) {
-		
+
 		// Fire on the random button?
 		if((cShoot.isDownOnce()) && !bChat_Typing) {
 			m_worm->GetRandomWeapons();
 		}
 	}
 
+	// Touch dedicated "Random" button: randomise without requiring the
+	// player to first navigate to the Random row.
+	if(touchForThisWorm && TouchScreenInput::wasActionTapped(1, TouchScreenInput::Action::RandomizeWeapons) && !bChat_Typing) {
+		m_worm->GetRandomWeapons();
+	}
+
 	m_worm->tProfile->sWeaponSlots.resize(m_worm->tWeapons.size());
 	for(size_t i=0;i<m_worm->tWeapons.size();i++)
 		m_worm->tProfile->writeWeaponSlot((int)i) = m_worm->tWeapons[i].weapon() ? m_worm->tWeapons[i].weapon()->Name : "";
-	
+
 	// Note: The extra weapon slot is the 'done' button
 	if(m_worm->iCurrentWeapon == (int)m_worm->tWeapons.size()+1) {
-		
+
 		// Fire on the done button?
 		// we have to check isUp() here because if we continue while it is still down, we will fire after in the game
 		if((cShoot.isUp()) && !bChat_Typing) {
 			// we are ready with manual human weapon selection
 			m_worm->bWeaponsReady = true;
 			m_worm->iCurrentWeapon = 0;
-			
+
 			SaveProfiles();
 		}
+	}
+
+	// Touch dedicated "Done" button: confirm without navigating to the
+	// Done row first. Mirrors the keyboard "Fire on Done row" path.
+	if(touchForThisWorm && TouchScreenInput::wasActionTapped(1, TouchScreenInput::Action::ConfirmWeapons) && !bChat_Typing) {
+		m_worm->bWeaponsReady = true;
+		m_worm->iCurrentWeapon = 0;
+		SaveProfiles();
 	}
 	
 	
@@ -717,6 +808,12 @@ void CWormHumanInputHandler::doWeaponSelectionFrame(SDL_Surface * bmpDest, CView
 			
 		} else {
 			int change = cDown.wasDown() - cUp.wasDown();
+			if(touchForThisWorm) {
+				// tapCount() returns (and consumes) every queued tap, so a
+				// burst of taps during a slow frame still moves N rows.
+				change += TouchScreenInput::tapCount(1, TouchScreenInput::Action::Down);
+				change -= TouchScreenInput::tapCount(1, TouchScreenInput::Action::Up);
+			}
 			m_worm->iCurrentWeapon += change;
 			m_worm->iCurrentWeapon %= (int)m_worm->tWeapons.size() + 2;
 			if(m_worm->iCurrentWeapon < 0) m_worm->iCurrentWeapon += (int)m_worm->tWeapons.size() + 2;

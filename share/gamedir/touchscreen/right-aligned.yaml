@@ -1,0 +1,72 @@
+# right-aligned.yaml — touch-screen layout with action buttons on the right.
+#
+# Invisible virtual joystick covers the left half of the screen; action
+# buttons stack along the right edge. During weapon select, the left
+# half shows a D-pad and the right edge shows Random / Done.
+#
+# Coordinates are in OLX's logical 640x480 frame; SDL scales them to the
+# physical screen at draw time. Each button is positioned by top-left
+# corner (x, y) with size (w, h).
+
+name: Right-aligned
+description: >
+  Optimised to take up as little of the play area as possible: every
+  action button is pinned to the right edge of the screen, leaving the
+  whole left side clear for the invisible joystick and an unobstructed
+  view of the map.
+
+# Draw a 1-px outline around each button. Set to false for a flatter,
+# fill-only look (the translucent fill still shows the hit area).
+button-border: true
+
+# Invisible virtual joystick.
+#   area_right         logical x past which the joystick does NOT engage
+#                      (flush against the action-button column on the right).
+#   walk_sensitivity   horizontal drag from the anchor before Left/Right fires.
+#   aim_sensitivity    vertical drag from the anchor before Up/Down fires.
+# Sensitivities are about 2x worm width so wobble doesn't pace the worm
+# or creep the aim while standing still.
+vjoy:
+  area_right: 525
+  walk_sensitivity: 40
+  aim_sensitivity: 40
+
+# Minimap position (top-left, logical 640x480) while the touch UI is
+# visible. Default minimap is 128x96 — these coords put it flush
+# against the bottom, just left of the right-edge action column.
+minimap:
+  x: 393
+  y: 384
+
+# Actions:
+#   hold          — bound key is held while a finger is on the button.
+#                   Requires `binding:` (one of up, down, left, right,
+#                   shoot, jump, rope, selweap, strafe, weapon1..weapon5).
+#   menu          — open the in-game menu (synthesises Escape).
+#   prev_weapon   — cycle to previous weapon (one-shot on tap).
+#   next_weapon   — cycle to next weapon (one-shot on tap).
+#   randomize     — randomise weapons for every local worm in the picker.
+#   done          — confirm the weapon picker for every local worm.
+
+# In-game (LM_PLAYING).
+# Right-edge column groups the most-used actions for the right thumb:
+#   ROPE at top, FIRE in the middle, JUMP at the bottom. PREV / NEXT
+#   weapon share a row in the gap between ROPE and FIRE.
+playing:
+  - { x: 560, y:   5, w:  75, h:  40, action: menu,                       label: "MENU" }
+  - { x: 525, y: 165, w:  55, h:  50, action: prev_weapon,                label: "<<"   }
+  - { x: 580, y: 165, w:  55, h:  50, action: next_weapon,                label: ">>"   }
+  - { x: 525, y:  50, w: 110, h: 110, action: hold, binding: rope,        label: "ROPE" }
+  - { x: 525, y: 220, w: 110, h: 180, action: hold, binding: shoot,       label: "FIRE" }
+  - { x: 525, y: 405, w: 110, h:  70, action: hold, binding: jump,        label: "JUMP" }
+
+# Weapon picker (LM_WEAPON_SELECT).
+# D-pad on the lower-left + Random/Done on the right edge.
+weapon_select:
+  - { x: 560, y:   5, w:  75, h: 40,  action: menu,                       label: "MENU"   }
+  - { x:  60, y: 240, w:  80, h: 70,  action: hold, binding: up,          label: "^"      }
+  - { x:  60, y: 400, w:  80, h: 70,  action: hold, binding: down,        label: "v"      }
+  - { x:   0, y: 320, w:  80, h: 70,  action: hold, binding: left,        label: "<"      }
+  - { x: 140, y: 320, w:  80, h: 70,  action: hold, binding: right,       label: ">"      }
+  - { x: 525, y: 240, w: 110, h: 95,  action: randomize,                  label: "Random" }
+  - { x: 525, y: 345, w: 110, h: 95,  action: done,                       label: "DONE"   }

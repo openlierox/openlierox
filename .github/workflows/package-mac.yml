@@ -32,6 +32,7 @@ jobs:
             freealut \
             openal-soft \
             boost \
+            yaml-cpp \
             dylibbundler
 
       - name: Install CMake 3.x

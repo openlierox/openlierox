@@ -44,6 +44,7 @@ jobs:
             mingw-w64-x86_64-openal
             mingw-w64-x86_64-freealut
             mingw-w64-x86_64-libvorbis
+            mingw-w64-x86_64-yaml-cpp
             mingw-w64-x86_64-ntldd-git
             zip
 
