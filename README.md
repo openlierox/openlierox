@@ -45,6 +45,7 @@ sudo apt install \
     libopenal-dev \
     libalut-dev \
     libvorbis-dev \
+    libyaml-cpp-dev \
     binutils-dev \
     libiberty-dev
 ```

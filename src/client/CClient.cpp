@@ -2175,7 +2175,7 @@ void CClient::SetupGameInputs()
 			// more flexibility to the player and he can have multiple player control sets.
 			// Then, we would call a reloadInputs() here.
 			if(humanWormNum <= 1) {
-				handler->setupInputs( tLXOptions->sPlayerControls[humanWormNum] );
+				handler->setupInputs( tLXOptions->sPlayerControls[humanWormNum], humanWormNum );
 				humanWormNum++;
 			}
 			else

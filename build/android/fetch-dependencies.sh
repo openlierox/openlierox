@@ -29,6 +29,7 @@ DEPS=(
     "freealut|https://github.com/vancegroup/freealut.git|freealut_1_1_0"
     "mbedtls|https://github.com/Mbed-TLS/mbedtls.git|mbedtls-3.6.2"
     "curl|https://github.com/curl/curl.git|curl-8_10_1"
+    "yaml-cpp|https://github.com/jbeder/yaml-cpp.git|0.8.0"
 )
 
 clone_dep() {

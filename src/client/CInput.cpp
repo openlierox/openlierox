@@ -26,6 +26,7 @@
 #include "Error.h"
 #include "ConfigHandler.h"
 #include "InputEvents.h"
+#include "Options.h"  // tLXOptions, SIN_*, __SIN_PLY_BOTTOM
 #include "StringUtils.h"
 #include "CInput.h"
 #include "Debug.h"
@@ -172,8 +173,20 @@ int keys_t::keySymFromName(const std::string & name)
 	for(uint n = 0; n<sizeof(Keys) / sizeof(keys_t); n++)
 		if( strcasecmp(Keys[n].text, name.c_str()) == 0 )
 			return Keys[n].value;
-			
+
 	return 0;
+}
+
+bool isPlayer1KeyBinding(SDL_Keycode sym) {
+	if(!tLXOptions) return false;
+	if(tLXOptions->sPlayerControls.empty()) return false;
+	for(int i = 0; i < __SIN_PLY_BOTTOM; i++) {
+		const std::string& name = tLXOptions->sPlayerControls[0][i];
+		int boundSym = keys_t::keySymFromName(name);
+		if(boundSym != 0 && (SDL_Keycode)boundSym == sym)
+			return true;
+	}
+	return false;
 }
 
 	
@@ -185,6 +198,7 @@ void CInput::InitJoysticksTemp() {}
 void CInput::UnInitJoysticksTemp() {}
 void CInput::OnControllerAdded(int) {}
 void CInput::OnControllerRemoved(int) {}
+int getControllerPlayerSlot(SDL_JoystickID) { return -1; }
 
 #else
 
@@ -246,6 +260,14 @@ static void ensureControllerSlot(int idx) {
 		controllers.resize(idx + 1, NULL);
 		controllers_inited_temp.resize(idx + 1, false);
 	}
+}
+
+int getControllerPlayerSlot(SDL_JoystickID instanceID) {
+	SDL_GameController* gc = SDL_GameControllerFromInstanceID(instanceID);
+	if(!gc) return -1;
+	if(gc == controllers[0]) return 0;
+	if(gc == controllers[1]) return 1;
+	return -1;
 }
 
 // Called each frame by the event loop — nothing to snapshot with the GameController API

@@ -24,6 +24,7 @@
 #include "NotifyUser.h"
 #include "Event.h"
 #include "MainLoop.h"
+#include "TouchControls.h"
 
 #include "gusanos/allegro.h"
 
@@ -237,7 +238,25 @@ static void pushKeyboardEv(const KeyboardEvent& kbev) {
 	HandleCInputs_KeyEvent(kbev);
 }
 
+void InjectSyntheticKey(SDL_Keycode sym, bool down) {
+	if(sym == 0) return;
+	KeyboardEvent kbev;
+	kbev.sym = sym;
+	kbev.ch = 0;
+	kbev.down = down;
+	kbev.state = evtModifiersState;
+	pushKeyboardEv(kbev);
+}
+
 static void EvHndl_KeyDownUp(SDL_Event* ev) {
+	// User pressed a key that's bound to one of player 1's actions —
+	// hide the on-screen touch controls until they touch the screen
+	// again. Player 2's keys and general controls (chat/score/...) don't
+	// trigger the hide, so split-screen player 2 typing on the keyboard
+	// doesn't dismiss player 1's touch UI.
+	if(ev->type == SDL_KEYDOWN && isPlayer1KeyBinding(ev->key.keysym.sym))
+		TouchControls::NotifyExternalInput();
+
 	// Check the characters
 	if(ev->key.state == SDL_PRESSED || ev->key.state == SDL_RELEASED) {
 		UnicodeChar input = 0;
@@ -331,6 +350,34 @@ static void EvHndl_MouseMotion(SDL_Event* ev) {
 static void EvHndl_MouseButtonDown(SDL_Event* ev) {}
 static void EvHndl_MouseButtonUp(SDL_Event* ev) {}
 
+// Two unrelated jobs on the same event:
+//  1) Gamepad activity on player 1's controller hides the touch UI.
+//     Player 2's controller (slot 1) is left alone, matching the keyboard rule.
+//  2) START on any controller mirrors Escape, so it opens/closes the in-game
+//     menu (and acts as Escape elsewhere) exactly like the keyboard. Synth-
+//     esising a key event keeps every Escape-driven behaviour in sync.
+static void EvHndl_ControllerButton(SDL_Event* ev) {
+	if(ev->type == SDL_CONTROLLERBUTTONDOWN
+	&& getControllerPlayerSlot(ev->cbutton.which) == 0)
+		TouchControls::NotifyExternalInput();
+
+	if(ev->cbutton.button == SDL_CONTROLLER_BUTTON_START) {
+		KeyboardEvent kbev;
+		kbev.sym = SDLK_ESCAPE;
+		kbev.ch = 0;
+		kbev.down = (ev->type == SDL_CONTROLLERBUTTONDOWN);
+		kbev.state = evtModifiersState;
+		pushKeyboardEv(kbev);
+	}
+}
+static void EvHndl_ControllerAxis(SDL_Event* ev) {
+	constexpr int kAxisActiveThreshold = 8000;
+	if(ev->caxis.value <=  kAxisActiveThreshold
+	&& ev->caxis.value >= -kAxisActiveThreshold) return;
+	if(getControllerPlayerSlot(ev->caxis.which) == 0)
+		TouchControls::NotifyExternalInput();
+}
+
 static void EvHndl_MouseWheel(SDL_Event* ev) {
 	if(ev->wheel.y > 0)
 		Mouse.WheelScrollUp = true;
@@ -340,6 +387,10 @@ static void EvHndl_MouseWheel(SDL_Event* ev) {
 
 static void EvHndl_Quit(SDL_Event*) {
 	game.state = Game::S_Quit;
+}
+
+static void EvHndl_FingerEvent(SDL_Event* ev) {
+	TouchControls::HandleFingerEvent(ev->tfinger);
 }
 
 static void EvHndl_UserEvent(SDL_Event* ev) {
@@ -359,23 +410,7 @@ static void EvHndl_ControllerDeviceRemoved(SDL_Event* ev) {
 	CInput::OnControllerRemoved(ev->cdevice.which);
 }
 
-static void EvHndl_ControllerButton(SDL_Event* ev) {
-	// The START button on any controller mirrors the Escape key, so it
-	// opens/closes the in-game menu (and acts as Escape elsewhere) exactly
-	// like the keyboard. We synthesize a matching Escape key event rather
-	// than special-casing the menu, so every Escape-driven behaviour stays
-	// in sync automatically.
-	if(ev->cbutton.button != SDL_CONTROLLER_BUTTON_START)
-		return;
-	KeyboardEvent kbev;
-	kbev.sym = SDLK_ESCAPE;
-	kbev.ch = 0;
-	kbev.down = (ev->type == SDL_CONTROLLERBUTTONDOWN);
-	kbev.state = evtModifiersState;
-	pushKeyboardEv(kbev);
-}
-
-void InitEventSystem() {	
+void InitEventSystem() {
 	Mouse.Button = 0;
 	Mouse.Down = 0;
 	Mouse.FirstDown = 0;
@@ -391,18 +426,25 @@ void InitEventSystem() {
 	sdlEvents[SDL_MOUSEWHEEL].handler() = getEventHandler(&EvHndl_MouseWheel);
 	sdlEvents[SDL_QUIT].handler() = getEventHandler(&EvHndl_Quit);
 	sdlEvents[SDL_USEREVENT].handler() = getEventHandler(&EvHndl_UserEvent);
+	sdlEvents[SDL_FINGERDOWN  ].handler() = getEventHandler(&EvHndl_FingerEvent);
+	sdlEvents[SDL_FINGERUP    ].handler() = getEventHandler(&EvHndl_FingerEvent);
+	sdlEvents[SDL_FINGERMOTION].handler() = getEventHandler(&EvHndl_FingerEvent);
 	sdlEvents[SDL_CONTROLLERDEVICEADDED  ].handler() = getEventHandler(&EvHndl_ControllerDeviceAdded);
 	sdlEvents[SDL_CONTROLLERDEVICEREMOVED].handler() = getEventHandler(&EvHndl_ControllerDeviceRemoved);
 	sdlEvents[SDL_CONTROLLERBUTTONDOWN   ].handler() = getEventHandler(&EvHndl_ControllerButton);
 	sdlEvents[SDL_CONTROLLERBUTTONUP     ].handler() = getEventHandler(&EvHndl_ControllerButton);
+	sdlEvents[SDL_CONTROLLERAXISMOTION   ].handler() = getEventHandler(&EvHndl_ControllerAxis);
 	// Note: SDL_SYSWMEVENT is handled directly on the main thread by handleSDLEvents().
-	
+
+	TouchControls::Init();
+
 	bEventSystemInited = true;
 	bWaitingForEvent = false;
 }
 
 void ShutdownEventSystem()
 {
+	TouchControls::Shutdown();
 	bEventSystemInited = false;
 	bWaitingForEvent = false;
 }
@@ -557,6 +599,8 @@ void ProcessEvents()
 		HandleCInputs_UpdateUpForNonKeyboard();
 		HandleCInputs_UpdateDownOnceForNonKeyboard();
 	}
+
+	TouchControls::Update();
 
 	processedEvent = ret;
 }

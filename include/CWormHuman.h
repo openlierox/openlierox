@@ -36,15 +36,19 @@ public:
 	
 protected:
 	virtual ~CWormHumanInputHandler();
-	
+
 	// Input
 	CInput		cUp, cDown, cLeft, cRight,
 	cShoot, cJump, cSelWeapon, cInpRope,
 	cStrafe, cWeapons[5];
-	
+
 	// for oldschool rope handling
 	bool		bRopeDown;
 	bool		bRopeDownOnce;
+
+	// 0 = first local player (controlled by touch + Ply1Controls),
+	// 1 = second local player (split-screen). -1 if not yet set.
+	int			m_localPlayerSlot;
 
 public:
 
@@ -63,9 +67,11 @@ public:
 	
 	
 	// Input
-	void		setupInputs(const PlyControls& Inputs);
+	void		setupInputs(const PlyControls& Inputs, int localPlayerSlot);
 	void		initInputSystem();
 	void		stopInputSystem();
+
+	int			getLocalPlayerSlot() const { return m_localPlayerSlot; }
 	
 	
 	

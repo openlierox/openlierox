@@ -1,0 +1,92 @@
+# classic.yaml — modeled after the commandergenius OpenLieroX port.
+#
+# Reference: project/jni/application/openlierox/AndroidAppSettings.cfg
+# in pelya/commandergenius. That config wires four on-screen action
+# buttons to OLX 0.58's player-1 bindings via:
+#
+#   RedefinedKeysScreenKb     = "LALT  X  LCTRL  LSHIFT"
+#   RedefinedKeysScreenKbNames= "Jump  Rope Shoot SelectWeapon"
+#   AppUsesJoystick=y                       # on-screen joystick on the left
+#   TouchscreenKeysTheme=3                  # 'Keen' — round joystick
+#
+# The original SDL port had no Prev/Next-Weapon button — you cycled
+# weapons by HOLDingStart SelectWeapon and tapping Left/Right. On a
+# touchscreen the modifier-plus-direction gesture is awkward, so this
+# layout splits SelectWeapon into dedicated PREV / NEXT buttons. The
+# weapon picker uses the same shape as the other layouts (Random +
+# DONE on the right) so all pickers look identical.
+#
+# Differences from the original SDL port:
+#   - Adds a MENU corner button. Modern Android often has no hardware
+#     Back key, which is how the commandergenius port reached the
+#     in-game menu.
+#   - Our schema bounds the joystick zone only by `area_right`, so the
+#     joystick is the entire left half rather than a fixed disc in the
+#     lower-left. Touching anywhere left of the action cluster anchors
+#     the stick.
+#
+# Coordinates are in OLX's logical 640x480 frame.
+
+name: Classic
+description: >
+  Modeled after the original commandergenius OpenLieroX Android port:
+  action buttons clustered on the right, Keen-theme icons. Prev/Next
+  weapon buttons replace the classic SelectWeapon modifier (harder to
+  do with a thumb than on a keyboard).
+
+# Borders off for the flat production look. Flip to true if you want
+# to see the button rects while iterating on positions.
+button-border: false
+
+# Invisible virtual joystick.
+# area_right sits just left of the leftmost action button so a finger
+# landing on FIRE doesn't accidentally anchor the joystick.
+vjoy:
+  area_right: 420
+  walk_sensitivity: 40
+  aim_sensitivity: 40
+
+# Minimap position (top-left, logical 640x480) while the touch UI is
+# visible. Right-aligned (640 - 128 = 512 for the default 128-wide
+# minimap) and pushed up to y=70 so its bottom (y=166) clears the
+# enlarged top row at y=180 with a small breathing gap.
+minimap:
+  x: 512
+  y: 70
+
+# In-game (LM_PLAYING).
+# Right-hand action cluster. FIRE is the most-used action, so it gets
+# the full-width bottom row — easy to hit without aiming.
+#     PREV(107)   NEXT(108)        (y=180, h=100)
+#     JUMP(107)   ROPE(108)        (y=280, h=100)
+#     <--      FIRE (215)     -->  (y=380, h=100, full width)
+#
+# Button artwork is the original Keen theme from the commandergenius port
+# (project/themes/Keen in pelya/commandergenius), copied verbatim to
+# share/gamedir/touchscreen/images/. The renderer auto-loads the
+# "<name>_pressed.png" variant for the held state, and the icon is
+# drawn at a fixed 60-px square centred in the rect — bumping the
+# button size doesn't bump the icon size with it. The weapon-cycle
+# buttons use rotated selweap art — prev_weapon.png is selweap.png
+# rotated 90 degrees (clockwise), next_weapon.png is rotated 270.
+playing:
+  - { x: 560, y:   5, w:  75, h:  40, action: menu,                       label: "MENU" }
+  - { x: 425, y: 180, w: 107, h: 100, action: prev_weapon,                label: "<<",   image: prev_weapon.png }
+  - { x: 532, y: 180, w: 108, h: 100, action: next_weapon,                label: ">>",   image: next_weapon.png }
+  - { x: 425, y: 280, w: 107, h: 100, action: hold, binding: jump,        label: "JUMP", image: jump.png    }
+  - { x: 532, y: 280, w: 108, h: 100, action: hold, binding: rope,        label: "ROPE", image: rope.png    }
+  - { x: 425, y: 380, w: 215, h: 100, action: hold, binding: shoot,       label: "FIRE", image: shoot.png   }
+
+# Weapon picker (LM_WEAPON_SELECT).
+# Same picker UI as the right-aligned layout — D-pad on the lower-left,
+# Random / DONE stacked on the right edge. (Classic OLX itself never
+# had a randomise shortcut; we adopt the modern UI here so all layouts
+# share the same picker.)
+weapon_select:
+  - { x: 560, y:   5, w:  75, h:  40, action: menu,                       label: "MENU"   }
+  - { x:  60, y: 240, w:  80, h:  70, action: hold, binding: up,          label: "^"      }
+  - { x:  60, y: 400, w:  80, h:  70, action: hold, binding: down,        label: "v"      }
+  - { x:   0, y: 320, w:  80, h:  70, action: hold, binding: left,        label: "<"      }
+  - { x: 140, y: 320, w:  80, h:  70, action: hold, binding: right,       label: ">"      }
+  - { x: 525, y: 240, w: 110, h:  95, action: randomize,                  label: "Random" }
+  - { x: 525, y: 345, w: 110, h:  95, action: done,                       label: "DONE"   }
