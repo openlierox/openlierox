@@ -252,6 +252,59 @@ is needed.
 
 ---
 
+## Generating layout previews
+
+The options menu shows a clickable tile for every layout in
+`share/gamedir/touchscreen/*.yaml`. The tile picture comes from the
+`preview:` field — a path relative to `share/gamedir/touchscreen/`
+that points at a PNG, e.g. `preview: previews/classic.png`. Layouts
+without a `preview:` field render a "No preview" placeholder.
+
+The previews are produced by OLX itself, not by ad-hoc screenshots.
+Run the desktop binary with `-generate-previews`:
+
+```sh
+cd share/gamedir
+../../bin/openlierox -generate-previews -nosound
+```
+
+What this does, end to end:
+
+1. SDL video and `tLX` come up the normal way (fonts, gfx primitives,
+   game data search paths).
+2. The main loop is skipped — instead, every file matching
+   `touchscreen/*.yaml` is iterated.
+3. For each layout, the YAML is loaded, the `LM_PLAYING` button table
+   is drawn onto a fresh 640×480 surface (same `renderButton` the
+   running game uses, so the artwork matches), plus a faint outline
+   of the vjoy zone and the minimap rect for spatial context.
+4. The surface is saved as `touchscreen/previews/<name>.png` via
+   `IMG_SavePNG`. Any existing file is overwritten.
+5. OLX exits without entering the menu.
+
+When to run it:
+
+- Right after adding a new layout YAML (then drop a matching
+  `preview: previews/<name>.png` line in that YAML and commit both
+  the YAML and the PNG).
+- After tweaking button positions, the `vjoy.area_right`, the
+  `minimap.x/y`, the artwork paths, or any other field that changes
+  what the tile should look like. The preview will drift out of
+  sync until regenerated.
+
+The flag works on any desktop build (Linux / macOS / Windows). On
+Android the binary technically supports it too, but the PNGs would
+land in the device's writable data dir, so generation should happen
+on a desktop where the output can be committed into `share/gamedir/`.
+
+Implementation lives in `TouchControls::GenerateAllLayoutPreviews()`
+and the `-generate-previews` arm in `ParseArguments_AfterInit` /
+`real_main`. Adding a new visual element to previews (e.g. drawing
+the minimap's contents instead of just its outline) means extending
+`renderPreviewToSurface()` in [src/client/TouchControls.cpp](src/client/TouchControls.cpp).
+
+---
+
 ## Cross-platform notes
 
 The code uses only SDL2 finger events (`SDL_FINGERDOWN` /

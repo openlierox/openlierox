@@ -33,6 +33,7 @@
 #include "TouchControls.h"
 
 #include <SDL.h>
+#include <algorithm>
 #include <cmath>
 #include <fstream>
 #include <map>
@@ -54,6 +55,7 @@
 #include "LieroX.h"
 #include "Options.h"
 #include "SmartPointer.h"
+#include "StringUtils.h"
 #include "TouchScreenInput.h"
 #include "game/CWorm.h"
 #include "game/Game.h"
@@ -684,9 +686,28 @@ void Shutdown() {
 // Internal predicate — would touch be allowed if the player were using
 // it? Used by HandleFingerEvent so a finger-down can re-enable the UI
 // even when IsActive() is currently false because of auto-hide.
+// Resolve the tri-state Game.TouchscreenControls option to an effective
+// bool. "true"/"yes"/"on"/"1" → force on (use this on the Linux client
+// to capture layout previews). "false"/"no"/"off"/"0" → force off.
+// Anything else (including the default "auto") → platform default:
+// Android = on, everything else = off.
+static bool resolveTouchscreenEnabled(const std::string& setting) {
+	if(stringcaseequal(setting, "true")  || stringcaseequal(setting, "yes")
+	|| stringcaseequal(setting, "on")    || setting == "1")
+		return true;
+	if(stringcaseequal(setting, "false") || stringcaseequal(setting, "no")
+	|| stringcaseequal(setting, "off")   || setting == "0")
+		return false;
+#ifdef __ANDROID__
+	return true;
+#else
+	return false;
+#endif
+}
+
 static bool isTouchAllowed() {
 	if(!tLXOptions) return false;
-	if(!tLXOptions->bTouchscreenControls) return false;
+	if(!resolveTouchscreenEnabled(tLXOptions->sTouchscreenControls)) return false;
 	if(game.state != Game::S_Playing && game.state != Game::S_Preparing) return false;
 	// In-game menu (Esc / MENU button) is a mouse-driven overlay — hide the
 	// touch UI and let SDL's native finger→mouse synth drive the menu.
@@ -701,6 +722,12 @@ bool IsActive() {
 void NotifyExternalInput() {
 	if(!gUIActive) return;
 	if(!isTouchAllowed()) return;
+	// "true" forces the touch UI to stay visible regardless of other
+	// input. This is what the desktop client uses to capture layout
+	// preview screenshots: navigating with the keyboard / mouse must
+	// not dismiss the touch UI we're trying to photograph.
+	if(tLXOptions && stringcaseequal(tLXOptions->sTouchscreenControls, "true"))
+		return;
 	gUIActive = false;
 	releaseAll();
 }
@@ -710,6 +737,156 @@ bool GetMinimapPosition(int& outX, int& outY) {
 	outX = gMinimapX;
 	outY = gMinimapY;
 	return true;
+}
+
+void ReloadLayout() {
+	applyHardcodedDefaults();
+	if(tLXOptions && !tLXOptions->sTouchscreenLayout.empty()) {
+		if(!loadLayoutFromYaml(tLXOptions->sTouchscreenLayout)) {
+			// Loader logged the reason; reset cleanly in case a partial
+			// parse modified state mid-way.
+			applyHardcodedDefaults();
+		}
+	}
+	// Drop any held button / joystick state — a button index from the old
+	// layout could otherwise leak into the new one.
+	for(int i = 0; i < kMaxButtons; i++)
+		gFingerCount[i] = 0;
+	gFingerToButton.clear();
+	gVJoy = VJoy{false, 0, 0, 0, 0, 0, false, false, false, false};
+	TouchScreenInput::releaseAll();
+	gMode = LM_PLAYING;
+}
+
+bool IsTouchDeviceAvailable() {
+	if(SDL_GetNumTouchDevices() > 0) return true;
+	// "true" forces the touch UI visible (used for desktop screenshot
+	// sessions); show the Controls → Touch screen tab too so the layout
+	// can still be picked from a box that has no real touch device.
+	if(tLXOptions && stringcaseequal(tLXOptions->sTouchscreenControls, "true"))
+		return true;
+	return false;
+}
+
+// Render the LM_PLAYING view of one layout into `dst`. Backs up + restores
+// the runtime layout state around the call so the caller's "active" layout
+// is unaffected. Used only by GenerateAllLayoutPreviews().
+static void renderPreviewToSurface(SDL_Surface* dst, const std::string& layoutName) {
+	// Snapshot active layout state.
+	const int  bakVJoy   = gVJoyAreaRight;
+	const int  bakWalk   = gWalkSensitivity;
+	const int  bakAim    = gAimSensitivity;
+	const bool bakBorder = gShowButtonBorder;
+	const bool bakMmOv   = gMinimapOverride;
+	const int  bakMmX    = gMinimapX;
+	const int  bakMmY    = gMinimapY;
+	std::vector<Button> bakPlaying     = gPlayingButtons;
+	std::vector<Button> bakWeaponSel   = gWeaponSelectButtons;
+
+	// Swap in the target layout.
+	applyHardcodedDefaults();
+	if(!loadLayoutFromYaml(layoutName))
+		applyHardcodedDefaults();
+
+	// Background: dark slate so the buttons read. Faint outline of the
+	// vjoy zone + a dashed-ish minimap box give the geometry context.
+	DrawRectFill(dst, 0, 0, dst->w, dst->h, Color(30, 38, 48));
+	DrawRect(dst, 0, 0, gVJoyAreaRight - 1, dst->h - 1, Color(60, 80, 100));
+	if(gMinimapOverride) {
+		DrawRect(dst, gMinimapX,       gMinimapY,
+		              gMinimapX + 128, gMinimapY + 96,  Color(150, 200, 80));
+	}
+	for(const Button& b : gPlayingButtons)
+		renderButton(dst, b, /*pressed*/ false);
+
+	// Restore.
+	gVJoyAreaRight    = bakVJoy;
+	gWalkSensitivity  = bakWalk;
+	gAimSensitivity   = bakAim;
+	gShowButtonBorder = bakBorder;
+	gMinimapOverride  = bakMmOv;
+	gMinimapX         = bakMmX;
+	gMinimapY         = bakMmY;
+	gPlayingButtons      = std::move(bakPlaying);
+	gWeaponSelectButtons = std::move(bakWeaponSel);
+}
+
+void GenerateAllLayoutPreviews() {
+	SDL_Surface* surf = SDL_CreateRGBSurfaceWithFormat(0, 640, 480, 32, SDL_PIXELFORMAT_RGBA8888);
+	if(!surf) {
+		warnings << "GenerateAllLayoutPreviews: SDL_CreateRGBSurface failed: "
+		         << SDL_GetError() << endl;
+		return;
+	}
+
+	// OLX is launched from share/gamedir/ (see start.sh), so a relative
+	// `touchscreen/previews/...` path lands inside the source tree where
+	// the YAML files live. CreateRecDir takes an absolute path, so build
+	// one from cwd.
+	CreateRecDir("touchscreen/previews/", false);
+
+	std::vector<LayoutInfo> layouts = GetAvailableLayouts();
+	for(const LayoutInfo& info : layouts) {
+		renderPreviewToSurface(surf, info.fileName);
+		const std::string outPath = "touchscreen/previews/" + info.fileName + ".png";
+		if(IMG_SavePNG(surf, outPath.c_str()) != 0) {
+			warnings << "GenerateAllLayoutPreviews: IMG_SavePNG(" << outPath
+			         << ") failed: " << IMG_GetError() << endl;
+		} else {
+			notes << "GenerateAllLayoutPreviews: wrote " << outPath << endl;
+		}
+	}
+
+	SDL_FreeSurface(surf);
+}
+
+std::vector<LayoutInfo> GetAvailableLayouts() {
+	// First collect the filenames (basenames without ".yaml").
+	struct Collector {
+		std::vector<std::string>* out;
+		bool operator()(const std::string& f) {
+			if(stringcaseequal(GetFileExtension(f), "yaml"))
+				out->push_back(GetBaseFilenameWithoutExt(f));
+			return true;
+		}
+	};
+	std::vector<std::string> fileNames;
+	Collector c{&fileNames};
+	FindFiles(c, "touchscreen", false, FM_REG);
+	std::sort(fileNames.begin(), fileNames.end());
+	fileNames.erase(std::unique(fileNames.begin(), fileNames.end()), fileNames.end());
+
+	// Then open each YAML once to read `name:` and load `preview:`. We
+	// only need the metadata fields, so a tiny inline parse — failures
+	// (missing file, parse error, missing image) just leave the matching
+	// LayoutInfo field empty / null.
+	std::vector<LayoutInfo> result;
+	result.reserve(fileNames.size());
+	for(const std::string& fname : fileNames) {
+		LayoutInfo info;
+		info.fileName    = fname;
+		info.displayName = fname;  // fallback if YAML has no `name:`
+		std::ifstream f;
+		if(OpenGameFileR(f, "touchscreen/" + fname + ".yaml")) {
+			std::stringstream buf;
+			buf << f.rdbuf();
+			try {
+				YAML::Node root = YAML::Load(buf.str());
+				if(root.IsMap()) {
+					if(root["name"])
+						info.displayName = root["name"].as<std::string>();
+					if(root["preview"]) {
+						const std::string previewRel = root["preview"].as<std::string>();
+						info.preview = LoadGameImage("touchscreen/" + previewRel, true);
+					}
+				}
+			} catch(const YAML::Exception&) {
+				// Malformed YAML — keep the fallback display name and null preview.
+			}
+		}
+		result.push_back(std::move(info));
+	}
+	return result;
 }
 
 bool HandleFingerEvent(const SDL_TouchFingerEvent& ev) {

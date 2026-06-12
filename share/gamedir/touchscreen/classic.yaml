@@ -10,7 +10,7 @@
 #   TouchscreenKeysTheme=3                  # 'Keen' — round joystick
 #
 # The original SDL port had no Prev/Next-Weapon button — you cycled
-# weapons by HOLDing SelectWeapon and tapping Left/Right. On a
+# weapons by HOLDingStart SelectWeapon and tapping Left/Right. On a
 # touchscreen the modifier-plus-direction gesture is awkward, so this
 # layout splits SelectWeapon into dedicated PREV / NEXT buttons. The
 # weapon picker uses the same shape as the other layouts (Random +
@@ -28,6 +28,7 @@
 # Coordinates are in OLX's logical 640x480 frame.
 
 name: Classic
+preview: previews/classic.png
 description: >
   Modeled after the original commandergenius OpenLieroX Android port:
   action buttons clustered on the right, Keen-theme icons. Prev/Next

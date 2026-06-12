@@ -286,7 +286,7 @@ public:
 	bool	bAntiAliasing;
 	bool	bMouseAiming;
 	int		iMouseSensity;
-	bool	bTouchscreenControls;	// On-screen buttons for finger input. Default on for Android.
+	std::string sTouchscreenControls;	// Tri-state "auto"/"true"/"false". "auto" enables on Android, disables elsewhere.
 	std::string sTouchscreenLayout;	// Name of layout file under share/gamedir/touchscreen/<name>.yaml.
 	bool	bAntilagMovementPrediction;
 	std::string	sLastSelectedPlayer;
