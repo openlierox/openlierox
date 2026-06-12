@@ -804,8 +804,33 @@ static SmartPointer<SDL_Surface> renderLayoutPreviewSurface(const std::string& l
 	DrawRectFill(dst, 0, 0, dst->w, dst->h, Color(30, 38, 48));
 	DrawRect(dst, 0, 0, gVJoyAreaRight - 1, dst->h - 1, Color(60, 80, 100));
 	if(gMinimapOverride) {
-		DrawRect(dst, gMinimapX,       gMinimapY,
-		              gMinimapX + 128, gMinimapY + 96,  Color(150, 200, 80));
+		const int mmX = gMinimapX;
+		const int mmY = gMinimapY;
+		const int mmW = 128;
+		const int mmH = 96;
+		DrawRectFillA(dst, mmX, mmY, mmX + mmW, mmY + mmH, Color(80, 180, 80), 160);
+		DrawRect    (dst, mmX, mmY, mmX + mmW - 1, mmY + mmH - 1, Color(180, 230, 180));
+		// OLX ships only one font size, so to make "MAP" legible after the
+		// 640x480 preview gets scaled down into the menu tile, render the
+		// label to a tiny alpha surface and scale-blit it 3x.
+		if(tLX) {
+			const std::string label = "MAP";
+			const int natW = tLX->cOutlineFont.GetWidth(label);
+			const int natH = tLX->cOutlineFont.GetHeight();
+			SmartPointer<SDL_Surface> tmp = gfxCreateSurfaceAlpha(natW, natH);
+			if(tmp.get()) {
+				SDL_FillRect(tmp.get(), NULL,
+				             SDL_MapRGBA(tmp.get()->format, 0, 0, 0, 0));
+				tLX->cOutlineFont.Draw(tmp.get(), 0, 0, tLX->clWhite, label);
+				const int kScale  = 3;
+				const int scaledW = natW * kScale;
+				const int scaledH = natH * kScale;
+				DrawImageResampledAdv(dst, tmp, 0, 0,
+				                      mmX + (mmW - scaledW) / 2,
+				                      mmY + (mmH - scaledH) / 2,
+				                      natW, natH, scaledW, scaledH);
+			}
+		}
 	}
 	for(const Button& b : gPlayingButtons)
 		renderButton(dst, b, /*pressed*/ false);

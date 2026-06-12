@@ -68,7 +68,7 @@ bool GetMinimapPosition(int& outX, int& outY);
 void ReloadLayout();
 
 // True if SDL reports at least one touch input device. Used by the
-// options menu to gate the "Touch screen" sub-tab.
+// options menu to gate the "Touchscreen" sub-tab.
 bool IsTouchDeviceAvailable();
 
 // Metadata about one share/gamedir/touchscreen/<name>.yaml — enough

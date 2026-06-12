@@ -49,7 +49,7 @@ CGuiLayout	cOpt_Game;
 
 // The Controls screen is split into sub-tabs so each section gets the
 // full width. ControlsSubTab selects which one is shown. The
-// "Touch screen" tab is only visible on platforms with a touch device
+// "Touchscreen" tab is only visible on platforms with a touch device
 // (see IsControlsTabVisible).
 enum {
 	ct_Player1 = 0,
@@ -59,7 +59,7 @@ enum {
 	ct__Count
 };
 int ControlsSubTab = ct_Player1;
-static const char* ControlsTabNames[ct__Count] = { "Player 1", "Player 2", "General", "Touch screen" };
+static const char* ControlsTabNames[ct__Count] = { "Player 1", "Player 2", "General", "Touchscreen" };
 
 // True if the given tab should appear in the tab bar. The touch-screen
 // tab is hidden on devices without a touch input.
@@ -640,7 +640,7 @@ static void Menu_OptionsRefreshTouchTiles()
 }
 
 ///////////////////
-// Draw the row of layout tiles on the "Touch screen" sub-tab. Each tile
+// Draw the row of layout tiles on the "Touchscreen" sub-tab. Each tile
 // shows the layout's preview PNG (or a "No preview" placeholder), the
 // `name:` field below, and a thicker border around the currently-selected
 // layout. Records each tile's screen rect in gTouchLayoutTileRects so
