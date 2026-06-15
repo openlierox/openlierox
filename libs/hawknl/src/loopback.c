@@ -480,8 +480,14 @@ NLint loopback_Read(NLsocket socket, NLvoid *buffer, NLint nbytes)
     }
     /* check for broken connection */
     else if((len == -1) || (sock->connected == NL_TRUE && sock->ext->consock == NL_INVALID)
-        || (sock->connected == NL_FALSE && sock->type != NL_BROADCAST))
+        || (sock->connected == NL_FALSE && sock->type != NL_BROADCAST
+            && sock->type != NL_UNRELIABLE))
     {
+        /* Unconnected NL_UNRELIABLE (UDP) is the normal pattern OLX
+         * uses: bind a port, sendto/recvfrom by address. The original
+         * driver treated "no data" on such sockets as DISCONNECT,
+         * which made every OLX read fail. Treat it the same as
+         * NL_BROADCAST and return len (== 0). */
         nlSetError(NL_SOCK_DISCONNECT);
         return NL_INVALID;
     }
@@ -615,19 +621,30 @@ NLint loopback_Write(NLsocket socket, const NLvoid *buffer, NLint nbytes)
                 return NL_INVALID;
             }
             /* unconnected UDP emulation */
-            count = nbytes;
-            (void)nlGroupGetSockets(loopgroup, (NLsocket *)s, &number);
-            for(i=0;i<number;i++)
             {
-                if(nlIsValidSocket(s[i]) == NL_TRUE)
+                /* OLX uses nlSetRemoteAddr() which only fills in
+                 * sock->addressout. The original loopback driver only
+                 * matched against sock->remoteport, which Open never
+                 * sets for unconnected UDP — so the destination port
+                 * was always 0 and packets went nowhere. Fall back to
+                 * the addressout port when remoteport is unset. */
+                NLushort dport = sock->remoteport;
+                if(dport == 0)
+                    dport = loopback_GetPortFromAddr(&sock->addressout);
+                count = nbytes;
+                (void)nlGroupGetSockets(loopgroup, (NLsocket *)s, &number);
+                for(i=0;i<number;i++)
                 {
-                    othersock = nlSockets[s[i]];
-
-                    if(sock->remoteport == othersock->localport &&
-                        othersock->connected == NL_FALSE &&
-                        sock->type == othersock->type)
+                    if(nlIsValidSocket(s[i]) == NL_TRUE)
                     {
-                        (void)loopback_WritePacket(s[i], buffer, nbytes, sock->localport);
+                        othersock = nlSockets[s[i]];
+
+                        if(dport == othersock->localport &&
+                            othersock->connected == NL_FALSE &&
+                            sock->type == othersock->type)
+                        {
+                            (void)loopback_WritePacket(s[i], buffer, nbytes, sock->localport);
+                        }
                     }
                 }
             }

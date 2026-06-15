@@ -108,6 +108,10 @@ mouse_t		*GetMouse();
 SDL_Event	*GetEvent();
 ModifiersState *GetCurrentModstate();
 
+// True while the player is using a mouse rather than touch (web build only;
+// always false elsewhere). Used to show the software cursor in-game.
+bool		InputUsingMouse();
+
 bool		WasKeyboardEventHappening(SDL_Keycode key, bool down = true);
 
 // Inject a synthetic keyboard event into the same pipeline real key events go

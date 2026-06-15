@@ -15,8 +15,8 @@
 #include <cstdlib>
 
 #ifndef HAVE_EXECINFO
-#	if defined(__ANDROID__)
-		// Bionic libc has no <execinfo.h> / backtrace().
+#	if defined(__ANDROID__) || defined(__EMSCRIPTEN__)
+		// Bionic libc / Emscripten musl have no <execinfo.h> / backtrace().
 #		define HAVE_EXECINFO 0
 #	elif defined(__linux__)
 #		define HAVE_EXECINFO 1

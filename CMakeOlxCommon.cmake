@@ -517,4 +517,17 @@ IF(MINGW_CROSS_COMPILE)
 	SET(LIBS ${LIBS} SDLmain SDL boost_system jpeg png vorbisenc vorbis ogg dbghelp dsound dxguid wsock32 wininet wldap32 user32 gdi32 winmm version kernel32)
 ENDIF(MINGW_CROSS_COMPILE)
 
+# Resolve the build's git revision so it can be logged at startup.
+execute_process(
+	COMMAND git -C "${OLXROOTDIR}" rev-parse HEAD
+	OUTPUT_VARIABLE OLX_GIT_HASH
+	OUTPUT_STRIP_TRAILING_WHITESPACE
+	ERROR_QUIET
+	RESULT_VARIABLE OLX_GIT_RC)
+if(NOT OLX_GIT_RC EQUAL 0 OR OLX_GIT_HASH STREQUAL "")
+	set(OLX_GIT_HASH "unknown")
+endif()
+message(STATUS "OLX git hash: ${OLX_GIT_HASH}")
+
 add_compile_definitions(SYSTEM_DATA_DIR="${SYSTEM_DATA_DIR}")
+add_compile_definitions(OLX_GIT_HASH="${OLX_GIT_HASH}")

@@ -37,6 +37,9 @@
 #include "game/SinglePlayer.h"
 #include "game/SettingsPreset.h"
 #include "CGameScript.h"
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
 #include "WeaponDesc.h"
 #include "ProfileSystem.h"
 #include "Attr.h"
@@ -270,6 +273,25 @@ static void stateUpdate_leaveNetState() {
 void Game::onStateUpdate(BaseObject* oPt, const AttrDesc* attrDesc, ScriptVar_t oldValue) {
 	assert(oPt == &game);
 	assert(attrDesc == game.state.attrDesc());
+
+#ifdef __EMSCRIPTEN__
+	// Tell the JS shell when the engine fully QUITS (transition into
+	// S_Quit), so it can drop browser fullscreen. We deliberately do NOT
+	// signal on a return to the menu after a match (active state ->
+	// S_Inactive): "Quit game" there usually means the player wants to
+	// start another match, so staying in fullscreen is the expected
+	// behaviour — only leaving the whole application exits fullscreen.
+	// PROXY_TO_PTHREAD puts main() on a worker; route through the main
+	// browser thread so `window` is reachable.
+	if(game.state == Game::S_Quit && (int)oldValue != Game::S_Quit) {
+		MAIN_THREAD_ASYNC_EM_ASM({
+			if (typeof window !== 'undefined' &&
+			    typeof window.olxOnEngineExit === 'function') {
+				window.olxOnEngineExit($0);
+			}
+		}, (int)game.state);
+	}
+#endif
 
 	if((int)oldValue >= Game::S_Preparing && game.state <= Game::S_Lobby)
 		game.cleanupAfterGameloopEnd();
@@ -757,13 +779,21 @@ void Game::frameInner()
 	// respond for >30secs and the user presses cSwitchMode in the meantime, the mainlock-detector
 	// would switch to window and here we would switch again to fullscreen which is stupid.
 	if( tLX->cSwitchMode.isUp() && tLX && tLX->fRealDeltaTime < 1.0f )  {
+#if defined(__EMSCRIPTEN__)
+		// Wasm fullscreen toggle is gated by the same master switch as
+		// the initial mode in AuxLib.cpp. Eat the keypress quietly so a
+		// stray Alt+Enter doesn't ruin a session while the feature is
+		// off.
+		tLX->cSwitchMode.reset();
+#else
 		// Set to fullscreen
 		tLXOptions->bFullscreen = !tLXOptions->bFullscreen;
-		
+
 		// Set the new video mode
 		doSetVideoModeInMainThread();
-		
+
 		tLX->cSwitchMode.reset();
+#endif
 	}
 	
 #ifdef WITH_G15

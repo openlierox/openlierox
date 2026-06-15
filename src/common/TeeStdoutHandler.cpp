@@ -13,7 +13,18 @@
 #include "Debug.h"
 #include "client/StdinCLISupport.h"
 
-#ifndef WIN32
+#if defined(__EMSCRIPTEN__)
+
+// On Emscripten, stdout already lands in the browser console via the
+// emcc runtime — we don't need a tee, and the fork/mmap/pipe machinery
+// the POSIX path uses isn't available. Provide stub entry points.
+
+const char* GetLogFilename() { return ""; }
+void teeStdoutInit() {}
+void teeStdoutFile(const std::string&) {}
+void teeStdoutQuit(bool) {}
+
+#elif !defined(WIN32)
 
 #include <sys/types.h>
 #include <sys/mman.h>

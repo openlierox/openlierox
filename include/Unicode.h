@@ -15,13 +15,14 @@
 #include <string>
 #include "CodeAttributes.h"
 
-#ifdef __ANDROID__
-// Android's libc++ only provides std::char_traits specialisations for
-// char, wchar_t, char8_t, char16_t, char32_t. OpenLieroX instantiates
-// std::basic_string with Uint16/Uint32 (unsigned short / unsigned int);
-// add minimal specialisations for those here so the typedefs below
-// compile. We only use these strings as buffers, so locale-aware bits
-// are intentionally not implemented.
+#if defined(__ANDROID__) || defined(__EMSCRIPTEN__)
+// Both Bionic libc++ (Android) and Emscripten's libc++ only provide
+// std::char_traits specialisations for char, wchar_t, char8_t,
+// char16_t, char32_t. OpenLieroX instantiates std::basic_string with
+// Uint16/Uint32 (unsigned short / unsigned int); add minimal
+// specialisations for those here so the typedefs below compile. We
+// only use these strings as buffers, so locale-aware bits are
+// intentionally not implemented.
 #include <cstring>
 namespace std {
 template<typename T>
@@ -59,7 +60,7 @@ struct __olx_int_char_traits {
 template<> struct char_traits<unsigned short> : __olx_int_char_traits<unsigned short> {};
 template<> struct char_traits<unsigned int>   : __olx_int_char_traits<unsigned int>   {};
 }
-#endif // __ANDROID__
+#endif // __ANDROID__ || __EMSCRIPTEN__
 
 typedef Uint32 UnicodeChar;
 typedef std::basic_string<UnicodeChar> Unicode32String;

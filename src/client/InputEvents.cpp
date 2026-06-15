@@ -32,6 +32,10 @@
 #include <Windows.h>
 #endif
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten/html5.h> // emscripten_sample_gamepad_data()
+#endif
+
 
 // Keyboard, Mouse, & Event
 static keyboard_t	Keyboard;
@@ -249,12 +253,13 @@ void InjectSyntheticKey(SDL_Keycode sym, bool down) {
 }
 
 static void EvHndl_KeyDownUp(SDL_Event* ev) {
-	// User pressed a key that's bound to one of player 1's actions —
-	// hide the on-screen touch controls until they touch the screen
-	// again. Player 2's keys and general controls (chat/score/...) don't
-	// trigger the hide, so split-screen player 2 typing on the keyboard
-	// doesn't dismiss player 1's touch UI.
-	if(ev->type == SDL_KEYDOWN && isPlayer1KeyBinding(ev->key.keysym.sym))
+	// Any key press hides the on-screen touch controls until the screen is
+	// touched again — the player has switched to the keyboard. This mirrors
+	// the gamepad behaviour (see EvHndl_ControllerButton/Axis, which call
+	// NotifyExternalInput on player-1 input). We hide on any key, not just
+	// keys bound to player 1, so a keyboard player isn't left with the touch
+	// overlay covering the game.
+	if(ev->type == SDL_KEYDOWN)
 		TouchControls::NotifyExternalInput();
 
 	// Check the characters
@@ -340,15 +345,85 @@ static void EvHndl_TextInput(SDL_Event* _ev) {
 
 static int mouseX, mouseY;
 
+// Drive the on-screen touch controls with the mouse, so a player without a
+// touchscreen can still use them (any platform). We synthesise a single-finger
+// touch from the left mouse button; TouchControls::HandleFingerEvent only acts
+// on it when the touch controls are actually enabled (the TouchscreenControls
+// option / touch detection), so this is a harmless no-op otherwise.
+//
+// Avoiding double-presses on a real touchscreen: a tap there can also produce a
+// "compatibility" mouse event (mousedown/up). SDL tags the mouse events it
+// synthesises from touch with SDL_TOUCH_MOUSEID, which we skip; we also ignore
+// mouse input for a short window after any real touch (ghost-click suppression)
+// and only ever start a synthetic touch on a genuine mouse-down.
+static const Uint32 kRealTouchGuardMs = 800;
+static Uint32 gLastRealTouchTicks = 0;
+static bool recentRealTouch() {
+	return gLastRealTouchTicks != 0 && (SDL_GetTicks() - gLastRealTouchTicks) < kRealTouchGuardMs;
+}
+
+static bool gSynthFingerDown = false;
+
+// True while the player is driving the game with a mouse rather than touch.
+// Flipped true by genuine mouse input and false by real finger input
+// (post-touch compatibility mouse events are filtered via recentRealTouch()).
+// Drives the in-game software cursor — see InputUsingMouse().
+static bool gInputIsMouse = false;
+
+static void synthFingerFromMouse(Uint32 fingerType, int x, int y) {
+	SDL_TouchFingerEvent t = {};
+	t.type     = fingerType;
+	t.touchId  = 0;
+	t.fingerId = 0; // single synthetic pointer; mouse can't multi-touch
+	// HandleFingerEvent maps normalised x/y back onto the 640x480 surface,
+	// which is the logical space SDL reports mouse coords in too.
+	t.x = (float)x / 640.0f;
+	t.y = (float)y / 480.0f;
+	t.pressure = 1.0f;
+	TouchControls::HandleFingerEvent(t);
+}
+
+// True while the player is using a mouse (not touch). Drives the in-game
+// software-cursor visibility (CClient_Draw).
+bool InputUsingMouse() {
+	return gInputIsMouse;
+}
+
 static void EvHndl_MouseMotion(SDL_Event* ev) {
 /*	mouseX = CLAMP(mouseX, 0, VideoPostProcessor::get()->screenWidth());
 	mouseY = CLAMP(mouseY, 0, VideoPostProcessor::get()->screenHeight());*/
 	mouseX = ev->motion.x;
 	mouseY = ev->motion.y;
+	// Genuine mouse movement (not a compatibility event trailing a real tap)
+	// means the player is on the mouse — show the software cursor.
+	if(ev->motion.which != SDL_TOUCH_MOUSEID && !recentRealTouch())
+		gInputIsMouse = true;
+	if(gSynthFingerDown && ev->motion.which != SDL_TOUCH_MOUSEID)
+		synthFingerFromMouse(SDL_FINGERMOTION, ev->motion.x, ev->motion.y);
 }
 
-static void EvHndl_MouseButtonDown(SDL_Event* ev) {}
-static void EvHndl_MouseButtonUp(SDL_Event* ev) {}
+static void EvHndl_MouseButtonDown(SDL_Event* ev) {
+	// Genuine mouse click → the player is on the mouse (show the cursor).
+	if(!recentRealTouch() && ev->button.which != SDL_TOUCH_MOUSEID)
+		gInputIsMouse = true;
+	// Only START a synthetic touch on a genuine mouse-down: skip a compatibility
+	// mouse-down that trails a real tap (recentRealTouch()).
+	if(!recentRealTouch()
+	   && ev->button.button == SDL_BUTTON_LEFT && ev->button.which != SDL_TOUCH_MOUSEID) {
+		gSynthFingerDown = true;
+		synthFingerFromMouse(SDL_FINGERDOWN, ev->button.x, ev->button.y);
+	}
+}
+static void EvHndl_MouseButtonUp(SDL_Event* ev) {
+	// Release only if we actually started a synthetic touch — this avoids a
+	// stray FINGERUP from a touch's compatibility mouse-up and guarantees a
+	// genuine mouse release always ends the press (no stuck finger).
+	if(gSynthFingerDown
+	   && ev->button.button == SDL_BUTTON_LEFT && ev->button.which != SDL_TOUCH_MOUSEID) {
+		gSynthFingerDown = false;
+		synthFingerFromMouse(SDL_FINGERUP, ev->button.x, ev->button.y);
+	}
+}
 
 // Two unrelated jobs on the same event:
 //  1) Gamepad activity on player 1's controller hides the touch UI.
@@ -390,6 +465,15 @@ static void EvHndl_Quit(SDL_Event*) {
 }
 
 static void EvHndl_FingerEvent(SDL_Event* ev) {
+	// A real touch event (any platform). Record it so:
+	//  - the "auto" TouchscreenControls mode knows a touchscreen is in use,
+	//  - the mouse-emulation path can ignore the compatibility mouse events
+	//    that trail a tap (recentRealTouch),
+	//  - the in-game cursor switches off.
+	// Synthetic touches from the mouse don't come through here.
+	gLastRealTouchTicks = SDL_GetTicks();
+	gInputIsMouse = false;
+	TouchControls::NotifyRealTouch();
 	TouchControls::HandleFingerEvent(ev->tfinger);
 }
 
@@ -592,7 +676,33 @@ void ProcessEvents()
 		HandleMouseState();
 #ifndef DEDICATED_ONLY
 		if(bJoystickSupport)  {
+#ifdef __EMSCRIPTEN__
+			// Browser build: feed the Gamepad API into SDL. A browser only
+			// exposes a pad to the page after its first button press, and the
+			// sampled gamepad state must be refreshed every frame or it goes
+			// stale (so detection silently stops). Re-sample here, before SDL
+			// polls — SDL then raises the very same SDL_CONTROLLERDEVICEADDED /
+			// *REMOVED events the desktop hotplug path uses, so the engine's
+			// existing controller handling (CInput::OnControllerAdded etc.)
+			// picks pads up with no browser-specific logic of its own.
+			emscripten_sample_gamepad_data();
+#endif
 			SDL_GameControllerUpdate();
+#ifdef __EMSCRIPTEN__
+			// Open a just-appeared pad THIS frame instead of waiting for the
+			// queued SDL_CONTROLLERDEVICEADDED event (which lands a frame or two
+			// later). A browser reveals a gamepad only in response to its first
+			// button press, so opening it immediately gives the best chance of
+			// reading that very press before it's released. OnControllerAdded
+			// skips pads it has already opened, so the later event is a no-op.
+			{
+				static int lastNumJoysticks = 0;
+				const int n = SDL_NumJoysticks();
+				for(int i = lastNumJoysticks; i < n; ++i)
+					CInput::OnControllerAdded(i);
+				lastNumJoysticks = n;
+			}
+#endif
 			updateAxisStates();
 		}
 #endif

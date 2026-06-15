@@ -841,6 +841,15 @@ void CClient::Draw(const SmartPointer<SDL_Surface>& bmpDest)
 	// Touchscreen on-screen controls (no-op when option is disabled)
 	TouchControls::Render(bmpDest.get());
 
+	// When the touch controls are up but the player is driving them with a
+	// mouse (web build), draw the software cursor so they can see where they're
+	// pointing. InputUsingMouse() flips to false on real touch, so a finger
+	// user never sees a cursor. (No-op off the web build — always false there.)
+	if(TouchControls::IsActive() && InputUsingMouse()) {
+		SetGameCursor(CURSOR_ARROW);
+		DrawCursor(bmpDest.get());
+	}
+
 	// We currently just set it always to true because it paints on the video surface
 	// and expects that it will always stay there. This is of course wrong for double buffering
 	// or also our video post processor.

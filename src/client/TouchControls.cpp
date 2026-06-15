@@ -694,14 +694,16 @@ void Shutdown() {
 	gInited = false;
 }
 
-// Internal predicate — would touch be allowed if the player were using
-// it? Used by HandleFingerEvent so a finger-down can re-enable the UI
-// even when IsActive() is currently false because of auto-hide.
-// Resolve the tri-state Game.TouchscreenControls option to an effective
-// bool. "true"/"yes"/"on"/"1" → force on (use this on the Linux client
-// to capture layout previews). "false"/"no"/"off"/"0" → force off.
-// Anything else (including the default "auto") → platform default:
-// Android = on, everything else = off.
+// Set true the first time a real (non-synthetic) touch event arrives, so the
+// "auto" mode can decide based on whether a touchscreen is actually in use —
+// no per-platform assumptions. Set via NotifyRealTouch() from the input layer.
+static bool gHaveSeenRealTouch = false;
+
+// Resolve the tri-state Game.TouchscreenControls option to an effective bool:
+//   "true"/"yes"/"on"/"1"   → always on (the mouse can drive the controls too)
+//   "false"/"no"/"off"/"0"  → always off
+//   anything else ("auto")  → on only once real touch input has been seen.
+// Used by isTouchAllowed/HandleFingerEvent.
 static bool resolveTouchscreenEnabled(const std::string& setting) {
 	if(stringcaseequal(setting, "true")  || stringcaseequal(setting, "yes")
 	|| stringcaseequal(setting, "on")    || setting == "1")
@@ -709,11 +711,7 @@ static bool resolveTouchscreenEnabled(const std::string& setting) {
 	if(stringcaseequal(setting, "false") || stringcaseequal(setting, "no")
 	|| stringcaseequal(setting, "off")   || setting == "0")
 		return false;
-#ifdef __ANDROID__
-	return true;
-#else
-	return false;
-#endif
+	return gHaveSeenRealTouch; // "auto": purely input-driven, no platform checks
 }
 
 static bool isTouchAllowed() {
@@ -728,6 +726,13 @@ static bool isTouchAllowed() {
 
 bool IsActive() {
 	return isTouchAllowed() && gUIActive;
+}
+
+// Called from the input layer when a genuine (non-synthetic) touch event
+// arrives. Lets the "auto" TouchscreenControls mode enable itself once a
+// touchscreen is actually used, with no per-platform assumptions.
+void NotifyRealTouch() {
+	gHaveSeenRealTouch = true;
 }
 
 void NotifyExternalInput() {

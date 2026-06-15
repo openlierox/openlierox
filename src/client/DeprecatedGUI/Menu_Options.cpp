@@ -61,10 +61,12 @@ enum {
 int ControlsSubTab = ct_Player1;
 static const char* ControlsTabNames[ct__Count] = { "Player 1", "Player 2", "General", "Touchscreen" };
 
-// True if the given tab should appear in the tab bar. The touch-screen
-// tab is hidden on devices without a touch input.
-static bool IsControlsTabVisible(int t) {
-	return t != ct_Touchscreen || TouchControls::IsTouchDeviceAvailable();
+// True if the given tab should appear in the tab bar. All control tabs,
+// including Touchscreen, are always available — the touch layout can be
+// inspected/picked anywhere, which is useful for debugging or authoring a
+// new layout even on a machine without a touch device.
+static bool IsControlsTabVisible(int /*t*/) {
+	return true;
 }
 // Tab header hit-boxes, filled in when drawn (see Menu_OptionsDrawControlsTabs).
 static SDL_Rect ControlsTabRects[ct__Count];
@@ -76,6 +78,24 @@ static SDL_Rect ResetBtnRect;
 // plus the per-tile hit-boxes filled in by Menu_OptionsDrawTouchTiles.
 static std::vector<TouchControls::LayoutInfo> gTouchLayoutInfos;
 static std::vector<SDL_Rect>                  gTouchLayoutTileRects;
+
+// The On / Off / Auto selector for Game.TouchscreenControls, shown on the top
+// row of the Touchscreen sub-tab (above the layout tiles). The labels map to
+// the tri-state option value; hit-boxes are filled in when drawn.
+static const struct { const char* label; const char* value; } kTouchModeChoices[] = {
+	{ "Auto-detect", "auto" }, { "Always on", "true" }, { "Always off", "false" },
+};
+static const int kTouchModeCount = (int)(sizeof(kTouchModeChoices) / sizeof(kTouchModeChoices[0]));
+static SDL_Rect gTouchModeRects[kTouchModeCount];
+
+// Which choice the current option value corresponds to (for highlighting).
+static int Menu_CurrentTouchMode() {
+	const std::string& v = tLXOptions->sTouchscreenControls;
+	// Index must match kTouchModeChoices order: 0=Auto-detect, 1=Always on, 2=Always off.
+	if(stringcaseequal(v, "true")  || stringcaseequal(v, "yes") || stringcaseequal(v, "on")  || v == "1") return 1;
+	if(stringcaseequal(v, "false") || stringcaseequal(v, "no")  || stringcaseequal(v, "off") || v == "0") return 2;
+	return 0; // "auto" or anything unrecognised
+}
 CButton		TopButtons[3];
 
 // Control id's
@@ -640,6 +660,42 @@ static void Menu_OptionsRefreshTouchTiles()
 }
 
 ///////////////////
+// Draw the "Touch controls: On / Off / Auto" selector on the top row of the
+// Touchscreen sub-tab (above the layout tiles). Records each choice's hit-box
+// in gTouchModeRects for click handling in Menu_OptionsFrame.
+static void Menu_OptionsDrawTouchMode(SDL_Surface* dest)
+{
+	mouse_t* Mouse = GetMouse();
+	// Sit roughly midway between the sub-tab bar (y=150) and the tiles (now
+	// y=235), with generous padding above and below so the row isn't crowded.
+	const int y = 190;
+	const int h = tLX->cFont.GetHeight();
+
+	const std::string label = "Use touchscreen controls:";
+	tLX->cFont.Draw(dest, kControlLabelX, y, tLX->clNormalLabel, label);
+
+	const int current = Menu_CurrentTouchMode();
+	int x = kControlLabelX + tLX->cFont.GetWidth(label) + 16;
+	for(int i = 0; i < kTouchModeCount; i++) {
+		const std::string text = kTouchModeChoices[i].label;
+		const int w = tLX->cFont.GetWidth(text);
+
+		SDL_Rect r{(Sint16)x, (Sint16)y, (Uint16)w, (Uint16)h};
+		gTouchModeRects[i] = r;
+
+		const bool selected = (i == current);
+		const bool hover = (Mouse->X >= x && Mouse->X <= x + w &&
+		                    Mouse->Y >= y && Mouse->Y <= y + h);
+		Color col = selected ? tLX->clHeading : (hover ? tLX->clHeading : tLX->clNormalLabel);
+		tLX->cFont.Draw(dest, x, y, col, text);
+		// Underline the selected choice so the active value is obvious.
+		if(selected)
+			DrawRectFill(dest, x, y + h, x + w, y + h + 1, tLX->clHeading);
+
+		x += w + 24;
+	}
+}
+
 // Draw the row of layout tiles on the "Touchscreen" sub-tab. Each tile
 // shows the layout's preview PNG (or a "No preview" placeholder), the
 // `name:` field below, and a thicker border around the currently-selected
@@ -650,14 +706,14 @@ static void Menu_OptionsDrawTouchTiles(SDL_Surface* dest)
 	const int n = (int)gTouchLayoutInfos.size();
 	if(n == 0) {
 		const std::string msg = "No layouts found in share/gamedir/touchscreen/";
-		tLX->cFont.Draw(dest, kControlLabelX, 220, tLX->clNormalLabel, msg);
+		tLX->cFont.Draw(dest, kControlLabelX, 250, tLX->clNormalLabel, msg);
 		return;
 	}
 
 	const int tileW = 200;
 	const int tileH = 150;
 	const int gap   = 20;
-	const int topY  = 200;
+	const int topY  = 235; // leave padding below the "Use touchscreen controls:" row
 	const int totalW = n * tileW + (n - 1) * gap;
 	int x = (640 - totalW) / 2;
 	if(x < 20) x = 20;  // many tiles — fall back to a left margin
@@ -855,6 +911,23 @@ void Menu_OptionsFrame()
 		ctrlLayout.Draw(VideoPostProcessor::videoSurface().get());
 
 		if(ControlsSubTab == ct_Touchscreen) {
+			// Top row: On / Off / Auto selector for Game.TouchscreenControls.
+			Menu_OptionsDrawTouchMode(VideoPostProcessor::videoSurface().get());
+			if(!bSpeedTest && Mouse->Up) {
+				for(int i = 0; i < kTouchModeCount; i++) {
+					const SDL_Rect& r = gTouchModeRects[i];
+					if(Mouse->X >= r.x && Mouse->X <= r.x + r.w &&
+					   Mouse->Y >= r.y && Mouse->Y <= r.y + r.h) {
+						const std::string val = kTouchModeChoices[i].value;
+						if(!stringcaseequal(tLXOptions->sTouchscreenControls, val)) {
+							tLXOptions->sTouchscreenControls = val;
+							TouchControls::ReloadLayout();
+							PlaySoundSample(sfxGeneral.smpClick);
+						}
+						break;
+					}
+				}
+			}
 			// Layout tiles + click handling. No "Reset defaults" here — the
 			// touch-screen tab has nothing to reset.
 			Menu_OptionsDrawTouchTiles(VideoPostProcessor::videoSurface().get());

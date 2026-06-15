@@ -36,9 +36,13 @@ jobs:
     uses: ./.github/workflows/package-windows.yml
     secrets: inherit
 
+  wasm:
+    uses: ./.github/workflows/package-wasm.yml
+    secrets: inherit
+
   release:
     name: Publish beta release
-    needs: [android, linux-bundle, linux-deb, mac, windows]
+    needs: [android, linux-bundle, linux-deb, mac, windows, wasm]
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout

@@ -31,6 +31,9 @@
 #include "DeprecatedGUI/CTextButton.h"
 #include "sound/SoundsBase.h"
 #include "game/ServerList.h"
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
 
 
 namespace DeprecatedGUI {
@@ -182,6 +185,20 @@ void Menu_MainFrame()
 
 					MessageBoxReturnType answer = Menu_MessageBox(GetGameName(), "Quit OpenLieroX?", LMB_YESNO);
 					if( answer == MBR_YES || answer == MBR_INVALID ) {
+#ifdef __EMSCRIPTEN__
+						// Tell the JS shell to drop browser fullscreen the
+						// instant the user confirms Quit, before any teardown
+						// runs. Game::onStateUpdate's parallel hook does not
+						// reliably fire on the Inactive→Quit transition for
+						// reasons we haven't pinned down, so this is the
+						// authoritative quit signal for the wasm port.
+						MAIN_THREAD_ASYNC_EM_ASM({
+							if (typeof window !== 'undefined' &&
+							    typeof window.olxOnEngineExit === 'function') {
+								window.olxOnEngineExit(0);
+							}
+						});
+#endif
 						game.state = Game::S_Quit;
 					    Menu_MainShutdown();
 				    } else {
