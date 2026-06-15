@@ -669,11 +669,15 @@ bool CInput::Binding::setup(const std::string& string)
 			JoystickIndex = padIndex;
 			Data = 0;
 
-			// Pad not connected — leave the binding unusable (Data stays 0).
-			if(SDL_NumJoysticks() <= padIndex) return false;
-
-			// Open the controller if it hasn't been already opened
-			initController(padIndex, false);
+			// Open the pad now if it's already connected. If it isn't yet —
+			// e.g. a browser only exposes a gamepad to the page after its first
+			// button press — don't bail out: the hotplug path
+			// (OnControllerAdded) opens it the moment it appears. We still
+			// resolve the binding's action below regardless, so it works as
+			// soon as the pad is initialised, with no trip through the controls
+			// menu needed to "wake" it.
+			if(SDL_NumJoysticks() > padIndex)
+				initController(padIndex, false);
 
 			std::string suffix = remaining.substr(digitsEnd + 1);
 			for(uint32_t n=0; n<sizeof(Joysticks) / sizeof(joystick_t); n++) {
@@ -791,6 +795,40 @@ bool CInput::Binding::isDown() const
 
 		// Keyboard
 		case INP_KEYBOARD:
+#ifdef __EMSCRIPTEN__
+			// On the wasm port we poll keyboard state directly each
+			// frame, the same model gamepad uses (CInput::INP_JOYSTICK*
+			// → checkControllerState). The event-driven path still
+			// updates bDown via HandleCInputs_KeyEvent, but events have
+			// to traverse browser → SDL → wasm-worker → OLX mainQueue
+			// → game-thread; polling skips that whole chain so a held
+			// key shows up the same frame the simulation runs.
+			if(Data > 0) {
+				SDL_Scancode sc = SDL_GetScancodeFromKey(Data);
+				if(sc != SDL_SCANCODE_UNKNOWN) {
+					const Uint8* state = SDL_GetKeyboardState(NULL);
+					if(state && state[sc]) {
+						// If the binding requires modifiers, enforce
+						// an exact match; otherwise fire regardless.
+						if(m_modifiers.bAlt || m_modifiers.bCtrl ||
+						   m_modifiers.bShift || m_modifiers.bGui) {
+							SDL_Keymod mod = SDL_GetModState();
+							const bool alt   = (mod & KMOD_ALT)   != 0;
+							const bool ctrl  = (mod & KMOD_CTRL)  != 0;
+							const bool shift = (mod & KMOD_SHIFT) != 0;
+							const bool gui   = (mod & KMOD_GUI)   != 0;
+							if(m_modifiers.bAlt   == alt &&
+							   m_modifiers.bCtrl  == ctrl &&
+							   m_modifiers.bShift == shift &&
+							   m_modifiers.bGui   == gui)
+								return true;
+						} else {
+							return true;
+						}
+					}
+				}
+			}
+#endif
 			if(wasDown()) return true; // in this case, we want to return true here to get it recognised at least once
 			return bDown;
 
@@ -962,8 +1000,18 @@ void CInput::handleKeyEvent(const KeyboardEvent& ev) {
 // Update down-once state for non-keyboard bindings (polled each frame)
 void CInput::updateDownOnceForNonKeyboard() {
 	for(std::vector<Binding>::iterator b = m_bindings.begin(); b != m_bindings.end(); ++b) {
+#ifdef __EMSCRIPTEN__
+		// On wasm keyboard bindings are also polled each frame via
+		// Binding::isDown (see the SDL_GetKeyboardState branch there), so
+		// they ride the same edge-derivation logic the gamepad uses. This
+		// is what makes held keys register the same frame the simulation
+		// runs, without the OLX mainQueue round-trip.
+		if(!b->isUsed())
+			continue;
+#else
 		if(!b->isUsed() || b->isKeyboard())
 			continue;
+#endif
 
 		// HINT: It is possible that wasUp() and !Down (a case which is not covered in further code)
 		if(b->wasUp() && !b->bDown) {
@@ -1003,8 +1051,15 @@ void CInput::updateDownOnceForNonKeyboard() {
 // Update up state for non-keyboard bindings (polled each frame)
 void CInput::updateUpForNonKeyboard() {
 	for(std::vector<Binding>::iterator b = m_bindings.begin(); b != m_bindings.end(); ++b) {
+#ifdef __EMSCRIPTEN__
+		// See updateDownOnceForNonKeyboard: keyboard bindings are polled
+		// each frame on wasm, so don't skip them here.
+		if(!b->isUsed())
+			continue;
+#else
 		if(!b->isUsed() || b->isKeyboard())
 			continue;
+#endif
 		if(b->isDown() && !b->bDown)
 			b->nUp++;
 	}

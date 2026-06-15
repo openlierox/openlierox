@@ -89,11 +89,12 @@ NL_EXP const /*@observer@*/  NLchar* NL_APIENTRY nlGetSystemErrorStr(NLint err)
     case EINTR:
         lpszRetStr=(NLchar *)TEXT("Interrupted function call.");
         break;
-#if defined(NO_DATA)       
+/* Emscripten/WASI: NO_DATA collides with EADDRNOTAVAIL (both = 4). */
+#if defined(NO_DATA) && !defined(__EMSCRIPTEN__)
     case NO_DATA:
         lpszRetStr=(NLchar *)TEXT("Valid name, no data record for type.");
         break;
-#endif        
+#endif
 #else
     case NO_DATA:
         lpszRetStr=(NLchar *)TEXT("Interrupted function call or no data record for type.");
@@ -111,21 +112,26 @@ NL_EXP const /*@observer@*/  NLchar* NL_APIENTRY nlGetSystemErrorStr(NLint err)
     case EINVAL:
         lpszRetStr=(NLchar *)TEXT("App version not supported by DLL.");
         break;
-#if defined(TRY_AGAIN)        
+/* On Emscripten/WASI, h_errno values (TRY_AGAIN=2, NO_RECOVERY=3,
+ * HOST_NOT_FOUND=4) collide with errno values (EACCES=2, EADDRINUSE=3,
+ * EADDRNOTAVAIL=4) — both come from the same number space. Skip the
+ * h_errno cases there; the errno cases below are the ones HawkNL
+ * actually reports. */
+#if defined(TRY_AGAIN) && !defined(__EMSCRIPTEN__)
     case TRY_AGAIN:
         lpszRetStr=(NLchar *)TEXT("Non-authoritive: host not found or server failure.");
         break;
-#endif        
-#if defined(NO_RECOVERY)
+#endif
+#if defined(NO_RECOVERY) && !defined(__EMSCRIPTEN__)
     case NO_RECOVERY:
         lpszRetStr=(NLchar *)TEXT("Non-recoverable: refused or not implemented.");
         break;
 #endif
-#if defined(HOST_NOT_FOUND)        
+#if defined(HOST_NOT_FOUND) && !defined(__EMSCRIPTEN__)
     case HOST_NOT_FOUND:
         lpszRetStr=(NLchar *)TEXT("Authoritive: Host not found.");
         break;
-#endif        
+#endif
     case EACCES:
         lpszRetStr=(NLchar *)TEXT("Permission to access socket denied.");
         break;

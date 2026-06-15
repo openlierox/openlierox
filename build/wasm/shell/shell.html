@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>OpenLieroX (WebAssembly)</title>
+  <!-- Empty data: URL stops the browser from fetching /favicon.ico
+       and logging a noisy 404 on first load. -->
+  <link rel="icon" href="data:,">
+
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; background: #111; color: #ddd;
+                 font-family: system-ui, sans-serif; overflow: hidden; }
+    #wrapper   { display: flex; flex-direction: column; height: 100%;
+                 align-items: center; }
+    /* Loading/status text overlaid centred ON TOP of the canvas. It lives
+     * inside #fs-area (which is what goes fullscreen), so it stays visible over
+     * the game even in fullscreen — the browser's fullscreen top layer hides
+     * anything outside the fullscreen element. Hidden by JS once loading is
+     * done. pointer-events:none so it never intercepts input for the canvas. */
+    #status    { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+                 z-index: 10000; pointer-events: none; text-align: center; max-width: 90%;
+                 padding: 10px 16px; border-radius: 6px; background: rgba(0, 0, 0, 0.75);
+                 color: #ddd; font: 14px/1.4 monospace; }
+    #status.err { background: #803030; color: #fff; }
+    #toolbar   { padding: 4px 0; }
+    #toolbar button { background: #2a2a2a; color: #ddd; border: 1px solid #444;
+                      padding: 4px 10px; font: 12px system-ui, sans-serif;
+                      cursor: pointer; border-radius: 3px; }
+    #toolbar button:hover { background: #3a3a3a; }
+    /* Lock the canvas to OLX's native resolution. Letting it stretch
+     * makes mouse coordinates ambiguous (DOM vs SDL pixel space) and
+     * also softens the pixel-art assets. */
+    #canvas    { width: 640px; height: 480px; display: block;
+                 background: #000; outline: none; image-rendering: pixelated; }
+    /* The canvas + the status overlay live in #fs-area, and IT is what goes
+     * fullscreen (not the canvas directly) so the overlay can sit on top in the
+     * browser's fullscreen top layer. Windowed: it just hugs the 640x480
+     * canvas. Fullscreen: fill the screen, centre the canvas scaled to the
+     * largest 4:3 box, and paint the side/top bars black. */
+    #fs-area   { position: relative; width: 640px; height: 480px; }
+    #fs-area:fullscreen { width: 100vw; height: 100vh; display: flex;
+                          align-items: center; justify-content: center; background: #000; }
+    #fs-area:fullscreen #canvas { width: min(100vw, 100vh * 4 / 3);
+                                  height: min(100vh, 100vw * 3 / 4); }
+    #log       { max-height: 25vh; overflow: auto; padding: 4px 10px;
+                 background: #181818; font: 12px/1.3 monospace; white-space: pre-wrap;
+                 align-self: stretch; }
+    #log.err   { color: #f99; }
+  </style>
+</head>
+<body>
+  <div id="wrapper">
+    <div id="toolbar">
+      <button id="fs-toggle" type="button">Enter fullscreen</button>
+    </div>
+    <!-- #fs-area is the element that goes fullscreen — it holds both the
+         canvas and the status overlay so the overlay stays visible (in the
+         fullscreen top layer) while the game is still loading. -->
+    <div id="fs-area">
+      <!-- width/height attributes set the internal pixel buffer size.
+           Without them Emscripten/SDL2 inherit the default 800x600,
+           which means SDL_RenderSetLogicalSize(640,480) ends up scaling
+           all mouse events and the canvas is then resized inconsistently
+           on the first SDL window create. Lock to OLX's native res. -->
+      <canvas id="canvas" width="640" height="480"
+              tabindex="-1" oncontextmenu="event.preventDefault()"></canvas>
+      <div id="status">Loading OpenLieroX…</div>
+    </div>
+    <pre id="log"></pre>
+  </div>
+
+  <script>
+    const statusEl = document.getElementById("status");
+    const logEl    = document.getElementById("log");
+
+    function appendLog(text, isErr) {
+      logEl.textContent += text + "\n";
+      logEl.scrollTop = logEl.scrollHeight;
+      if (isErr) logEl.classList.add("err");
+    }
+
+    // Latch: once the data download is complete we show "Starting OpenLieroX…"
+    // and ignore further loading-status churn until the engine is ready.
+    let loadingDone = false;
+    function showStarting() {
+      if (loadingDone) return;
+      loadingDone = true;
+      statusEl.style.display = "";
+      statusEl.classList.remove("err");
+      statusEl.textContent = "Starting OpenLieroX…";
+    }
+
+    function exitFullscreenIfActive() {
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+
+    // The engine calls this from Game::onStateUpdate (src/game/Game.cpp,
+    // under __EMSCRIPTEN__) only when the application actually quits
+    // (transition into S_Quit) — e.g. "Quit OpenLieroX" from the main
+    // menu. Returning to the menu after a match keeps fullscreen, since
+    // that usually means the player wants to start another game.
+    window.olxOnEngineExit = (_state) => exitFullscreenIfActive();
+
+    // The engine calls this from Menu_MainFrame (src/.../Menu_Main.cpp, under
+    // __EMSCRIPTEN__) the first time the main menu renders — i.e. it's finished
+    // the few-second boot that follows the data download. Hide the loading /
+    // "Starting OpenLieroX…" overlay at that point. (Hide directly — setStatus
+    // ignores updates once the "Starting…" latch is set.)
+    window.olxOnEngineReady = () => { statusEl.style.display = "none"; };
+
+    var Module = {
+      canvas: (() => {
+        const c = document.getElementById("canvas");
+        c.addEventListener("webglcontextlost", (e) => {
+          alert("WebGL context lost — please reload."); e.preventDefault();
+        }, false);
+        return c;
+      })(),
+      print:    (text) => {
+        if (Module.printAccept && !Module.printAccept(text)) return;
+        console.log(text);
+        appendLog(text, false);
+      },
+      printErr: (text) => {
+        if (Module.printAccept && !Module.printAccept(text)) return;
+        console.warn(text);
+        appendLog(text, true);
+      },
+      setStatus: (text) => {
+        text = text || "";
+        // Errors/aborts always win and are shown verbatim.
+        if (/error|abort|exception/i.test(text)) {
+          statusEl.style.display = "";
+          statusEl.textContent = text;
+          statusEl.classList.add("err");
+          return;
+        }
+        // Once we've switched to "Starting OpenLieroX…" stay there (ignore the
+        // run-dependency churn that follows) until olxOnEngineReady() hides it.
+        if (loadingDone) return;
+        // Emscripten reports the .data download as "Downloading data... (x/y)"
+        // in bytes. The instant the DOWNLOAD completes (x == y), switch to
+        // "Starting OpenLieroX…" — the engine still needs a few seconds to boot
+        // to the menu. (Previously we waited for all run dependencies, incl. the
+        // wasm, to resolve, which showed the switch too late.)
+        const dl = /^Downloading data\.\.\. \((\d+)\/(\d+)\)$/.exec(text);
+        if (dl && dl[1] === dl[2]) { showStarting(); return; }
+        statusEl.style.display = text ? "" : "none";
+        statusEl.textContent = text;
+        statusEl.classList.remove("err");
+      },
+      monitorRunDependencies: (left) => {
+        // Backstop for the cached case where the byte counter may not emit a
+        // final x == y: once everything's resolved, show "Starting…".
+        if (left === 0) showStarting();
+      },
+      // Don't stream every "dependency: fp /xxx" or "(end of list)" line
+      // into the on-page log; with thousands of preload files the spam
+      // dwarfs the actual runtime output. Filter at print time.
+      printAccept: (text) =>
+        !/^(dependency:|still waiting on run dependencies|\(end of list\))/.test(text),
+      onAbort: (what) => {
+        exitFullscreenIfActive();
+        Module.setStatus("Aborted: " + what);
+      },
+      onExit: () => exitFullscreenIfActive(),
+    };
+
+    Module.setStatus("Downloading…");
+    window.onerror = (msg) => Module.setStatus("Exception: " + msg);
+
+    // --- Pointer-coordinate safety net for a letterboxed canvas.
+    // Emscripten maps mouse/touch coordinates from the canvas element's
+    // getBoundingClientRect() (its FULL box). If the canvas box were ever a
+    // different aspect than its 640x480 buffer, the bars would skew edge
+    // clicks. We size the canvas to an exact 4:3 box in CSS (windowed and
+    // fullscreen), so this override is normally a no-op — but if a box is ever
+    // letterboxed, it reports the rect of the actually-rendered 4:3 content so
+    // Emscripten's mapping (canvas.width / rect.width + rect.left) stays right.
+    (() => {
+      const c = Module.canvas;
+      const realRect = c.getBoundingClientRect.bind(c);
+      c.getBoundingClientRect = function () {
+        const r = realRect();
+        const bw = this.width, bh = this.height; // 640x480 backing buffer
+        if (!r.width || !r.height || !bw || !bh) return r;
+        const bufAspect = bw / bh;
+        const boxAspect = r.width / r.height;
+        if (Math.abs(boxAspect - bufAspect) < 1e-3) return r; // no letterbox
+        let cw, ch;
+        if (boxAspect > bufAspect) { ch = r.height; cw = ch * bufAspect; } // pillarbox (wide screen)
+        else                       { cw = r.width;  ch = cw / bufAspect; } // letterbox (tall screen)
+        return new DOMRect(r.left + (r.width - cw) / 2,
+                           r.top  + (r.height - ch) / 2, cw, ch);
+      };
+    })();
+
+    // Suppress browser shortcuts that overlap OLX gameplay bindings.
+    // preventDefault only stops the browser's default action — SDL2's
+    // own keyboard listener still receives the event, so the engine
+    // sees the press normally. Captured at the window level so we run
+    // before SDL2's handler. Skipped for form inputs in case any are
+    // ever added to the shell.
+    window.addEventListener("keydown", (e) => {
+      const t = e.target;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" ||
+                t.isContentEditable))
+        return;
+
+      // Modifier+arrow combos: Alt+Left/Right is browser back/forward,
+      // Ctrl+arrows are word-skip / scroll on some platforms.
+      if ((e.altKey || e.ctrlKey || e.metaKey) &&
+          (e.code === "ArrowLeft"  || e.code === "ArrowRight" ||
+           e.code === "ArrowUp"    || e.code === "ArrowDown")) {
+        e.preventDefault();
+        return;
+      }
+
+      // Bare keys that scroll or navigate the page.
+      switch (e.code) {
+        case "ArrowLeft": case "ArrowRight":
+        case "ArrowUp":   case "ArrowDown":
+        case "Space":     case "Tab":
+        case "Backspace": case "F1":
+          e.preventDefault();
+          break;
+      }
+      // Intentionally NOT swallowed: F5/Ctrl+R (reload), F11 (browser
+      // fullscreen escape hatch), F12 (devtools), Esc.
+    }, true);
+
+    // Web Fullscreen toggle. We fullscreen #fs-area (the canvas + the status
+    // overlay), NOT the canvas itself, so the loading/status text stays visible
+    // on top while the game loads (the fullscreen top layer hides anything
+    // outside the fullscreen element). This is independent of SDL/OLX
+    // fullscreen (kWasmAllowFullscreen in AuxLib.cpp), which is disabled. The
+    // canvas keeps its 640x480 buffer; CSS scales it to the screen.
+    (() => {
+      const fsArea = document.getElementById("fs-area");
+      const btn    = document.getElementById("fs-toggle");
+      btn.addEventListener("click", () => {
+        if (document.fullscreenElement) {
+          document.exitFullscreen();
+        } else {
+          fsArea.requestFullscreen().catch((e) =>
+            appendLog("Fullscreen request failed: " + e, true));
+        }
+      });
+      document.addEventListener("fullscreenchange", () => {
+        btn.textContent = document.fullscreenElement
+          ? "Exit fullscreen" : "Enter fullscreen";
+      });
+    })();
+  </script>
+  {{{ SCRIPT }}}
+</body>
+</html>

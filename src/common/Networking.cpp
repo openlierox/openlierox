@@ -295,11 +295,24 @@ bool InitNetworkSystem() {
     	return false;
     }
 
+#if defined(__EMSCRIPTEN__)
+    // Browsers can't open raw UDP sockets, so NL_IP fails immediately.
+    // HawkNL ships an in-process NL_LOOP_BACK driver that routes
+    // packets between sockets opened in the same process — perfect
+    // for local client+server gameplay, which is the only mode the
+    // wasm build supports.
+    if(!nlSelectNetwork(NL_LOOP_BACK)) {
+        SystemError("could not select loopback network");
+        nlSystemUseChangeLock.endWriteAccess();
+        return false;
+    }
+#else
     if(!nlSelectNetwork(NL_IP)) {
         SystemError("could not select IP-based network");
 		nlSystemUseChangeLock.endWriteAccess();
 		return false;
     }
+#endif
 
 	bNetworkInited = true;
 	

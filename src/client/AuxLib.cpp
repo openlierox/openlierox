@@ -29,6 +29,9 @@
 #undef Font
 #include <cstdlib>
 #include <sstream>
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
 #include <cstring>
 
 #if defined(__APPLE__)
@@ -250,6 +253,16 @@ void *GetWindowHandle()
 
 
 void CapFPS() {
+#ifdef __EMSCRIPTEN__
+	// Don't sleep on wasm. The browser's compositor already paces
+	// presentation at vsync (~60 Hz), so the game-thread sleeping here
+	// only adds keyboard-input latency without saving any visible work:
+	// any SDL_KEYDOWN that arrives in the OLX mainQueue while the thread
+	// is mid-SDL_Delay has to wait for the sleep to end before
+	// ProcessEvents picks it up next frame. Gamepad input doesn't suffer
+	// because it's polled directly during simulation.
+	return;
+#else
 	const TimeDiff fMaxFrameTime = TimeDiff( (tLXOptions->nMaxFPS > 0) ? (1.0f / (float)tLXOptions->nMaxFPS) : 0.0f );
 	const AbsTime currentTime = GetTime();
 	// tLX->currentTime is old time
@@ -260,6 +273,7 @@ void CapFPS() {
 	else
 		// do at least one small break, else it's possible that we never receive signals from our OS
 		SDL_Delay(1);
+#endif
 }
 
 
@@ -317,7 +331,7 @@ bool VideoPostProcessor::initWindow() {
 	assert(isMainThread());
 
 	bool resetting = false;
-	
+
 	// Check if already running
 	if (m_videoSurface.get())  {
 		resetting = true;
@@ -325,7 +339,22 @@ bool VideoPostProcessor::initWindow() {
 	} else {
 		notes << "setting video mode" << endl;
 	}
-	
+
+#if defined(__EMSCRIPTEN__)
+	// SDL2 + Emscripten doesn't support tearing down and recreating
+	// the window / renderer cleanly: doing so destroys the canvas
+	// element while the browser's main thread may still be dispatching
+	// mouse events into the old context, which trips a heap-corruption
+	// trap inside the malloc-on-mouse-event path. The 640x480 surface
+	// never changes between menu and gameplay, so just keep the
+	// existing window+renderer the first time around and short-circuit
+	// any later "reset" calls.
+	if (resetting) {
+		notes << "  (Emscripten: reusing existing window+renderer)" << endl;
+		return true;
+	}
+#endif
+
 	// uninit first to ensure that the video thread is not running
 	VideoPostProcessor::uninit();
 	
@@ -345,6 +374,21 @@ bool VideoPostProcessor::initWindow() {
 	// BlueBeret's addition (2007): OpenGL support
 	bool opengl = tLXOptions->bOpenGL;
 	
+#if defined(__EMSCRIPTEN__)
+	// === Wasm fullscreen master switch ============================
+	// Browser fullscreen + OpenLieroX is currently buggy: the canvas
+	// resizes mid-game, mouse coordinates drift, and exiting fullscreen
+	// leaves SDL in a bad state. Flip this to `true` if you want to
+	// re-enable it after fixing those issues; for now we force it off
+	// regardless of what the user picked in Options. See CLAUDE.md.
+	static const bool kWasmAllowFullscreen = false;
+	if(!kWasmAllowFullscreen && tLXOptions->bFullscreen) {
+		notes << "Wasm: ignoring requested fullscreen "
+		         "(disabled via kWasmAllowFullscreen)" << endl;
+		tLXOptions->bFullscreen = false;
+	}
+#endif
+
 	// Initialize the video
 	if(tLXOptions->bFullscreen)  {
 		vidflags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
@@ -424,8 +468,12 @@ setvideomode:
 		return false;
 	}
 	
+	// Hide the operating-system / browser cursor. OpenLieroX draws its own
+	// software cursor where one is wanted (menus), and that should be the only
+	// cursor the player ever sees — on the web too (SDL maps this to
+	// `canvas { cursor: none }`).
 	SDL_ShowCursor(SDL_DISABLE);
-	
+
 #ifdef WIN32
 	// Hint: Reset the mouse state - this should avoid the mouse staying pressed
 	GetMouse()->Button = 0;
@@ -486,7 +534,18 @@ static void dumpRenderInfo(SDL_Renderer* renderer) {
 }
 
 bool VideoPostProcessor::resetVideo() {
+#if defined(__EMSCRIPTEN__)
+	// On Emscripten + pthreads, SDL's GLES2 backend posts every GL
+	// call (glTexImage2D etc.) to the main thread via a proxy queue
+	// whose atomics-on-mailbox path trips wasm's alignment trap. The
+	// software renderer doesn't touch WebGL at all and is plenty
+	// fast for 640x480 — pin to it.
+	SDL_SetHint(SDL_HINT_RENDER_DRIVER, "software");
+	m_renderer = SDL_CreateRenderer(m_window.get(), -1,
+	                                SDL_RENDERER_SOFTWARE);
+#else
 	m_renderer = SDL_CreateRenderer(m_window.get(), -1, 0);
+#endif
 	if(!m_renderer.get()) {
 		errors << "failed to init renderer: " << SDL_GetError() << endl;
 		return false;
@@ -565,10 +624,30 @@ void VideoPostProcessor::render() {
 	//DrawLoadingAni(psScreen, 320, 260, 10, 10, Color(255,0,0), Color(0,255,0), LAT_CAKE);
 	
 	if(!get()->m_renderer.get()) return;
-	
+
 	SDL_RenderClear(get()->m_renderer.get());
 	SDL_RenderCopy(get()->m_renderer.get(), get()->m_videoTexture.get(), NULL, NULL);
 	SDL_RenderPresent(get()->m_renderer.get());
+
+#ifdef __EMSCRIPTEN__
+	// The very first presented frame means the wasm app is actually up on
+	// screen — tell the JS shell so it drops the "Starting OpenLieroX…" overlay.
+	// (Doing this here rather than when the main menu renders hides the overlay
+	// the instant the engine shows anything, not a moment later.)
+	// PROXY_TO_PTHREAD runs this on a worker; route to the browser main thread.
+	{
+		static bool reportedReady = false;
+		if(!reportedReady) {
+			reportedReady = true;
+			MAIN_THREAD_ASYNC_EM_ASM({
+				if (typeof window !== 'undefined' &&
+				    typeof window.olxOnEngineReady === 'function') {
+					window.olxOnEngineReady();
+				}
+			});
+		}
+	}
+#endif
 }
 
 void VideoPostProcessor::cloneBuffer() {
@@ -941,9 +1020,17 @@ void EnableSystemMouseCursor(bool enable)
 		EnableMouseCursor(bool b): Enable(b) {};
 		Result handle()
 		{
+#ifdef __EMSCRIPTEN__
+			// Web build: never show the operating-system / browser cursor.
+			// OpenLieroX's own software cursor is the only cursor the player
+			// should ever see, so ignore requests to show the OS one.
+			(void)Enable;
+			SDL_ShowCursor(SDL_DISABLE);
+#else
 			SDL_ShowCursor(Enable ? SDL_ENABLE : SDL_DISABLE ); // Should be called from main thread, or you'll get race condition with libX11
+#endif
 			return true;
-		} 
+		}
 	};
 	doActionInMainThread( new EnableMouseCursor(enable) );
 };

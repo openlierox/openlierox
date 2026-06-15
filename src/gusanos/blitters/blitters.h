@@ -15,7 +15,7 @@
 // Android NDK's clang uses LLVM's integrated assembler, which rejects
 // the GAS-style MMX register macros in mmx.h. Force the non-SIMD path
 // on Android so the build does not depend on a separate `as`.
-#if !defined(WIN32) && !defined(__ANDROID__) && (SDL_BYTEORDER == SDL_LIL_ENDIAN) && (defined(__i386__) || defined(__x86_64__))
+#if !defined(WIN32) && !defined(__ANDROID__) && !defined(__EMSCRIPTEN__) && (SDL_BYTEORDER == SDL_LIL_ENDIAN) && (defined(__i386__) || defined(__x86_64__))
 #define HAS_MMX (cpu_capabilities & CPU_MMX)
 #define HAS_SSE (cpu_capabilities & CPU_SSE)
 #define HAS_MMXSSE (cpu_capabilities & CPU_MMXPLUS)

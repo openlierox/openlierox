@@ -206,7 +206,7 @@ int main(int argc, char *argv[]) {
 // Main entry point
 int real_main(int argc, char *argv[])
 {
-#ifndef __ANDROID__
+#if !defined(__ANDROID__) && !defined(__EMSCRIPTEN__)
 	if(DoCrashReport(argc, argv)) return 0;
 #endif
 
@@ -226,6 +226,9 @@ int real_main(int argc, char *argv[])
 	hints << GetFullGameName() << " is starting ..." << endl;
 #ifdef DEBUG
 	hints << "This is a DEBUG build." << endl;
+#endif
+#ifdef OLX_GIT_HASH
+	hints << "Built from git hash: " << OLX_GIT_HASH << endl;
 #endif
 #ifdef DEDICATED_ONLY
 	hints << "This is a DEDICATED_ONLY build." << endl;
@@ -261,7 +264,7 @@ startpoint:
 
 	teeStdoutFile(GetWriteFullFileName("logs/OpenLieroX - " + GetDateTimeFilename() + ".txt", true));
 	activateStdinCLIHistory();
-#ifndef __ANDROID__
+#if !defined(__ANDROID__) && !defined(__EMSCRIPTEN__)
 	CrashHandler::init();
 #endif
 
@@ -412,7 +415,7 @@ startpoint:
 	
 	notes << "Good Bye and enjoy your day..." << endl;
 
-#ifndef __ANDROID__
+#if !defined(__ANDROID__) && !defined(__EMSCRIPTEN__)
 	// Uninit the crash handler after all other code
 	CrashHandler::uninit();
 #endif

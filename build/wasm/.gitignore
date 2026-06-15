@@ -1,0 +1,5 @@
+# Cloned third-party sources, fetched on demand by fetch-dependencies.sh
+deps/
+
+# All generated artefacts (CMake build dir, preload data, .wasm/.js/.html/.data)
+output/

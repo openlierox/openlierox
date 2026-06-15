@@ -80,8 +80,18 @@ static bool Menu_InitSockets() {
 	tMenu->tSocket[SCK_NET]->OpenUnreliable(0);	
 	
 	if(!tMenu->tSocket[SCK_LAN]->isOpen() || !tMenu->tSocket[SCK_NET]->isOpen()) {
+#if defined(__EMSCRIPTEN__)
+		// Browsers can't open raw UDP sockets — sockets() returns
+		// SOCK_DGRAM = -1 in Emscripten. The single-player menu still
+		// works without them; just skip the abort and continue with
+		// closed sockets. The server browser / master server query
+		// paths will be no-ops at runtime.
+		warnings << "Menu_InitSockets: UDP sockets unavailable on Emscripten — "
+		            "continuing without networking" << endl;
+#else
 		SystemError("Error: Failed to open a socket for networking");
 		return false;
+#endif
 	}
 
 	// Send some random data to some random IP

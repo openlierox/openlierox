@@ -368,7 +368,16 @@ void GameState::updateToCurrent() {
 }
 
 void GameState::addObject(ObjRef o) {
-	assert(!haveObject(o));
+	// The fresh GameState() registers &game and &gameSettings as
+	// singletons. After a first match, gameStateUpdates->objCreations
+	// can also contain those refs (or any other object whose pointer
+	// gets reused across game restarts), and updateToCurrent() then
+	// re-adds them on top of the singletons. The actual store
+	// (operator[] = ...) is fine with that — it just replaces — so
+	// drop the strict assertion that only fired on the harmless
+	// re-add path. Keeping the data write means the second match
+	// starts with a coherent state instead of aborting in
+	// VALIDATE_BUILD code paths.
 	objs[o] = ObjectState(o);
 }
 

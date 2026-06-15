@@ -54,6 +54,12 @@ void Update();
 // controls in the way. The next SDL_FINGERDOWN re-enables the UI.
 void NotifyExternalInput();
 
+// Called by the input layer when a genuine (non-synthetic) touch event
+// arrives. The "auto" value of Game.TouchscreenControls turns the touch
+// controls on once this has happened — i.e. a touchscreen is actually in
+// use — with no per-platform assumptions.
+void NotifyRealTouch();
+
 // If the active touch layout specifies a minimap position, write it
 // to outX/outY (top-left in logical 640x480 coords) and return true.
 // Callers (the HUD draw path) use this to reposition the minimap so it

@@ -1,0 +1,4 @@
+OpenLieroX is licensed under the LGPL 2.1; see ../../../../../COPYING.LIB
+in the repo root for the full text. This file exists solely so that
+libgd's embedded CPack call (which dereferences ${CMAKE_SOURCE_DIR}/COPYING)
+configures cleanly when libgd is built via add_subdirectory().

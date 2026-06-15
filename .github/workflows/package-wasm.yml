@@ -1,0 +1,80 @@
+name: Build WebAssembly
+
+on:
+  pull_request:
+  # Reusable: invoked by release-beta.yml on merges to master/0.59.
+  workflow_call:
+
+jobs:
+  build-wasm:
+    name: Build WebAssembly bundle
+    runs-on: ubuntu-24.04
+    env:
+      WASM_TOOLS_DIR: ${{ github.workspace }}/wasm-tools
+      EMSDK_VERSION: 3.1.74
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake \
+            build-essential \
+            git \
+            python3 \
+            libboost-dev \
+            zip
+
+      - name: Cache Emscripten SDK
+        id: cache-emsdk
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.WASM_TOOLS_DIR }}/emsdk
+          # Bust the cache when the pinned emsdk version in
+          # build/wasm/fetch-emsdk.sh changes.
+          key: wasm-emsdk-${{ runner.os }}-${{ env.EMSDK_VERSION }}-${{ hashFiles('build/wasm/fetch-emsdk.sh') }}
+
+      - name: Cache emcc port libraries
+        uses: actions/cache@v4
+        with:
+          # build-wasm.sh's "warm cache" step compiles libSDL2 / libpng
+          # / libjpeg / libogg / libvorbis / libz / openal once per
+          # flag set; emsdk caches the resulting .a files here.
+          path: ~/.emscripten_cache
+          key: wasm-emcache-${{ runner.os }}-${{ env.EMSDK_VERSION }}-${{ hashFiles('build/wasm/CMakeLists.txt', 'build/wasm/build-wasm.sh') }}
+
+      - name: Cache third-party deps
+        uses: actions/cache@v4
+        with:
+          path: build/wasm/deps
+          key: wasm-deps-${{ runner.os }}-${{ hashFiles('build/wasm/fetch-dependencies.sh') }}
+
+      - name: Build (release)
+        run: ./build/wasm/build.sh
+
+      - name: Archive bundle
+        id: bundle
+        run: |
+          set -euo pipefail
+          VERSION="$(./get_version.sh)"
+          NAME="openlierox-${VERSION}-wasm"
+          cd distrib
+          mv openlierox-wasm "$NAME"
+          # Zip into a single file so the beta-release job picks it up as one
+          # clean asset (like the other platforms) instead of scattering the
+          # loose .html/.js/.wasm/.data files.
+          zip -r -q "${NAME}.zip" "$NAME"
+          echo "name=${NAME}.zip" >> "$GITHUB_OUTPUT"
+
+      - name: Upload openlierox-wasm
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.bundle.outputs.name }}
+          path: distrib/openlierox-*-wasm.zip
+          if-no-files-found: error

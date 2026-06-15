@@ -76,6 +76,11 @@
 #	define stricmp _stricmp
 #	define fcloseall _fcloseall
 #	define strcasecmp	stricmp
+#elif defined(__EMSCRIPTEN__)
+// Emscripten ships <compat/string.h> with `extern char* strlwr(char*)`,
+// which clashes with the void-returning helper below. Use the system one
+// (it's a thin wrapper around tolower() too) and discard the return.
+#include <compat/string.h>
 #else
 INLINE void strlwr(char* string) {
 	if(string)

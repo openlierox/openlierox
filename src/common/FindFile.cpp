@@ -487,6 +487,12 @@ void InitBaseSearchPaths() {
 	if (const char* external = SDL_AndroidGetExternalStoragePath()) {
 		AddToFileList(&basesearchpaths, std::string(external) + "/OpenLieroX");
 	}
+#elif defined(__EMSCRIPTEN__)
+	// The build script preloads share/gamedir at /gamedir on the
+	// virtual MEMFS, and we chdir to / in main(). Persistent user data
+	// is mounted on IDBFS at /home/web_user (Emscripten's musl HOME).
+	AddToFileList(&basesearchpaths, "/gamedir");
+	AddToFileList(&basesearchpaths, "${HOME}/.OpenLieroX");
 #elif defined(__APPLE__)
 	AddToFileList(&basesearchpaths, "${HOME}/Library/Application Support/OpenLieroX");
 	AddToFileList(&basesearchpaths, ".");

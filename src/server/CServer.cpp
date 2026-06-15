@@ -265,9 +265,18 @@ int GameServer::StartServer()
 }
 
 void GameServer::ObtainExternalIP()
-{	
+{
 	if (sExternalIP.size())
 		return;
+
+#if defined(__EMSCRIPTEN__)
+	// External IP is meaningless in the browser (no inbound socket to
+	// reach), and curl on Emscripten translates connect() into a
+	// WebSocket open against ws://www.openlierox.net which then fails
+	// noisily in the dev console. Skip the fetch for local games.
+	if (game.isLocalGame())
+		return;
+#endif
 
 	// TODO: use a config
 	tHttp2.RequestData("http://www.openlierox.net/external_ip.php", tLXOptions->sHttpProxy);
