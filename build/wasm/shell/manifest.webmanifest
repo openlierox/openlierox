@@ -1,0 +1,17 @@
+{
+  "name": "OpenLieroX",
+  "short_name": "OpenLieroX",
+  "description": "OpenLieroX — extremely addictive realtime worms shoot-em-up. WebAssembly build, installable as a full-screen web app.",
+  "lang": "en",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "landscape",
+  "background_color": "#111111",
+  "theme_color": "#111111",
+  "icons": [
+    { "src": "icon-256.png", "sizes": "256x256", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

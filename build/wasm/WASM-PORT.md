@@ -325,6 +325,10 @@ distrib/openlierox-wasm/
 ├── openlierox.data         # preload archive
 ├── coi-serviceworker.js    # vendored COI shim
 ├── coi-serviceworker.LICENSE
+├── manifest.webmanifest    # PWA manifest — installable web app
+├── icon-256.png            # app icons (manifest + shell <link>)
+├── icon-512.png
+├── build-info.json         # version / commit / file list (provenance)
 ├── _headers                # Netlify / CF Pages headers
 └── .htaccess               # Apache headers + MIME types
 ```
@@ -343,6 +347,62 @@ The bundle works on:
 Caveats: the shim doesn't work in Safari Private Browsing or inside
 iOS in-app WebViews (service workers are disabled there). For those
 audiences, a header-capable host is the only option.
+
+### Installable web app
+
+The bundle is a PWA: `index.html` links `manifest.webmanifest` and
+ships `icon-256.png` / `icon-512.png`, so the shell's **Install web
+app** button gets a real install prompt on Chromium and **Add to Home
+Screen** works on iOS — both launch the game full-screen with no
+browser chrome (the shell's `body.standalone` CSS fills the screen).
+The manifest's `start_url`/`scope` are relative (`./`), so the bundle
+installs correctly from whatever path it's served at — no per-host
+edits. (Without a manifest the Install button can't fire
+`beforeinstallprompt`; this is why it ships in the bundle.)
+
+### build-info.json (provenance / scripted updates)
+
+`build.sh` writes `build-info.json` into the bundle so a deployer never
+has to eyeball the release title to know what a bundle contains:
+
+```json
+{
+  "name": "openlierox-wasm",
+  "version": "0.59_beta10",
+  "commit": "<full sha>",
+  "commitShort": "<short sha>",
+  "commitDate": "<ISO 8601>",
+  "entry": "index.html",
+  "engineFiles": ["openlierox.js", "openlierox.wasm", "openlierox.data"],
+  "files": ["index.html", "openlierox.js", ...]
+}
+```
+
+`engineFiles` are the three artefacts that actually change every build
+(the heavy ones worth cache-busting); `files` is the full publish set.
+
+### Updating a deployed copy
+
+The bundle is self-contained — publishing an update is "replace the
+files". For caches, the recommended pattern (used by
+openlierox.github.io) is to drop each build into a **versioned/dated
+folder** and point a stable entry page at it, so a) old clients keep
+working off the old folder while the CDN catches up, and b) you only
+edit one path per update. A deploy script can stay version-agnostic by
+reading `build-info.json` instead of hard-coding names:
+
+```sh
+unzip -q openlierox-*-wasm.zip -d /tmp/olx
+dir="/tmp/olx/$(ls /tmp/olx)"
+ver="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["version"])' "$dir/build-info.json")"
+dest="web-demo/$ver"            # or a date — whatever your cache-busting scheme uses
+mkdir -p "$dest" && cp "$dir"/* "$dest"/
+# then update the single path reference your stable entry page uses
+```
+
+If you keep a stable install entry (so installed web apps survive
+updates), point its `Module.locateFile` + engine `<script src>` at the
+new `engineFiles` folder and leave its URL/manifest unchanged.
 
 ## Debug harness
 

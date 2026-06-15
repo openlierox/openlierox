@@ -13,9 +13,15 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="OpenLieroX">
   <meta name="theme-color" content="#111111">
-  <!-- Empty data: URL stops the browser from fetching /favicon.ico
-       and logging a noisy 404 on first load. -->
-  <link rel="icon" href="data:,">
+  <!-- Web app manifest + icons. The manifest is what makes "Install web app"
+       offer a real install on Chromium (it needs name/icons/start_url/display);
+       apple-touch-icon is the home-screen icon on iOS. start_url/scope in the
+       manifest are relative ("./"), so the bundle is installable wherever it's
+       hosted. These files (manifest.webmanifest, icon-256/512.png) are staged
+       next to index.html by build.sh / build-wasm.sh. -->
+  <link rel="icon" href="icon-256.png">
+  <link rel="apple-touch-icon" href="icon-256.png">
+  <link rel="manifest" href="manifest.webmanifest">
 
   <style>
     html, body { margin: 0; padding: 0; height: 100%; background: #111; color: #ddd;
