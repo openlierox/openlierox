@@ -605,16 +605,13 @@ void CWormHumanInputHandler::initWeaponSelection() {
 		m_worm->tProfile = new profile_t(); // not really a problem, though...
 	}
 	
-	// Load previous settings from profile
-	for(size_t i=0;i<m_worm->tWeapons.size();i++) {
-		m_worm->weaponSlots.write()[i].WeaponId = (int)game.gameScript()->FindWeaponId( m_worm->tProfile->getWeaponSlot((int)i) );
-		
-        // If this weapon is not enabled in the restrictions, find another weapon that is enabled
-		if( !m_worm->tWeapons[i].weapon() || !game.weaponRestrictions()->isEnabled( m_worm->tWeapons[i].weapon()->Name ) ) {
-			m_worm->weaponSlots.write()[i].WeaponId = game.gameScript()->FindWeaponId( game.weaponRestrictions()->findEnabledWeapon( game.gameScript()->GetWeaponList() ) );
-        }
-	}
-	
+	// Randomize the default loadout for every local human player. This runs once
+	// per local human worm (each goes through its own weapon selection), so in
+	// split-screen all players get an independently randomized default instead of
+	// only player 1. GetRandomWeapons() respects the weapon restrictions and avoids
+	// duplicate slots; the player can still cycle weapons on the selection screen.
+	m_worm->GetRandomWeapons();
+
 	
 	for(size_t n=0;n<m_worm->tWeapons.size();n++) {
 		m_worm->weaponSlots.write()[n].Charge = 1.f;
