@@ -3,6 +3,16 @@
 <head>
   <meta charset="utf-8">
   <title>OpenLieroX (WebAssembly)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <!-- "Add to Home Screen" then launches the game as a standalone, full-screen
+       web app (no browser chrome). iOS uses the apple-* tags; Android the
+       mobile-web-app-capable one. The shell auto-fills the screen in that mode
+       (see the body.standalone CSS / JS below). -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="OpenLieroX">
+  <meta name="theme-color" content="#111111">
   <!-- Empty data: URL stops the browser from fetching /favicon.ico
        and logging a noisy 404 on first load. -->
   <link rel="icon" href="data:,">
@@ -42,6 +52,15 @@
                           align-items: center; justify-content: center; background: #000; }
     #fs-area:fullscreen #canvas { width: min(100vw, 100vh * 4 / 3);
                                   height: min(100vh, 100vw * 3 / 4); }
+    /* Installed web app (iOS "Add to Home Screen" standalone / Android PWA):
+     * no browser chrome, so fill the whole screen with the centred 4:3 canvas,
+     * exactly like the in-page fullscreen mode. The toolbar/log aren't useful
+     * there, so hide them. */
+    body.standalone #toolbar, body.standalone #log { display: none; }
+    body.standalone #fs-area { position: fixed; inset: 0; width: 100vw; height: 100vh;
+                               display: flex; align-items: center; justify-content: center; background: #000; }
+    body.standalone #fs-area #canvas { width: min(100vw, 100vh * 4 / 3);
+                                       height: min(100vh, 100vw * 3 / 4); }
     #log       { max-height: 25vh; overflow: auto; padding: 4px 10px;
                  background: #181818; font: 12px/1.3 monospace; white-space: pre-wrap;
                  align-self: stretch; }
@@ -52,6 +71,7 @@
   <div id="wrapper">
     <div id="toolbar">
       <button id="fs-toggle" type="button">Enter fullscreen</button>
+      <button id="install-btn" type="button">Install web app</button>
     </div>
     <!-- #fs-area is the element that goes fullscreen — it holds both the
          canvas and the status overlay so the overlay stays visible (in the
@@ -240,17 +260,71 @@
     (() => {
       const fsArea = document.getElementById("fs-area");
       const btn    = document.getElementById("fs-toggle");
-      btn.addEventListener("click", () => {
-        if (document.fullscreenElement) {
-          document.exitFullscreen();
-        } else {
-          fsArea.requestFullscreen().catch((e) =>
-            appendLog("Fullscreen request failed: " + e, true));
-        }
+
+      // Launched as an installed web app (iOS standalone / Android PWA)? No
+      // browser chrome — fill the screen automatically (see body.standalone CSS).
+      const standalone = window.navigator.standalone === true ||
+        (window.matchMedia && (window.matchMedia("(display-mode: standalone)").matches ||
+                               window.matchMedia("(display-mode: fullscreen)").matches));
+      if (standalone) document.body.classList.add("standalone");
+
+      // The Fullscreen API isn't supported on iOS Safari (only <video>), so the
+      // Enter-fullscreen button does nothing there — hide it. Use "Install web
+      // app" instead to get a real full-screen experience.
+      if (!document.fullscreenEnabled) {
+        btn.style.display = "none";
+      } else {
+        btn.addEventListener("click", () => {
+          if (document.fullscreenElement) {
+            document.exitFullscreen();
+          } else {
+            fsArea.requestFullscreen().catch((e) =>
+              appendLog("Fullscreen request failed: " + e, true));
+          }
+        });
+        document.addEventListener("fullscreenchange", () => {
+          btn.textContent = document.fullscreenElement
+            ? "Exit fullscreen" : "Enter fullscreen";
+        });
+      }
+    })();
+
+    // "Install web app" button. On Chromium (desktop/Android) we capture the
+    // beforeinstallprompt event and fire it on click. iOS has no such API, so
+    // there we show the manual "Share -> Add to Home Screen" instructions.
+    (() => {
+      const installBtn = document.getElementById("install-btn");
+      const isStandalone = window.navigator.standalone === true ||
+        (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches);
+      if (isStandalone) { installBtn.style.display = "none"; return; } // already installed
+
+      const isIOS = /iphone|ipad|ipod/i.test(window.navigator.userAgent) ||
+        // iPadOS 13+ reports as Mac; detect the touch-capable case.
+        (window.navigator.platform === "MacIntel" && window.navigator.maxTouchPoints > 1);
+
+      let deferredPrompt = null;
+      window.addEventListener("beforeinstallprompt", (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
       });
-      document.addEventListener("fullscreenchange", () => {
-        btn.textContent = document.fullscreenElement
-          ? "Exit fullscreen" : "Enter fullscreen";
+      window.addEventListener("appinstalled", () => { installBtn.style.display = "none"; });
+
+      installBtn.addEventListener("click", async () => {
+        if (deferredPrompt) {                       // Chromium: real install prompt
+          deferredPrompt.prompt();
+          await deferredPrompt.userChoice;
+          deferredPrompt = null;
+          return;
+        }
+        if (isIOS) {                                // iOS: manual instructions
+          alert("To install OpenLieroX as a full-screen app:\n\n" +
+                "1. Tap the Share button (the square with an up-arrow).\n" +
+                "2. Choose \"Add to Home Screen\".\n" +
+                "3. Launch it from the new home-screen icon — it opens full screen.");
+          return;
+        }
+        alert("Use your browser's menu to install this app " +
+              "(e.g. \"Install\" / \"Add to Home Screen\").");
       });
     })();
   </script>
