@@ -38,7 +38,7 @@ struct weapon_t;
 
 enum { 
 	MAX_CHALLENGES = 1024,
-	MAX_SERVER_SOCKETS = 4, // = max UDP masterservers
+	MAX_SERVER_SOCKETS = 6, // = max UDP masterservers
 };
 
 
