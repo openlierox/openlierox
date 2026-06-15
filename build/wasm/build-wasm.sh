@@ -179,6 +179,14 @@ if [ -f "$OUT_DIR/openlierox.html" ]; then
     cp -f "$OUT_DIR/openlierox.html" "$OUT_DIR/index.html"
 fi
 
+# Copy the shell's static web assets (PWA manifest + icons) next to the
+# output so `serve.py` (which serves output/ directly) doesn't 404 on the
+# <link rel="manifest"> / <link rel="icon"> the shell references. build.sh
+# stages the same files into the redistributable bundle.
+for asset in manifest.webmanifest icon-256.png icon-512.png; do
+    [ -f "$WASM_DIR/shell/$asset" ] && cp -f "$WASM_DIR/shell/$asset" "$OUT_DIR/"
+done
+
 echo
 echo "Wasm artefacts ready under $OUT_DIR:"
 ls -lh "$OUT_DIR"/openlierox.* "$OUT_DIR/index.html" 2>/dev/null || true

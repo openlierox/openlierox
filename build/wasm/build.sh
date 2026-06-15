@@ -77,6 +77,19 @@ cp -f "$SHIM_SRC" "$DIST_DIR/coi-serviceworker.js"
     cp -f "$WASM_DIR/shell/coi-serviceworker.LICENSE" \
           "$DIST_DIR/coi-serviceworker.LICENSE"
 
+# PWA assets: web app manifest + icons referenced by the shell's <head>.
+# These make the bundle installable as a standalone web app out of the box
+# (the shell's "Install web app" button needs a manifest to get a real
+# install prompt). The manifest uses relative start_url/scope, so it works
+# wherever the bundle is hosted.
+for asset in manifest.webmanifest icon-256.png icon-512.png; do
+    if [ ! -f "$WASM_DIR/shell/$asset" ]; then
+        echo "ERROR: shell asset missing: $WASM_DIR/shell/$asset" >&2
+        exit 1
+    fi
+    cp -f "$WASM_DIR/shell/$asset" "$DIST_DIR/$asset"
+done
+
 # Inject the shim's <script> into the staged index.html, immediately
 # before </head>, so it registers before the emscripten loader runs.
 # The shim must be loaded as a regular script (no defer / async /
@@ -117,6 +130,37 @@ AddType application/wasm         .wasm
 AddType application/octet-stream .data
 AddType application/javascript   .js
 EOF
+
+# Machine-readable build metadata. Lets a downstream deployer (e.g. the
+# website's update step) read the exact version/commit a bundle came from
+# instead of eyeballing the release title, and script a versioned rollout
+# (name the target folder, record provenance) without guessing.
+OLX_VERSION="$("$OLX_ROOT/get_version.sh" 2>/dev/null || echo unknown)"
+OLX_COMMIT="$(git -C "$OLX_ROOT" rev-parse HEAD 2>/dev/null || echo unknown)"
+OLX_COMMIT_SHORT="$(git -C "$OLX_ROOT" rev-parse --short HEAD 2>/dev/null || echo unknown)"
+OLX_COMMIT_DATE="$(git -C "$OLX_ROOT" show -s --format=%cI HEAD 2>/dev/null || echo unknown)"
+OLX_VERSION="$OLX_VERSION" OLX_COMMIT="$OLX_COMMIT" \
+OLX_COMMIT_SHORT="$OLX_COMMIT_SHORT" OLX_COMMIT_DATE="$OLX_COMMIT_DATE" \
+python3 - "$DIST_DIR/build-info.json" <<'PY'
+import json, os, sys
+json.dump({
+    "name": "openlierox-wasm",
+    "version": os.environ["OLX_VERSION"],
+    "commit": os.environ["OLX_COMMIT"],
+    "commitShort": os.environ["OLX_COMMIT_SHORT"],
+    "commitDate": os.environ["OLX_COMMIT_DATE"],
+    # The web entry point and the engine artefacts a deployer must publish.
+    "entry": "index.html",
+    "engineFiles": ["openlierox.js", "openlierox.wasm", "openlierox.data"],
+    "files": [
+        "index.html", "openlierox.js", "openlierox.wasm", "openlierox.data",
+        "coi-serviceworker.js", "coi-serviceworker.LICENSE",
+        "manifest.webmanifest", "icon-256.png", "icon-512.png",
+        "_headers", ".htaccess",
+    ],
+}, open(sys.argv[1], "w"), indent=2)
+open(sys.argv[1], "a").write("\n")
+PY
 
 # ---------- summary -------------------------------------------------------
 
