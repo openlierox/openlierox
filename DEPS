@@ -1,4 +1,3 @@
--- general stuff
 Gentoo: gcc
 Debian: build-essential
 
@@ -62,6 +61,9 @@ tested versions: 1.2.0
 
 -- libbfd
 Debian: binutils-dev
+
+-- libyaml-cpp
+Debian: libyaml-cpp-dev
 
 ----
 
