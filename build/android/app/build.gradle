@@ -7,6 +7,20 @@ def versionFile = new File(olxRoot, 'VERSION')
 def olxVersion = versionFile.exists() ? versionFile.text.trim() : '0.59'
 def architectures = project.hasProperty('architectures') ? project.architectures.split(',') : 'arm64-v8a'
 
+// versionCode = fixed base + number of commits on the current branch, so each
+// new commit automatically bumps the Play Store version code.
+def versionCodeBase = 10591008 // 0.59_beta10 Android revision 08
+def gitCommitCount = { ->
+    try {
+        def proc = ['git', 'rev-list', '--count', 'HEAD'].execute(null, olxRoot)
+        proc.waitFor()
+        return proc.exitValue() == 0 ? proc.text.trim().toInteger() : 0
+    } catch (Exception ignored) {
+        return 0
+    }
+}()
+def olxVersionCode = versionCodeBase + gitCommitCount
+
 // Funnel every generated artefact under build/android/output/ so the
 // repo only has one ignored sub-tree to manage. Gradle's project cache
 // (.gradle/) is relocated separately by build-android.sh via
@@ -23,7 +37,7 @@ android {
         applicationId 'openlierox.net'
         minSdk 24
         targetSdk 36
-        versionCode 10591008 // 0.59_beta10 Android revision 08
+        versionCode olxVersionCode // base 10591008 + git commit count
         versionName olxVersion
 
         externalNativeBuild {
