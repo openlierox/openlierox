@@ -2,7 +2,7 @@ name: Build Mac
 
 on:
   pull_request:
-  # Reusable: invoked by release-beta.yml on merges to master/0.59.
+  # Reusable: invoked by release-beta.yml on merges to master.
   workflow_call:
 
 jobs:
