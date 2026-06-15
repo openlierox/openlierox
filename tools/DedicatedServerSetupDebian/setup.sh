@@ -34,7 +34,7 @@ cd ../..
   echo '@reboot export PATH=$HOME/.pyenv/versions/2.7.18/bin:$PATH; cd $HOME/openlierox/share/gamedir; while true; do ../../bin/openlierox 2>&1 | logger --tag openlierox; sleep 10; done'
   echo '0 */6 * * * killall openlierox; sleep 1; killall -9 openlierox'
   echo '0 2 * * * find $HOME/.OpenLieroX/logs -mtime +7 -type f -delete'
-  echo '50 * * * * cd $HOME/openlierox/share/gamedir/cfg && curl -o udpmasterservers.txt.new https://openlierox.github.io/serverlist/udpmasterservers.txt && mv -f udpmasterservers.txt.new udpmasterservers.txt'
+  echo '50 * * * * cd $HOME/openlierox/share/gamedir/cfg && curl -L -o udpmasterservers.txt.new https://openlierox.github.io/serverlist/udpmasterservers.txt && mv -f udpmasterservers.txt.new udpmasterservers.txt'
 } | crontab -
 
 echo "Setup done, now reboot your server"
