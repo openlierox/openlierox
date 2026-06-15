@@ -287,7 +287,7 @@ void GameServer::ObtainExternalIP()
 		return;
 
 	// TODO: use a config
-	tHttp2.RequestData("http://www.openlierox.net/external_ip.php", tLXOptions->sHttpProxy);
+	tHttp2.RequestData("https://ipinfo.io/ip", tLXOptions->sHttpProxy);
 }
 
 void GameServer::ProcessGetExternalIP()
