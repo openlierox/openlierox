@@ -19,6 +19,7 @@
 #include "DeprecatedGUI/Graphics.h"
 #include "DeprecatedGUI/Menu.h"
 #include "GfxPrimitives.h"
+#include "sound/SoundsBase.h"
 #include "DeprecatedGUI/CSlider.h"
 
 
@@ -73,6 +74,27 @@ int CSlider::MouseDown(mouse_t *tMouse, int nDown)
 	return SLD_CHANGE;
 }
 
+int CSlider::KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate)
+{
+	switch (keysym)  {
+		case SDLK_LEFT:
+			iValue -= (iMax - iMin) >= 50 ? (iMax - iMin) / 50 : (iMax - iMin) >= 10 ? (iMax - iMin) / 10 : 1;
+			iValue = MAX(iMin,iValue);
+			iValue = MIN(iMax,iValue);
+			PlaySoundSample(sfxGeneral.smpClick);
+		return SLD_CHANGE;
+
+		case SDLK_RIGHT:
+			iValue += (iMax - iMin) >= 50 ? (iMax - iMin) / 50 : (iMax - iMin) >= 10 ? (iMax - iMin) / 10 : 1;
+			iValue = MAX(iMin,iValue);
+			iValue = MIN(iMax,iValue);
+			PlaySoundSample(sfxGeneral.smpClick);
+		return SLD_CHANGE;
+	}
+
+	return SLD_NONE;
+}
+
 
 ///////////////////
 // This widget is send a message
@@ -93,12 +115,5 @@ uintptr_t CSlider::SendMessage(int iMsg, uintptr_t Param1, uintptr_t Param2)
 
 	return 0;
 }
-
-static bool CSlider_WidgetRegistered = 
-	CGuiSkin::RegisterWidget( "slider", & CSlider::WidgetCreator )
-							( "min", SVT_INT32 )
-							( "max", SVT_INT32 )
-							( "var", SVT_STRING )
-							( "click", SVT_STRING );
 
 }; // namespace DeprecatedGUI

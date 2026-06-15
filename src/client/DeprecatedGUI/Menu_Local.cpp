@@ -101,6 +101,8 @@ static void Menu_Local_InitCustomLevel() {
 
 	cLocalMenu.Add( new CListview(), ml_PlayerList,  410,115, 200, 126);
 	cLocalMenu.Add( new CListview(), ml_Playing,     310,250, 300, 185);
+
+	cLocalMenu.getWidget(ml_Playing)->setKeyboardNavigationOrder(1);
 	
 	int y = 235;
     cLocalMenu.AddBack( new CLabel("Level",tLX->clNormalLabel),	    -1,         30,  y+1, 0,   0);
@@ -320,6 +322,9 @@ void Menu_LocalInitialize()
 
 	cLocalMenu.Add( new CButton(BUT_BACK, tMenu->bmpButtons), ml_Back, 27,440, 50,15);
 	cLocalMenu.Add( new CButton(BUT_START, tMenu->bmpButtons), ml_Start, 555,440, 60,15);
+
+	cLocalMenu.getWidget(ml_Back)->setKeyboardNavigationOrder(1);
+	cLocalMenu.getWidget(ml_Start)->setKeyboardNavigationOrder(1);
 	
 	initCurrentGameMenu();
 	
@@ -432,6 +437,7 @@ void Menu_LocalFrame()
 	cLocalMenu.Draw(VideoPostProcessor::videoSurface().get());
 
 	if(ev) {
+		int changeTeamPlayerId = -1;
 
 		switch(ev->iControlID) {
 			case ml_Game:
@@ -474,40 +480,45 @@ void Menu_LocalFrame()
 
 			// Player list
 			case ml_PlayerList:
-				if(ev->iEventMsg == LV_DOUBLECLK || ev->iEventMsg == LV_RIGHTCLK) {
+				if(ev->iEventMsg == LV_DOUBLECLK || ev->iEventMsg == LV_RIGHTCLK || ev->iEventMsg == LV_ENTER) {
 					Menu_LocalAddPlaying();
 				}
 				break;
 
 			// Playing list
 			case ml_Playing:
-				if(ev->iEventMsg == LV_DOUBLECLK || ev->iEventMsg == LV_RIGHTCLK) {
-					Menu_LocalRemovePlaying();
+				if (ev->iEventMsg == LV_DOUBLECLK || ev->iEventMsg == LV_RIGHTCLK || ev->iEventMsg == LV_ENTER) {
+					if (!Menu_IsKeyboardNavigationUsed() || gameSettings[FT_GameMode].as<GameModeInfo>()->mode->GameTeams() <= 1)
+						Menu_LocalRemovePlaying();
 				}
 
+				lv = (CListview *)cLocalMenu.getWidget(ml_Playing);
 
 				if(ev->iEventMsg == LV_WIDGETEVENT && gameSettings[FT_GameMode].as<GameModeInfo>()->mode->GameTeams() > 1) {
-
 					// If the team colour item was clicked on, change it
-					lv = (CListview *)cLocalMenu.getWidget(ml_Playing);
-
 					ev = lv->getWidgetEvent();
 					if (ev->cWidget->getType() == wid_Image && ev->iEventMsg == IMG_CLICK)  {
-						lv_item_t *it = lv->getItem(ev->iControlID);
-						lv_subitem_t *sub = lv->getSubItem(it, 2);
+						changeTeamPlayerId = ev->iControlID;
+					}
+					if (Menu_IsKeyboardNavigationUsed()) {
+						changeTeamPlayerId = lv->getCurIndex();
+					}
+				}
 
-						if(sub) {
-							sub->iExtra++;
-							sub->iExtra %= 4;
+				if (changeTeamPlayerId >= 0) {
+					lv_item_t *it = lv->getItem(changeTeamPlayerId);
+					lv_subitem_t *sub = lv->getSubItem(it, 2);
 
-							// Change the image
-							((CImage *)ev->cWidget)->Change(DynDrawFromSurface(gfxGame.bmpTeamColours[sub->iExtra]));
+					if(sub) {
+						sub->iExtra++;
+						sub->iExtra %= 4;
 
-							SmartPointer<profile_t> p = FindProfile(it->iIndex);
-							if(p.get()) {
-								p->iTeam = sub->iExtra;
-								//tMenu->sLocalPlayers[ev->iControlID].ChangeGraphics(gameSettings[FT_GameMode].as<GameModeInfo>()->mode->GeneralGameType());
-							}
+						// Change the image
+						((CImage *)sub->tWidget)->Change(DynDrawFromSurface(gfxGame.bmpTeamColours[sub->iExtra]));
+
+						SmartPointer<profile_t> p = FindProfile(it->iIndex);
+						if(p.get()) {
+							p->iTeam = sub->iExtra;
 						}
 					}
 				}
@@ -815,9 +826,6 @@ static bool Menu_LocalStartGame_CustomGame() {
 	//
 	gameSettings.overwrite[FT_GameMode].as<GameModeInfo>()->mode = GameMode((GameModeIndex)cLocalMenu.SendMessage(ml_Gametype, CBM_GETCURINDEX, (uintptr_t)0, 0));
 	
-	gameSettings.overwrite[FT_NewNetEngine] = false; // May become buggy otherwise, new net engine doesn't support any kind of pause
-	
-	
     // Get the mod name
 	GuiListItem::Pt it = ((CCombobox*)cLocalMenu.getWidget(ml_ModName))->getSelectedItem();
     if(it.get()) {
@@ -1004,10 +1012,17 @@ void Menu_GameSettings()
 			maxWidth = tLX->cFont.GetWidth(it->second.shortDesc);
 	}
 	
-	features->AddColumn("", 60 + 10); 
-	features->AddColumn("", maxWidth + 10); 
-	features->AddColumn("", 190); 
-	
+	features->AddColumn("", 60 + 10);
+	features->AddColumn("", maxWidth + 10);
+	features->AddColumn("", 190);
+
+	if( Menu_IsKeyboardNavigationUsed() ) {
+		// Expand every group, so all settings are reachable with the keyboard
+		for( int group = 0; group < GIG_Size; group++ ) {
+			tLXOptions->iGameInfoGroupsShown[group] = true;
+		}
+	}
+
 	initFeaturesList(features);
 
 	cGameSettings.Add( new CLabel("", tLX->clNormalLabel), gs_FeaturesListLabel, 95 - 35, 390, 450 + 70, 40);
@@ -1459,7 +1474,7 @@ bool Menu_GameSettings_Frame()
 						featuresLabel->setText( splitStringWithNewLine(desc, (size_t)-1, 450, tLX->cFont) );
 					}
 				}
-				if( ev->iEventMsg == LV_CHANGED )
+				if( ev->iEventMsg == LV_CHANGED && !Menu_IsKeyboardNavigationUsed() )
 				{
 					for( int group = 0; group < GIG_Size; group++ )
 						if( features->getMouseOverSIndex() == GameInfoGroupDescriptions[group][0] ) {
@@ -1848,7 +1863,7 @@ void Menu_WeaponPresets(bool save, CWpnRest *wpnrest)
 
 			// OK and double click on listview
 			if (ev->iControlID == wp_Ok || ev->iControlID == wp_PresetList)  {
-				if((ev->iEventMsg == BTN_CLICKED && ev->iControlID == 1) || ev->iEventMsg == LV_DOUBLECLK) {
+				if((ev->iEventMsg == BTN_CLICKED && ev->iControlID == 1) || ev->iEventMsg == LV_DOUBLECLK || ev->iEventMsg == LV_ENTER) {
 
 					// Play the sound only for OK button
 					if (ev->iControlID == wp_Ok)

@@ -33,11 +33,17 @@ void	CTextButton::Draw(SDL_Surface * bmpDest)
 	CLabel::Draw( bmpDest );
 }
 
-static bool CTextButton_WidgetRegistered = 
-	CGuiSkin::RegisterWidget( "textbutton", & CTextButton::WidgetCreator )
-							( "text", SVT_STRING )
-							( "color", SVT_COLOR )
-							( "glowcolor", SVT_COLOR )
-							( "click", SVT_STRING );
+int CTextButton::KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate)
+{
+	if (keysym == SDLK_RETURN ||
+		keysym == SDLK_KP_ENTER ||
+		keysym == SDLK_LALT ||
+		keysym == SDLK_LCTRL ||
+		keysym == SDLK_LSHIFT ||
+		keysym == SDLK_x ||
+		keysym == SDLK_z)
+		return TXB_MOUSEUP;
+	return CLabel::KeyDown( c, keysym, modstate );
+}
 
 }; // namespace DeprecatedGUI

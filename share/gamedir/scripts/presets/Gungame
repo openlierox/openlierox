@@ -1,0 +1,13 @@
+#!/usr/bin/python -u
+
+setvar( "GameOptions.GameInfo.ModName", "Classic" )
+
+setvar( "GameOptions.GameInfo.LoadingTime", "100" )
+
+setvar( "GameOptions.GameInfo.Bonuses", "1" )
+setvar( "GameOptions.GameInfo.BonusFrequency", "15" )
+setvar( "GameOptions.GameInfo.BonusHealthToWeaponChance", "1" )
+setvar( "GameOptions.GameInfo.BonusLife", "40" )
+setvar( "GameOptions.GameInfo.BonusNames", "0" )
+
+SetWeaponBans("Bonus only")

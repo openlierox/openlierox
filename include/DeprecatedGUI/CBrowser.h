@@ -355,7 +355,6 @@ public:
 	uintptr_t SendMessage(int iMsg, std::string *sStr, uintptr_t Param)  { return 0; }
 
 	void	Draw(SDL_Surface * bmpDest);
-	void	LoadStyle() {}
 
 	void	MousePosToCursorPos(int ms_x, int ms_y, size_t& cur_x, size_t& cur_y);
 	void	CursorPosToMousePos(size_t cur_x, size_t cur_y, int& ms_x, int& ms_y);
@@ -382,10 +381,7 @@ public:
 	CHttp&	GetHttp()		{ return cHttp; }
 
 	void	showScrollbar(bool b)		{ bShowScrollbar = b; }
-
-
 	// TODO: add function for getting individual text lines & their color
-
 };
 
 }; // namespace DeprecatedGUI

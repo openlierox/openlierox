@@ -163,15 +163,7 @@ void CServerNetEngine::ParsePacket(CBytestream *bs) {
 		case C2S_REPORTDAMAGE:
 			ParseReportDamage(bs);
 			break;
-			
-		case C2S_NEWNET_KEYS:
-			ParseNewNetKeys(bs);
-			break;
 
-		case C2S_NEWNET_CHECKSUM:
-			ParseNewNetChecksum(bs);
-			break;
-				
 		case C2S_GUSANOS:
 			network.olxParse(NetConnID_conn(cl), *bs);
 			break;
@@ -987,53 +979,6 @@ void CServerNetEngineBeta9::ParseReportDamage(CBytestream *bs)
 			server->cClients[i].getNetEngine()->QueueReportDamage( w->getID(), damage, offender->getID() );
 }
 
-
-void CServerNetEngineBeta9::ParseNewNetKeys(CBytestream *bs)
-{
-	int id = bs->readByte();
-	if( id < 0 || id >= MAX_WORMS || !cl->OwnsWorm(id) )
-	{
-		warnings << "CServerNetEngineBeta9::ParseNewNetKeys(): worm id " << id << " client doesn't own worm" << endl;
-		bs->Skip( NewNet::NetPacketSize() );
-		return;
-	}
-
-	CBytestream send;
-	send.writeByte( S2C_NEWNET_KEYS );
-	send.writeByte( id );
-	send.writeData( bs->readData( NewNet::NetPacketSize() ) );
-	
-	// Re-send the packet to all clients, except the sender
-	for( int i=0; i < MAX_CLIENTS; i++ )
-		if( server->cClients[i].getStatus() == NET_CONNECTED && (&server->cClients[i]) != cl )
-		{
-			send.ResetPosToBegin();
-			server->cClients[i].getNetEngine()->SendPacket(&send);
-		}
-}
-
-void CServerNetEngineBeta9::ParseNewNetChecksum(CBytestream *bs)
-{
-	unsigned checksum = bs->readInt(4);
-	AbsTime checkTime(bs->readInt(4));
-	AbsTime myTime;
-	unsigned myChecksum = NewNet::GetChecksum(&myTime);
-	if( myTime != checkTime )
-	{
-		warnings << "CServerNetEngineBeta9::ParseNewNetChecksum(): received time " << checkTime.milliseconds() <<
-					" our time " << myTime.milliseconds() << endl;
-		return;
-	}
-	if( myChecksum != checksum && ! game.gameOver )
-	{
-		std::string wormName = "unknown";
-		if( game.wormsOfClient(cl)->isValid() )
-			wormName = game.wormsOfClient(cl)->get()->getName();
-		server->DropClient(cl, CLL_KICK, "Game state was de-synced in new net engine!");
-		server->SendGlobalText( "Game state was de-synced in new net engine for worm " + wormName, TXT_NETWORK );
-	}
-}
-
 /*
 ===========================
 
@@ -1065,7 +1010,7 @@ void GameServer::ParseConnectionlessPacket(const SmartPointer<NetworkSocket>& tS
 	else if (cmd == "lx::traverse")
 		ParseTraverse(tSocket, bs, ip);
 	else if (cmd == "lx::registered")
-		ParseServerRegistered(tSocket);
+		ParseServerRegistered(tSocket, bs);
 	else  {
 		warnings << "GameServer::ParseConnectionlessPacket: unknown packet \"" << cmd << "\"" << endl;
 		bs->SkipAll(); // Safety: ignore any data behind this unknown packet
@@ -1178,7 +1123,8 @@ void GameServer::ParseGetChallenge(const SmartPointer<NetworkSocket>& tSocket, C
 // Handle a 'connect' message
 void GameServer::ParseConnect(const SmartPointer<NetworkSocket>& net_socket, CBytestream *bs) {
 	NetworkAddr		adrFrom;
-	int				p, player = -1;
+	int				p;
+	int				player = -1;
 	CServerConnection	*newcl = NULL;
 
 
@@ -1354,7 +1300,6 @@ void GameServer::ParseConnect(const SmartPointer<NetworkSocket>& net_socket, CBy
 	}
 
 	// Find a spot for the client
-	player = -1;
 	p=0;
 	if(newcl == NULL)
 		for (CServerConnection* cl = cClients; p < MAX_CLIENTS; p++, cl++) {
@@ -2051,18 +1996,31 @@ void GameServer::ParseTraverse(const SmartPointer<NetworkSocket>& tSocket, CByte
 }
 
 // Server sent us "lx::registered", that means it's alive - record that
-void GameServer::ParseServerRegistered(const SmartPointer<NetworkSocket>& tSocket)
+void GameServer::ParseServerRegistered(const SmartPointer<NetworkSocket>& tSocket, CBytestream *bs)
 {
 	if( tUdpMasterServers.size() == 0 )
 		return;
-	NetworkAddr addr;
-	std::string domain = tUdpMasterServers[0].substr( 0, tUdpMasterServers[0].find(":") );
-	int port = atoi(tUdpMasterServers[0].substr( tUdpMasterServers[0].find(":") + 1 ));
-	if( !GetFromDnsCache(domain, addr) )
+	NetworkAddr addr, addr6;
+	std::string domain = tUdpMasterServers[0].substr( 0, tUdpMasterServers[0].rfind(":") );
+	int port = atoi(tUdpMasterServers[0].substr( tUdpMasterServers[0].rfind(":") + 1 ));
+	if( !GetFromDnsCache(domain, addr, addr6) )
 		return;
 	SetNetAddrPort( addr, port );
+	SetNetAddrPort( addr6, port );
 		
-	if( tSocket->remoteAddress() == addr )
+	if( tSocket->remoteAddress() == addr || tSocket->remoteAddress() == addr6 )
 		iFirstUdpMasterServerNotRespondingCount = 0;
+
+	if( bs->isPosAtEnd() )
+		return;
+	std::string myAddr = bs->readString();
+
+	if( myAddr == "" )
+		return;
+	if (IsNetAddrV6(myAddr) == 0) {
+		sServerAddressV6 = myAddr;
+	} else {
+		sServerAddressV4 = myAddr;
+	}
 }
 

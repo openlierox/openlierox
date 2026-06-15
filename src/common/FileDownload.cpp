@@ -236,7 +236,7 @@ void CHttpDownloader::SetHttpError(HttpError err)
 	Lock();
 
 	tError.iError = FILEDL_ERROR_HTTP;
-	tError.sErrorMsg = "HTTP Error: " + err.sErrorMsg;
+	tError.sErrorMsg = "HTTP Error: " + tHttp.GetUrl() + " : " + err.sErrorMsg;
 	tError.tHttpError.iError = err.iError;
 	tError.tHttpError.sErrorMsg = err.sErrorMsg;
 

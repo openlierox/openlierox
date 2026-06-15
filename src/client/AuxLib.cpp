@@ -129,14 +129,12 @@ bool InitializeAuxLib()
 		return false;
 	}
 
-#ifndef DISABLE_JOYSTICK
 	if(bJoystickSupport) {
 		if(SDL_InitSubSystem(SDL_INIT_GAMECONTROLLER) != 0) {
 			warnings << "WARNING: couldn't init gamecontroller/joystick subystem: " << SDL_GetError() << endl;
 			bJoystickSupport = false;
 		}
 	}
-#endif
 
 	if(!bDedicated && !SetVideoMode())
 		return false;

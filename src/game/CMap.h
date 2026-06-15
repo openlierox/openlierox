@@ -342,11 +342,6 @@ public:
 
 	CVec		groundPos(const CVec& pos);
 	
-	// Save/restore from memory, for commit/rollback net mechanism
-	void		NewNet_SaveToMemory();
-	void		NewNet_RestoreFromMemory();
-	void		NewNet_Deinit();
-
 	theme_t		*GetTheme()		{ return &Theme; }
 
 	void		DEBUG_DrawPixelFlags(int x, int y, int w, int h);

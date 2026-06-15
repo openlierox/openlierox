@@ -127,6 +127,8 @@ private:
 	AbsTime		m_clientsNeedLobbyUpdateTime;
 	
 	std::string	netError;
+	std::string	sServerAddressV4;
+	std::string	sServerAddressV6;
 
 	friend class CServerNetEngine;
 	friend class CServerNetEngineBeta7;
@@ -252,7 +254,7 @@ public:
     void        ParseGetInfo(const SmartPointer<NetworkSocket>& tSocket, CBytestream *bsHeader = NULL);
 	void		ParseWantsJoin(const SmartPointer<NetworkSocket>& tSocket, CBytestream *bs, const std::string& ip);
 	void		ParseTraverse(const SmartPointer<NetworkSocket>& tSocket, CBytestream *bs, const std::string& ip);
-	void		ParseServerRegistered(const SmartPointer<NetworkSocket>& tSocket);
+	void		ParseServerRegistered(const SmartPointer<NetworkSocket>& tSocket, CBytestream *bs);
 
 
 	// Variables

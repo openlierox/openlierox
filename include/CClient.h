@@ -22,7 +22,6 @@
 #include <map>
 #include <set>
 #include "FastVector.h"
-#include "CWeather.h"
 #include "CChatBox.h"
 #include "Networking.h"
 #include "CBytestream.h"
@@ -192,7 +191,6 @@ public:
 	friend class CClientNetEngine;
 	friend class CClientNetEngineBeta7;
 	friend class CClientNetEngineBeta9;
-	friend class CClientNetEngineBeta9NewNet;
 	friend class Game;
 	
 	typedef void (*DownloadFinishedCB) ();
@@ -216,7 +214,6 @@ private:
 	// Projectiles
 	typedef FastVector<CProjectile,MAX_PROJECTILES> Projectiles;
 	Projectiles	cProjectiles;
-	Projectiles	NewNet_SavedProjectiles;
 	
 public:
 	struct MapPosIndex {
@@ -263,7 +260,6 @@ private:
 	bool		bShouldRepaintInfo;
 	bool		bCurrentSettings;
 
-    CWeather    cWeather;
 
 	// Ingame scoreboard
 	SmartPointer<SDL_Surface> bmpIngameScoreBg;
@@ -424,9 +420,6 @@ public:
 	void		DoLocalShot( float fTime, float fSpeed, int nAngle, CWorm *pcWorm );
 	void		ProcessShot(shoot_t *shot, AbsTime fSpawnTime);
 	void		ProcessShot_Beam(shoot_t *shot);
-	
-	void		NewNet_Simulation(); // Simulates one frame, delta time always set to 10 ms, ignores current time
-	void		NewNet_DoLocalShot( CWorm *w );
 
 	void		SpawnProjectile(CVec pos, CVec vel, int rot, int owner, proj_t *_proj, int _random, AbsTime time, AbsTime ignoreWormCollBeforeTime);
     void        disableProjectile(CProjectile *prj);
@@ -441,7 +434,6 @@ public:
 
 	// Main
 	void		Frame();
-	void		NewNet_Frame();
 
 	// Drawing
 	bool		InitializeDrawing();
@@ -619,8 +611,6 @@ public:
 	void		setOnMapDlFinished(DownloadFinishedCB f)  { tMapDlCallback = f; }
 	void		setOnModDlFinished(DownloadFinishedCB f)  { tModDlCallback = f; }
 	
-	void		NewNet_SaveProjectiles();
-	void		NewNet_LoadProjectiles();
 	Projectiles & getProjectiles()		{ return cProjectiles; }
 	
 	void		DumpGameState(CmdLineIntf* caller);

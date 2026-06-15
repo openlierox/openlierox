@@ -20,11 +20,7 @@ bool		bDedicated = true;
 bool		bJoystickSupport = false;
 #else //DEDICATED_ONLY
 bool		bDedicated = false;
-#ifdef DISABLE_JOYSTICK
-bool		bJoystickSupport = false;
-#else
 bool		bJoystickSupport = true;
-#endif
 #endif //DEDICATED_ONLY
 bool		bRestartGameAfterQuit = false;
 TStartFunction startFunction = NULL;

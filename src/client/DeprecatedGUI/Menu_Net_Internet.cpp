@@ -83,6 +83,7 @@ bool Menu_Net_NETInitialize()
 	if( tLXOptions->bEnableChat && tLXOptions->bEnableMiniChat )
 		cInternet.Add( new CChatWidget(),						-1,	25, 15, 585, 85 );
 
+	Menu_Net_AddTabBarButtons(&cInternet);
 
 	/*
 	  Server list columns
@@ -185,6 +186,8 @@ void Menu_Net_NETFrame(int mouse)
 	ev = cInternet.Process();
 	cInternet.Draw( VideoPostProcessor::videoSurface().get() );
 
+	if (Menu_Net_ProcessTabBarButtons(ev))
+		return;
 
 	// Process the server list
 	static bool wasLoadedBefore = false;
@@ -446,10 +449,6 @@ void Menu_Net_NETJoinServer(const std::string& sAddress, const std::string& sNam
 }
 
 
-
-// TODO: remove this here!
-extern CButton	cNetButtons[6];
-
 ///////////////////
 // Show an 'add server' box to enter in an address
 enum  {
@@ -470,8 +469,7 @@ void Menu_Net_NETAddServer()
 	Menu_DrawBox(tMenu->bmpBuffer.get(), 200, 220, 440, 340);
 	//DrawImageAdv(tMenu->bmpBuffer, tMenu->bmpMainBack, 202,222, 202,222, 237,117);
     DrawRectFill(tMenu->bmpBuffer.get(), 202,222,439,339,tLX->clDialogBackground);
-	for(int i=0;i<6;i++)
-		cNetButtons[i].Draw(tMenu->bmpBuffer.get());
+
 	Menu_RedrawMouse(true);
 
 
@@ -557,6 +555,7 @@ void Menu_Net_NETUpdateList()
 {
 	ServerList::get()->updateList();
 }
+
 	
 	
 enum  {
@@ -576,9 +575,6 @@ void Menu_Net_NETShowServer(const std::string& szAddress)
     Menu_DrawBox(tMenu->bmpBuffer.get(), 15,130, 625, 465);
 	Menu_DrawSubTitle(tMenu->bmpBuffer.get(),SUB_NETWORK);
 	cInternet.Draw(tMenu->bmpBuffer.get());
-
-	//for(ushort i=1;i<4;i++)
-	//	cNetButtons[i].Draw(tMenu->bmpBuffer.get());
 
 	Menu_RedrawMouse(true);
 

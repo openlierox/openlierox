@@ -1,53 +1,14 @@
-
 // That's the same as svr_udp.php but needs no MySQL or PHP :)
 
-#include <string>
-#include <vector>
-#include <list>
-#include <stdlib.h>
-#include <stdio.h>
-#include <time.h>
+#include "svr_udp.h"
+#include <ctime>
 
-void signal_handler_impl(int signum);
+static bool quit = false;	// Signal here on Ctrl-C
 
-#ifdef WIN32
+static int port = DEFAULT_PORT;
+static int sock = -1;
 
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#include <winsock.h>
-
-typedef int socklen_t;
-
-BOOL signal_handler( DWORD signum )
-{ 
-	signal_handler_impl(signum);
-	return TRUE;
-};
-
-#else
-
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/time.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <signal.h>
-
-void signal_handler(int signum)
-{
-	signal_handler_impl(signum);
-};
-		 
-#endif
-
-bool quit = false;	// Signal here on Ctrl-C
-
-#define DEFAULT_PORT 23450
-int port = DEFAULT_PORT;
-int sock = -1;
-
-void signal_handler_impl(int signum)
+static void signal_handler_impl(int signum)
 {
 	printf("Caught signal %i, quitting\n", signum);
 	quit=true;
@@ -58,52 +19,26 @@ void signal_handler_impl(int signum)
 	sendto( sock, "lx::ping", 9, 0, (struct sockaddr *)&addr, sizeof(addr) );
 };
 
-
-struct HostInfo
+#ifdef WIN32
+static BOOL signal_handler( DWORD signum )
 {
-
-	HostInfo( std::string _addr, time_t _lastping, std::string _name, int _maxworms, int _numplayers, int _state,
-				std::string _version = "OpenLieroX/0.57_beta5", bool _allowsJoinDuringGame = false ):
-		addr(_addr), lastping(_lastping), name(_name), maxworms(_maxworms), numplayers(_numplayers), state(_state), 
-		version(_version), allowsJoinDuringGame(_allowsJoinDuringGame) {};
-
-	HostInfo(): lastping(0), maxworms(0), numplayers(0), state(0), 
-				version("OpenLieroX/0.57_beta5"), allowsJoinDuringGame(false) {};
-
-	std::string addr;
-	time_t lastping;
-	std::string name;
-	unsigned maxworms;
-	unsigned numplayers;
-	unsigned state;
-	std::string version;
-	bool allowsJoinDuringGame;
+	signal_handler_impl(signum);
+	return TRUE;
 };
-
-struct RawPacketRequest
+#else
+static void signal_handler(int signum)
 {
-	RawPacketRequest( sockaddr_in _src, sockaddr_in _dst, time_t _lastping ):
-		src( _src ), dst( _dst ), lastping( _lastping ) {};
-
-	struct sockaddr_in src;
-	struct sockaddr_in dst;
-	time_t lastping;
+	signal_handler_impl(signum);
 };
-
-bool AreNetAddrEqual( sockaddr_in a1, sockaddr_in a2 )
-{
-	return a1.sin_addr.s_addr == a2.sin_addr.s_addr && a1.sin_port == a2.sin_port;
-}
-
-void printStr(const std::string & s)
-{
-	for(size_t f=0; f<s.size(); f++)
-		printf("%c", s[f] >= 32 ? s[f] : '?' );
-	printf("\n");
-};
+#endif
 
 int main(int argc, char ** argv)
 {
+	if( argc > 1 && std::string(argv[1]) == "-6" )
+	{
+		return main6(argc - 1, argv + 1);
+	}
+
 	#ifdef WIN32
 	WSADATA dummy;
 	WSAStartup(MAKEWORD(2,0), &dummy );
@@ -260,11 +195,12 @@ int main(int argc, char ** argv)
 			if( it == hosts.end() )
 			{
 				hosts.push_back( HostInfo( srcAddr, lastping, name, maxworms, numplayers, state ) );
+				it == hosts.end();
 				it --; // End of list
 				//printf("Host db updated: added: %s %s %u/%u %u\n", srcAddr.c_str(), name.c_str(), numplayers, maxworms, state );
 			};
 			// Send back confirmation so host will know we're alive
-			std::string send = std::string("\xff\xff\xff\xfflx::registered") + '\0';
+			std::string send = std::string("\xff\xff\xff\xfflx::registered") + '\0' + srcAddr + '\0';
 			sendto( sock, send.c_str(), send.size(), 0, (struct sockaddr *)&source, sizeof(source) );
 			
 			// Beta8+
@@ -278,6 +214,12 @@ int main(int argc, char ** argv)
 				continue;
 			bool allowsJoinDuringGame = (unsigned char)(data[f]);
 			*it = HostInfo( srcAddr, lastping, name, maxworms, numplayers, state, version, allowsJoinDuringGame );
+			f += 1;
+			if( f < data.size() && data.find( '\0', f ) != std::string::npos )
+			{
+				// Empty string on IPv4 masterserver, contains IPv4 address on IPv6 masterserver
+				f = data.find( '\0', f ) + 1;
+			}
 		}
 
 		else if( data.find( "\xff\xff\xff\xfflx::deregister" ) == 0 )

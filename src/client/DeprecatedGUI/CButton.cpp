@@ -83,7 +83,6 @@ void CButton::Draw2(SDL_Surface * bmpDest)
 
 ///////////////////
 // Create
-// TODO: what is this good for? the WidgetCreator for example never calls this
 void CButton::Create()
 {
     int y2 = 5+iImageID*40;
@@ -114,14 +113,17 @@ void CButton::Create()
     initWidthHeight();
 }
 
-static bool CButton_WidgetRegistered = 
-	CGuiSkin::RegisterWidget( "button", & CButton::WidgetCreator )
-							( "textid", SVT_INT32 )
-							( "click", SVT_STRING );
-
-static bool CImageButton_WidgetRegistered = 
-	CGuiSkin::RegisterWidget( "imagebutton", & CButton::WidgetCreator_Image )
-							( "file", SVT_STRING )
-							( "click", SVT_STRING );
+int CButton::KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate)
+{
+	if (keysym == SDLK_RETURN ||
+		keysym == SDLK_KP_ENTER ||
+		keysym == SDLK_LALT ||
+		keysym == SDLK_LCTRL ||
+		keysym == SDLK_LSHIFT ||
+		keysym == SDLK_x ||
+		keysym == SDLK_z)
+		return BTN_CLICKED;
+	return BTN_NONE;
+}
 
 }; // namespace DeprecatedGUI

@@ -381,6 +381,9 @@ void	Menu_FillLevelList(CCombobox *cmb, int random);
 void    Menu_redrawBufferRect(int x, int y, int w, int h);
 void	Menu_DisableNetEvents();
 void	Menu_EnableNetEvents();
+bool	Menu_IsKeyboardNavigationUsed();
+void	Menu_WarpMouse(int x, int y);
+void	Menu_ProcessMouseMotion(int x, int y);
 
 void    Menu_SvrList_DrawInfo(const std::string& szAddress, int w, int h);
 	
@@ -484,6 +487,8 @@ void	Menu_Net_ServerList_Refresher();
 bool	Menu_Net_MainInitialize();
 void	Menu_Net_MainFrame(int mouse);
 void	Menu_Net_MainShutdown();
+void	Menu_Net_AddTabBarButtons(CGuiLayout * layout);
+bool	Menu_Net_ProcessTabBarButtons(gui_event_t *ev);
 
 
 // Net::Host menu
@@ -571,12 +576,6 @@ void	Menu_Net_NETAddServer();
 void	Menu_Net_NETUpdateList();
 void    Menu_Net_NETShowServer(const std::string& szAddress);
 void	Menu_Net_NET_ServerList_Refresher();
-
-	
-// CGuiSkin menu - when GUI skinning system will be complete (hopefully) this will become the main menu
-bool	Menu_CGuiSkinInitialize();
-void	Menu_CGuiSkinFrame();
-void	Menu_CGuiSkinShutdown();
 
 void	Menu_Current_Shutdown();
 	

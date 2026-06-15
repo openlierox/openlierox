@@ -50,7 +50,6 @@ private:
 	bool		bMouseOver;
 	int			iImageID;
 	SmartPointer<SDL_Surface> bmpImage;
-	CGuiSkin::CallbackHandler cClick;
 
 public:
 	// Methods
@@ -65,7 +64,7 @@ public:
 	int		MouseClicked(mouse_t *tMouse, int nDown)	{ return TBT_CLICKED; }
 	int		MouseWheelDown(mouse_t *tMouse)		{ return TBT_NONE; }
 	int		MouseWheelUp(mouse_t *tMouse)		{ return TBT_NONE; }
-	int		KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate)	{ return TBT_NONE; }
+	int		KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate);
 	int		KeyUp(UnicodeChar c, int keysym, const ModifiersState& modstate)	{ return TBT_NONE; }
 
 	uintptr_t SendMessage(int iMsg, uintptr_t Param1, uintptr_t Param2)	{ return 0; }
@@ -74,22 +73,6 @@ public:
 
 	// Draw the title button
 	void	Draw(SDL_Surface * bmpDest);
-
-	void	LoadStyle() {}
-
-	static CWidget * WidgetCreator( const std::vector< ScriptVar_t > & p, CGuiLayoutBase * layout, int id, int x, int y, int dx, int dy )
-	{
-		CTitleButton * w = new CTitleButton( p[0].toInt(), tMenu->bmpMainTitles );
-		w->cClick.Init( p[1].toString(), w );
-		layout->Add( w, id, x, y, dx, dy );
-		return w;
-	};
-
-	void	ProcessGuiSkinEvent(int iEvent) 
-	{
-		if( iEvent == TBT_CLICKED )
-			cClick.Call();
-	};
 };
 
 }; // namespace DeprecatedGUI

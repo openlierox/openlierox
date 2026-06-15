@@ -179,7 +179,7 @@ private:
 	void mergeWithNewInfo(server_t::Ptr found, const std::string& address, const std::string & name, int udpMasterserverIndex);
 	bool parsePacket(CBytestream *bs, const SmartPointer<NetworkSocket>& sock, bool isLan);
 	void parseQuery(server_t::Ptr svr, CBytestream *bs);
-	std::string parseUdpServerlist(CBytestream *bs, int UdpMasterserverIndex);
+	std::string parseUdpServerlist(CBytestream *bs, int UdpMasterserverIndex, bool replyV3);
 	void HTTPParseList(CHttp &http);
 public:
 	ServerList();
@@ -217,5 +217,10 @@ public:
 
 	static Ptr get();
 };
+
+
+// Downloads the latest cfg/masterservers.txt and cfg/udpmasterservers.txt
+// from the OpenLieroX serverlist repository. Runs in the background.
+void DownloadMasterServerListFiles();
 
 #endif

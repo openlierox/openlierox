@@ -37,8 +37,11 @@ BUILD_TYPE="debug"
 DO_CLEAN=0
 DO_INSTALL=0
 DO_RUN=0
+DO_BUNDLE=0
+DO_SIGN=0
 SKIP_DATA=0
 SKIP_FETCH=0
+ARCHITECTURES="arm64-v8a"
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -47,6 +50,9 @@ while [ $# -gt 0 ]; do
         --clean)      DO_CLEAN=1 ;;
         --install|-i) DO_INSTALL=1 ;;
         --run|-r)     DO_INSTALL=1; DO_RUN=1 ;;
+        --bundle)     DO_BUNDLE=1 ;;
+        --sign)       DO_SIGN=1 ;;
+        --arch)       ARCHITECTURES="$2" ; shift ;;
         --skip-data)  SKIP_DATA=1 ;;
         --skip-fetch) SKIP_FETCH=1 ;;
         -h|--help)
@@ -95,6 +101,18 @@ if [ "$SKIP_DATA" -eq 0 ]; then
     rm -rf "$ANDROID_DIR/output/assets/gamedir"
     mkdir -p "$ANDROID_DIR/output/assets"
     cp -a "$OLX_ROOT/share/gamedir" "$ANDROID_DIR/output/assets/gamedir"
+    # Ship Mozilla's CA bundle next to the gamedir so libcurl's mbedTLS
+    # backend can verify HTTPS certificates (Android exposes no cert file
+    # in a format curl/mbedTLS can read). Fail loudly rather than silently
+    # producing an APK whose every https:// request rejects the peer.
+    if [ ! -f "$ANDROID_DIR/deps/cacert.pem" ]; then
+        echo "ERROR: $ANDROID_DIR/deps/cacert.pem is missing." >&2
+        echo "       HTTPS in the APK depends on it. Run" >&2
+        echo "       build/android/fetch-dependencies.sh (without --skip-fetch)" >&2
+        echo "       to download it from curl.se." >&2
+        exit 1
+    fi
+    cp "$ANDROID_DIR/deps/cacert.pem" "$ANDROID_DIR/output/assets/gamedir/cacert.pem"
     # Drop a marker so the runtime can check that the data was extracted.
     echo "$(cat "$OLX_ROOT/VERSION" 2>/dev/null || echo unknown)" \
         > "$ANDROID_DIR/output/assets/gamedir.version"
@@ -116,7 +134,7 @@ fi
 
 GRADLE_TASK="assemble${BUILD_TYPE^}"   # assembleDebug / assembleRelease
 
-./gradlew "${GRADLE_OPTS_COMMON[@]}" "$GRADLE_TASK"
+./gradlew "${GRADLE_OPTS_COMMON[@]}" "$GRADLE_TASK" -Parchitectures="$ARCHITECTURES"
 
 # ---------- output ---------------------------------------------------------
 
@@ -128,6 +146,33 @@ mkdir -p "$APK_DST_DIR"
 cp -f "$APK_SRC" "$APK_DST"
 echo "APK: $APK_DST"
 
+# ---------- bundle ---------------------------------------------------------
+
+BUNDLE_SRC="$ANDROID_DIR/output/build/outputs/bundle/releaseWithDebugInfo/app-releaseWithDebugInfo.aab"
+BUNDLE_DST="$ANDROID_DIR/output/openlierox-release.aab"
+
+if [ "$DO_BUNDLE" -eq 1 ]; then
+    # Always build release with debug info, the bundle is used only for uploading to Play Store
+    ./gradlew "${GRADLE_OPTS_COMMON[@]}" bundleReleaseWithDebugInfo -Parchitectures="$ARCHITECTURES"
+    cp -f "$BUNDLE_SRC" "$BUNDLE_DST"
+fi
+
+# ---------- sign ---------------------------------------------------------
+
+if [ "$DO_SIGN" -eq 1 ]; then
+    apksigner sign --ks "$ANDROID_KEYSTORE_FILE" --ks-key-alias "$ANDROID_KEYSTORE_ALIAS" \
+      --ks-pass env:ANDROID_KEYSTORE_PASS "$APK_DST"
+
+    if [ "$DO_BUNDLE" -eq 1 ]; then
+      zip -d "$BUNDLE_DST" "META-INF/*"
+      jarsigner -verbose -sigalg SHA1withRSA -digestalg SHA1 \
+        -keystore "$ANDROID_UPLOAD_KEYSTORE_FILE" \
+        -storepass:env ANDROID_UPLOAD_KEYSTORE_PASS \
+        "$BUNDLE_DST" \
+        "$ANDROID_UPLOAD_KEYSTORE_ALIAS"
+    fi
+fi
+
 # ---------- install + run --------------------------------------------------
 
 if [ "$DO_INSTALL" -eq 1 ]; then
@@ -136,5 +181,5 @@ if [ "$DO_INSTALL" -eq 1 ]; then
 fi
 
 if [ "$DO_RUN" -eq 1 ]; then
-    "$PLATFORM_TOOLS/adb" shell am start -n net.openlierox/net.openlierox.OpenLieroXActivity
+    "$PLATFORM_TOOLS/adb" shell am start -n openlierox.net/openlierox.net.OpenLieroXActivity
 fi

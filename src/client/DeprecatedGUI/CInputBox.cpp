@@ -19,115 +19,59 @@
 #include "DeprecatedGUI/Menu.h"
 #include "GfxPrimitives.h"
 #include "CInput.h"
+#include "sound/SoundsBase.h"
 #include "DeprecatedGUI/CInputBox.h"
 
 
 namespace DeprecatedGUI {
 
+CInputbox * CInputbox::InputBoxSelected = NULL;
+std::string CInputbox::InputBoxLabel;
+
 ///////////////////
 // Draw the input box
 void CInputbox::Draw(SDL_Surface * bmpDest)
 {
+	const int nativeW = bmpImage.get()->w;
+	// Draw at the widget's width; if it's wider than the box image, widen it.
+	const int bw = (iWidth > nativeW) ? iWidth : nativeW;
+
 	if (bRedrawMenu)
-		Menu_redrawBufferRect(iX,iY, bmpImage.get()->w, MAX(bmpImage.get()->h, tLX->cFont.GetHeight()));
+		Menu_redrawBufferRect(iX,iY, bw, MAX(bmpImage.get()->h, tLX->cFont.GetHeight()));
 
 	int y = bMouseOver ? 17 : 0;
-	DrawImageAdv(bmpDest,bmpImage, 0, y, iX, iY, bmpImage.get()->w, 17);
+	if(bw <= nativeW) {
+		DrawImageAdv(bmpDest, bmpImage, 0, y, iX, iY, nativeW, 17);
+	} else {
+		// Widen via a horizontal 3-slice: keep the left/right caps (which hold
+		// the rounded corners and borders) at native size and repeat a flat
+		// middle column to fill the gap. We use DrawImageAdv throughout so the
+		// box image's alpha is blended (a plain stretch did not blend and
+		// looked broken).
+		const int capW = nativeW / 2;       // left/right cap width
+		const int midSrcX = capW - 1;       // a flat interior column to repeat
+		DrawImageAdv(bmpDest, bmpImage, 0, y, iX, iY, capW, 17);                          // left cap
+		for(int dx = iX + capW; dx < iX + bw - capW; dx++)
+			DrawImageAdv(bmpDest, bmpImage, midSrcX, y, dx, iY, 1, 17);                   // repeated middle
+		DrawImageAdv(bmpDest, bmpImage, capW, y, iX + bw - capW, iY, nativeW - capW, 17); // right cap
+	}
 	bMouseOver = false;
-    tLX->cFont.DrawCentre(bmpDest, iX+25, iY+1, tLX->clWhite, sText);
+    tLX->cFont.DrawCentre(bmpDest, iX + bw/2, iY+1, tLX->clWhite, sText);
 }
 
-CInputbox * CInputbox::InputBoxSelected = NULL;
-std::string CInputbox::InputBoxLabel;
-
-CWidget * CInputbox::WidgetCreator( const std::vector< ScriptVar_t > & p, CGuiLayoutBase * layout, int id, int x, int y, int dx, int dy )
+int CInputbox::KeyUp(UnicodeChar c, int keysym, const ModifiersState& modstate)
 {
-	CInputbox * w = new CInputbox( 0, "", tMenu->bmpInputbox, p[0].toString() );
-	w->sVar = CScriptableVars::GetVarP<std::string>( p[1].toString() );
-	if( w->sVar )
-		w->setText( *w->sVar );
-	layout->Add( w, id, x, y, dx, dy );
-	return w;
-};
-
-static bool CInputbox_WidgetRegistered = 
-	CGuiSkin::RegisterWidget( "inputbox", & CInputbox::WidgetCreator )
-							( "name", SVT_STRING )
-							( "var", SVT_STRING );
-	
-void CInputbox::ProcessGuiSkinEvent(int iEvent) 
-{
-	if( iEvent == CGuiSkin::SHOW_WIDGET )
-	{
-		if( sVar )
-			setText( *sVar );
+	if (keysym == SDLK_RETURN ||
+		keysym == SDLK_KP_ENTER ||
+		keysym == SDLK_LALT ||
+		keysym == SDLK_LCTRL ||
+		keysym == SDLK_LSHIFT ||
+		keysym == SDLK_x ||
+		keysym == SDLK_z) {
+		PlaySoundSample(sfxGeneral.smpClick);
+		return INB_MOUSEUP;
 	}
-	if( iEvent == INB_MOUSEUP )
-	{
-		if( sVar )
-		{
-			InputBoxSelected = this;
-			InputBoxLabel = getName();
-			CGuiSkin::CallbackHandler c;
-			c.Init( "GUI.ChildDialog(InputBoxDialog)", this );
-			c.Call();
-		}
-	}
+	return INB_NONE;
 }
-
-CInputboxInput::CInputboxInput(): CInputbox( 0, "", tMenu->bmpInputbox, "" )
-{
-	CInput::InitJoysticksTemp(); // for supporting joystick in CInput::Wait
-}
-
-CInputboxInput::~CInputboxInput()
-{
-	CInput::UnInitJoysticksTemp();
-	//CGuiSkin::DeRegisterUpdateCallback( this ); // Called in CWidget::~CWidget()
-}
-
-void CInputboxInput::ProcessGuiSkinEvent(int iEvent)
-{
-	if( iEvent ==  CGuiSkin::SHOW_WIDGET )
-	{
-		iSkipFirstFrame = 1;
-		CGuiSkin::RegisterUpdateCallback( & UpdateCallback, "", this );
-	}
-}
-
-void CInputboxInput::UpdateCallback( const std::string & param, CWidget * source )
-{ 
-	CInputboxInput * in = (CInputboxInput *) source;
-	if( in->iSkipFirstFrame )
-	{
-		in->iSkipFirstFrame = 0;
-		return;
-	};
-	std::string s;
-	CInput::Wait( s );
-	if( s != "" )
-	{
-		in->iSkipFirstFrame = 1;
-		if( InputBoxSelected != NULL )
-			InputBoxSelected->setText(s);
-		CGuiSkin::CallbackHandler c;
-		c.Init( "GUI.ExitDialog()", source );
-		c.Call();
-		CGuiSkin::DeRegisterUpdateCallback( source );
-	};
-};
-
-CWidget * CInputboxInput::WidgetCreator( const std::vector< ScriptVar_t > & p, CGuiLayoutBase * layout, int id, int x, int y, int dx, int dy )
-{
-	CInputboxInput * w = new CInputboxInput();
-	layout->Add( w, id, x, y, dx, dy );
-	return w;
-};
-
-static bool InputboxLabel_Registered = CScriptableVars::RegisterVars("GUI")
-		( CInputbox::InputBoxLabel, "InputBoxLabel" );
-
-static bool CInputboxInput_WidgetRegistered = 
-	CGuiSkin::RegisterWidget( "inputbox_input", & CInputboxInput::WidgetCreator );
 
 }; // namespace DeprecatedGUI

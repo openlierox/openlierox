@@ -39,11 +39,15 @@ enum {
 
 class CInputbox : public CWidget {
 public:
-	// Constructor
-	CInputbox(int val, const std::string& _text, SmartPointer<SDL_Surface> img, const std::string& name) {
+	// Constructor.
+	// slot selects which binding of a comma-separated control value this box
+	// edits (0-based). -1 (the default) means the box represents the whole
+	// value, as before.
+	CInputbox(int val, const std::string& _text, SmartPointer<SDL_Surface> img, const std::string& name, int slot = -1) {
 		iKeyvalue = val;
 		sText = _text;
 		sName = name;
+		iSlot = slot;
 
 		bmpImage = img;
 		iType = wid_Inputbox;
@@ -56,6 +60,7 @@ private:
 	// Attributes
 
 	int			iKeyvalue;
+	int			iSlot;
 	std::string	sText;
 	SmartPointer<SDL_Surface> bmpImage;
 	bool		bMouseOver;
@@ -76,7 +81,7 @@ public:
 	int		MouseWheelDown(mouse_t *tMouse)		{ return INB_NONE; }
 	int		MouseWheelUp(mouse_t *tMouse)		{ return INB_NONE; }
 	int		KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate)	{ return INB_NONE; }
-	int		KeyUp(UnicodeChar c, int keysym, const ModifiersState& modstate)	{ return INB_NONE; }
+	int		KeyUp(UnicodeChar c, int keysym, const ModifiersState& modstate); // return event on key up so we won't process that same event inside key reader
 
 
 	// Process a message sent
@@ -100,39 +105,16 @@ public:
 	// Draw the title button
 	void	Draw(SDL_Surface * bmpDest);
 
-	INLINE void	LoadStyle() {}
-
 
 	INLINE int		getValue()						{ return iKeyvalue; }
 	INLINE void	setValue(int _v)					{ iKeyvalue = _v; }
+	INLINE int		getSlot()						{ return iSlot; }
 	INLINE std::string	getText()				{ return sText; }
 	INLINE void	setText(const std::string& _t)		{ sText = _t; }
 	INLINE std::string	getName()				{ return sName; }
 
-	static CWidget * WidgetCreator( const std::vector< ScriptVar_t > & p, CGuiLayoutBase * layout, int id, int x, int y, int dx, int dy );
-	void	ProcessGuiSkinEvent(int iEvent);
-
 	static CInputbox * InputBoxSelected;
 	static std::string InputBoxLabel;	// "GUI.InputBoxLabel" skin string
-	friend class CInputboxInput;
-};
-
-class CInputboxInput: public CInputbox	// InputBoxDialog.xml should contain exactly one such control at the end
-{
-	private:
-	int		iSkipFirstFrame;
-
-	public:
-	CInputboxInput();
-	~CInputboxInput();
-	
-	void	Draw(SDL_Surface * bmpDest) {};
-
-	static CWidget * WidgetCreator( const std::vector< ScriptVar_t > & p, CGuiLayoutBase * layout, int id, int x, int y, int dx, int dy );
-	
-	void	ProcessGuiSkinEvent(int iEvent);
-
-	static void UpdateCallback( const std::string & param, CWidget * source );
 };
 
 } // namespace DeprecatedGUI

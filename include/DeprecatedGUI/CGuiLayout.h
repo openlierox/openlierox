@@ -101,6 +101,8 @@ private:
 
 	SmartPointer<TooltipIntern> tooltip;
 
+	static bool		bKeyboardNavigation;
+
 	
 public:
 	// Methods
@@ -136,7 +138,9 @@ public:
 	void		setID(int _id)	{ iID = _id; }
 
 	void		setTooltip(const SDL_Rect& keepArea, VectorD2<int> pos, const std::string& msg);
-	
+
+	static bool isKeyboardNavigationUsed() { return bKeyboardNavigation; }
+	static void setKeyboardNavigationUsed(bool used) { bKeyboardNavigation = used; }
 };
 
 } // namespace DeprecatedGUI

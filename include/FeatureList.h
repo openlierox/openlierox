@@ -191,7 +191,7 @@ enum FeatureIndex {
 	FT_HS_SeekerVisionRange,
 	FT_HS_SeekerVisionRangeThroughWalls,
 	FT_HS_SeekerVisionAngle,
-	FT_NewNetEngine,
+	FT_NewNetEngine, // Unused, but we keep it to preserve enum IDs
 	FT_FillWithBotsTo,
 	FT_WormSpeedFactor,
 	FT_WormDamageFactor,

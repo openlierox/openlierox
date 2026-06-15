@@ -64,6 +64,8 @@ bool Menu_Net_ChatInitialize()
 	cChat.Add( new CCheckbox(tLXOptions->bEnableMiniChat), nc_EnableMiniChat, 350, 440, 20, 20);
 	cChat.Add( new CLabel("Mini chat in server list", tLX->clNormalLabel), -1, 380, 440, 0, 0);
 
+	Menu_Net_AddTabBarButtons(&cChat);
+
 	cChatGuiInitialized = true;
 	return true;
 }
@@ -88,6 +90,8 @@ void Menu_Net_ChatFrame(int mouse)
 	ev = cChat.Process();
 	cChat.Draw( VideoPostProcessor::videoSurface().get() );
 
+	if (Menu_Net_ProcessTabBarButtons(ev))
+		return;
 
 	// Process any events
 	if(ev) {

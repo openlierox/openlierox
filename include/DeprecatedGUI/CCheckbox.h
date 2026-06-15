@@ -18,7 +18,6 @@
 #define __CCHECKBOX_H__DEPRECATED_GUI__
 
 #include "DeprecatedGUI/CWidget.h"
-#include "DeprecatedGUI/CGuiSkin.h"
 #include "InputEvents.h"
 
 class ScriptVar_t;
@@ -65,7 +64,6 @@ private:
 	SmartPointer<SDL_Surface> bmpImage;
 	bool		*bVar;
 	int			*iVar;
-	CGuiSkin::CallbackHandler cClick;
 
 public:
 	// Methods
@@ -79,7 +77,7 @@ public:
 	int		MouseDown(mouse_t *tMouse, int nDown)	{ return CHK_NONE; }
 	int		MouseWheelDown(mouse_t *tMouse)		{ return CHK_NONE; }
 	int		MouseWheelUp(mouse_t *tMouse)		{ return CHK_NONE; }
-	int		KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate)	{ return CHK_NONE; }
+	int		KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate);
 	int		KeyUp(UnicodeChar c, int keysym, const ModifiersState& modstate)	{ return CHK_NONE; }
 
 
@@ -104,8 +102,6 @@ public:
 	// Draw the title button
 	void	Draw(SDL_Surface * bmpDest);
 
-	void	LoadStyle() {}
-
 	bool	getValue()						{ return bValue; }
 	void	setValue(bool v)				{ bValue = v; updatePointers(); }
 
@@ -115,37 +111,6 @@ public:
 		if( iVar )
 			*iVar = (int)bValue;
 	}
-
-	static CWidget * WidgetCreator( const std::vector< ScriptVar_t > & p, CGuiLayoutBase * layout, int id, int x, int y, int dx, int dy )
-	{
-		CCheckbox * w = new CCheckbox(false);
-		w->bVar = CScriptableVars::GetVarP<bool>( p[0].toString() );
-		w->iVar = CScriptableVars::GetVarP<int>( p[0].toString() );
-		if( w->bVar )
-			w->bValue = *w->bVar != 0;
-		if( w->iVar )
-			w->bValue = *w->iVar != 0;
-		w->cClick.Init( p[1].toString(), w );
-		layout->Add( w, id, x, y, dx, dy );
-		return w;
-	};
-
-	void	ProcessGuiSkinEvent(int iEvent)
-	{
-		if( iEvent == CGuiSkin::SHOW_WIDGET )
-		{
-			if( bVar )
-				bValue = *bVar;
-			if( iVar )
-				bValue = *iVar != 0;
-		};
-		if( iEvent == CHK_CHANGED )
-		{
-			// IMPORTANT TODO: this gets not called. why?
-			updatePointers();
-			cClick.Call();
-		};
-	};
 };
 
 }; // namespace DeprecatedGUI

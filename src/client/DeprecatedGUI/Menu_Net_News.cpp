@@ -54,6 +54,8 @@ bool Menu_Net_NewsInitialize()
 	cNews.Add( new CButton(BUT_REFRESH, tMenu->bmpButtons), nw_Refresh, 520,440, 50,15);
 	cNews.Add( new CBrowser(), nw_NewsBrowser, 50, 160, 540, 260);
 
+	Menu_Net_AddTabBarButtons(&cNews);
+
 	// Get the news page
 	FILE *fp = OpenGameFile("cfg/newsserver.txt", "r");
 	if (fp)  {
@@ -94,6 +96,8 @@ void Menu_Net_NewsFrame(int mouse)
 	ev = cNews.Process();
 	cNews.Draw( VideoPostProcessor::videoSurface().get() );
 
+	if (Menu_Net_ProcessTabBarButtons(ev))
+		return;
 
 	// Process any events
 	if(ev) {

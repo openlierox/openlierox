@@ -183,9 +183,6 @@ void GameServer::SimulateGame()
 	if(game.state != Game::S_Playing)
 		return;
 
-	if( gameSettings[FT_NewNetEngine] )
-		return;
-
 	// If this is a remote game, and game over,
 	// and we've seen the scoreboard for a certain amount of time, go back to the lobby
 	if(game.gameOver

@@ -13,7 +13,6 @@
 #include "LieroX.h"
 #include "Debug.h"
 #include "DeprecatedGUI/CGuiSkinnedLayout.h"
-#include "DeprecatedGUI/CGuiSkin.h"
 #include "AuxLib.h"
 #include "DeprecatedGUI/Menu.h"
 #include "StringUtils.h"
@@ -144,8 +143,6 @@ bool CGuiSkinnedLayout::Process()
 		MouseWheelUp(tMouse);
 	MouseOver(tMouse);
 	
-	CGuiSkin::ProcessUpdateCallbacks();	// Update the news box (and IRC chat if I will ever make it)
-	
 	return ! bExitCurrentDialog;
 }
 
@@ -183,21 +180,6 @@ void CGuiSkinnedLayout::Error(int ErrorCode, const std::string& desc)
 	errors << "GUI skin error: " << ErrorCode << " " << desc << endl;
 }
 
-void CGuiSkinnedLayout::ProcessGuiSkinEvent(int iEvent)
-{
-	if( iEvent < 0 )	// Global event - pass it to all children
-	{
-		for( std::list<CWidget *>::reverse_iterator w = cWidgets.rbegin() ; w != cWidgets.rend() ; w++)
-			(*w)->ProcessGuiSkinEvent( iEvent );
-		if( cChildLayout )
-			cChildLayout->ProcessGuiSkinEvent( iEvent );
-		if( cFocused )
-			cFocused->setFocused(false);
-		cFocused = NULL;
-		bFocusSticked = false;
-	}
-}
-
 int CGuiSkinnedLayout::MouseOver(mouse_t *tMouse)
 {
 	if( cChildLayout )
@@ -212,7 +194,6 @@ int CGuiSkinnedLayout::MouseOver(mouse_t *tMouse)
 		int ev = cFocused->MouseOver(tMouse);
 		if( ev >= 0 )
 		{
-			cFocused->ProcessGuiSkinEvent( ev );
 			ProcessChildEvent( ev, cFocused );
 		}
 		return -1;
@@ -227,7 +208,6 @@ int CGuiSkinnedLayout::MouseOver(mouse_t *tMouse)
 			int ev = (*w)->MouseOver(tMouse);
 			if( ev >= 0 )
 			{
-				(*w)->ProcessGuiSkinEvent( ev );
 				ProcessChildEvent( ev, (*w) );
 			}
 			return -1;
@@ -253,7 +233,6 @@ int CGuiSkinnedLayout::MouseUp(mouse_t *tMouse, int nDown)
 		int ev = cFocused->MouseUp(tMouse, nDown);
 		if( ev >= 0 )
 		{
-			cFocused->ProcessGuiSkinEvent( ev );
 			ProcessChildEvent( ev, cFocused );
 		}
 		return -1;
@@ -274,7 +253,6 @@ int CGuiSkinnedLayout::MouseDown(mouse_t *tMouse, int nDown)
 		int ev = cFocused->MouseDown(tMouse, nDown);
 		if( ev >= 0 )
 		{
-			cFocused->ProcessGuiSkinEvent( ev );
 			ProcessChildEvent( ev, cFocused );
 		}
 		return -1;
@@ -290,7 +268,6 @@ int CGuiSkinnedLayout::MouseDown(mouse_t *tMouse, int nDown)
 			int ev = (*w)->MouseDown(tMouse, nDown);
 			if( ev >= 0 )
 			{
-				(*w)->ProcessGuiSkinEvent( ev );
 				ProcessChildEvent( ev, (*w) );
 			}
 			if( cFocused )
@@ -318,7 +295,6 @@ int CGuiSkinnedLayout::MouseClicked(mouse_t *tMouse, int nDown)
 		int ev = cFocused->MouseClicked(tMouse, nDown);
 		if( ev >= 0 )
 		{
-			cFocused->ProcessGuiSkinEvent( ev );
 			ProcessChildEvent( ev, cFocused );
 			return -1;
 		}
@@ -334,7 +310,6 @@ int CGuiSkinnedLayout::MouseClicked(mouse_t *tMouse, int nDown)
 			int ev = (*w)->MouseClicked(tMouse, nDown);
 			if( ev >= 0 )
 			{
-				(*w)->ProcessGuiSkinEvent( ev );
 				ProcessChildEvent( ev, (*w) );
 			}
 			if( cFocused )
@@ -361,7 +336,6 @@ int CGuiSkinnedLayout::MouseWheelDown(mouse_t *tMouse)
 		int ev = cFocused->MouseWheelDown(tMouse);
 		if( ev >= 0 )
 		{
-			cFocused->ProcessGuiSkinEvent( ev );
 			ProcessChildEvent( ev, cFocused );
 		}
 		return -1;
@@ -376,7 +350,6 @@ int CGuiSkinnedLayout::MouseWheelDown(mouse_t *tMouse)
 			int ev = (*w)->MouseWheelDown(tMouse);
 			if( ev >= 0 )
 			{
-				(*w)->ProcessGuiSkinEvent( ev );
 				ProcessChildEvent( ev, (*w) );
 			}
 			return -1;
@@ -398,7 +371,6 @@ int CGuiSkinnedLayout::MouseWheelUp(mouse_t *tMouse)
 		int ev = cFocused->MouseWheelUp(tMouse);
 		if( ev >= 0 )
 		{
-			cFocused->ProcessGuiSkinEvent( ev );
 			ProcessChildEvent( ev, cFocused );
 		}
 		return -1;
@@ -413,7 +385,6 @@ int CGuiSkinnedLayout::MouseWheelUp(mouse_t *tMouse)
 			int ev = (*w)->MouseWheelUp(tMouse);
 			if( ev >= 0 )
 			{
-				(*w)->ProcessGuiSkinEvent( ev );
 				ProcessChildEvent( ev, (*w) );
 			}
 			return -1;
@@ -438,7 +409,6 @@ int CGuiSkinnedLayout::KeyDown(UnicodeChar c, int keysym, const ModifiersState& 
 		int ev = cFocused->KeyDown(c, keysym, modstate);
 		if( ev >= 0 )
 		{
-			cFocused->ProcessGuiSkinEvent( ev );
 			ProcessChildEvent( ev, cFocused );
 		}
 	}
@@ -462,7 +432,6 @@ int CGuiSkinnedLayout::KeyUp(UnicodeChar c, int keysym, const ModifiersState& mo
 		int ev = cFocused->KeyUp(c, keysym, modstate);
 		if( ev >= 0 )
 		{
-			cFocused->ProcessGuiSkinEvent( ev );
 			ProcessChildEvent( ev, cFocused );
 		}
 	}
@@ -513,30 +482,6 @@ CWidget * CGuiSkinnedLayout::getWidgetAtPoint(int x, int y)
 	return this;
 }
 
-CWidget * CGuiSkinnedLayout::WidgetCreator( const std::vector< ScriptVar_t > & p, CGuiLayoutBase * layout, int id, int x, int y, int dx, int dy )
-{
-	// Create new CGuiSkinnedLayout and put it's cChildLayout to actual layout from XML
-	// so when it's destroyed the layout from XML not destroyed.
-	CGuiSkinnedLayout * w = new CGuiSkinnedLayout();
-	w->cChildLayout = CGuiSkin::GetLayout( p[0].toString() );
-	if( w->cChildLayout )
-	{
-		w->cChildLayout->SetOffset( p[1].toInt(), p[2].toInt() );
-		w->cChildLayout->setParent( w );
-	}
-
-	layout->Add( w, id, x, y, dx, dy );
-	return w;
-}
-
-static bool CGuiSkinnedLayout_WidgetRegistered = 
-	CGuiSkin::RegisterWidget( "tab", & CGuiSkinnedLayout::WidgetCreator )
-							( "file", SVT_STRING )
-							( "offset_left", SVT_INT32 )
-							( "offset_top", SVT_INT32 )
-							;
-
-
 void CGuiSkinnedLayout::ExitDialog( const std::string & param, CWidget * source )
 {
 	CGuiSkinnedLayout * lp = (CGuiSkinnedLayout *) source->getParent();
@@ -556,57 +501,11 @@ void CGuiSkinnedLayout::ChildDialog( const std::string & param, CWidget * source
 	std::vector<std::string> params = explode(param, ",");
 	for( unsigned i=0; i<params.size(); i++ )
 		TrimSpaces(params[i]);
-	int x = 0, y = 0;
-	bool fullscreen = false;
-	if( params.size() > 1 )
-		if( params[1] == "fullscreen" )
-			fullscreen = true;
-	if( params.size() > 2 )
-	{
-		x = atoi( params[1] );
-		y = atoi( params[2] );
-	}
 	std::string file = params[0];
-	CGuiSkinnedLayout * lc = CGuiSkin::GetLayout( file );
-	if( lc == NULL )
-		return;
-	lc->SetOffset(x,y);
-	lc->bExitCurrentDialog = false;
-	lc->setParent( lp );
-	lp->cChildLayout = lc;
-	lp->bChildLayoutFullscreen = fullscreen;
-	lc->ProcessGuiSkinEvent(CGuiSkin::SHOW_WIDGET);
 }
 
 void CGuiSkinnedLayout::SetTab( const std::string & param, CWidget * source )
 {
-	CGuiSkinnedLayout * lp = (CGuiSkinnedLayout *) source->getParent();
-	std::vector<std::string> params = explode(param, ",");
-	for( unsigned i=0; i<params.size(); i++ )
-		TrimSpaces(params[i]);
-	if( params.size() < 2 )
-		return;
-	CWidget * ltw = lp->getWidget( lp->GetIdByName( params[0] ) );
-	if( ltw == NULL )
-		return;
-	if( ltw->getType() != wid_GuiLayout )
-		return;
-	CGuiSkinnedLayout * lt = (CGuiSkinnedLayout *) ltw;
-	CGuiSkinnedLayout * lc = CGuiSkin::GetLayout( params[1] );
-	if( lc == NULL )
-		return;
-	if( lt->cChildLayout )
-		lt->cChildLayout->setParent(NULL);
-	lt->cChildLayout = lc;
-	lc->setParent(lt);
-	if( params.size() >= 4 )
-		lc->SetOffset( atoi(params[2]), atoi(params[3]) );
-	lc->ProcessGuiSkinEvent(CGuiSkin::SHOW_WIDGET);
 }
-
-static bool bRegisteredCallbacks = CScriptableVars::RegisterVars("GUI")
-	( & CGuiSkinnedLayout::ExitDialog, "ExitDialog" )
-	( & CGuiSkinnedLayout::ChildDialog, "ChildDialog" )
-	( & CGuiSkinnedLayout::SetTab, "SetTab" );
 
 }; // namespace DeprecatedGUI

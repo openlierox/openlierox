@@ -45,7 +45,6 @@ private:
 	Color	iColNormal;
 	Color	iColGlow;
 	bool	bMouseOver;
-	CGuiSkin::CallbackHandler cClick;
 
 public:
 
@@ -55,7 +54,7 @@ public:
 	int		MouseDown(mouse_t *tMouse, int nDown)	{ return CLabel::MouseDown( tMouse, nDown ); }
 	int		MouseWheelDown(mouse_t *tMouse)		{ return CLabel::MouseWheelDown( tMouse ); }
 	int		MouseWheelUp(mouse_t *tMouse)		{ return CLabel::MouseWheelUp( tMouse ); }
-	int		KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate)	{ return CLabel::KeyDown( c, keysym, modstate ); }
+	int		KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate);
 	int		KeyUp(UnicodeChar c, int keysym, const ModifiersState& modstate)	{ return CLabel::KeyUp( c, keysym, modstate ); }
 
 	uintptr_t SendMessage(int iMsg, uintptr_t Param1, uintptr_t Param2)	{ return CLabel::SendMessage( iMsg, Param1, Param2 ); }
@@ -63,20 +62,6 @@ public:
 	uintptr_t SendMessage(int iMsg, std::string *sStr, uintptr_t Param)  { return CLabel::SendMessage( iMsg, sStr, Param ); }
 
 	void	Draw(SDL_Surface * bmpDest);
-
-	static CWidget * WidgetCreator( const std::vector< ScriptVar_t > & p, CGuiLayoutBase * layout, int id, int x, int y, int dx, int dy )
-	{
-		CTextButton * w = new CTextButton( p[0].toString(), p[1].toColor(), p[2].toColor() );
-		w->cClick.Init( p[3].toString(), w );
-		layout->Add( w, id, x, y, dx, dy );
-		return w;
-	}
-	
-	void	ProcessGuiSkinEvent(int iEvent) 
-	{
-		if( iEvent == TXB_MOUSEUP )
-			cClick.Call();
-	}
 };
 
 }; // namespace DeprecatedGUI

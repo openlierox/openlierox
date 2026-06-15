@@ -21,7 +21,6 @@
 #include "InputEvents.h"
 #include "DeprecatedGUI/CWidget.h"
 #include "DeprecatedGUI/CGuiLayout.h"
-#include "DeprecatedGUI/CGuiSkin.h"
 
 namespace DeprecatedGUI {
 
@@ -73,7 +72,6 @@ private:
 	AbsTime	fMouseNext[3];
 
 	int		*iVar;
-	CGuiSkin::CallbackHandler cClick;
 
 public:
 	// Methods
@@ -92,8 +90,6 @@ public:
 
 	void	Draw(SDL_Surface * bmpDest);
 
-	void	LoadStyle() {}
-
 	void	UpdatePos();
 
 
@@ -111,36 +107,6 @@ public:
 	uintptr_t SendMessage(int iMsg, uintptr_t Param1, uintptr_t Param2);
 	uintptr_t SendMessage(int iMsg, const std::string& sStr, uintptr_t Param) { return 0; }
 	uintptr_t SendMessage(int iMsg, std::string *sStr, uintptr_t Param)  { return 0; }
-
-	static CWidget * WidgetCreator( const std::vector< ScriptVar_t > & p, CGuiLayoutBase * layout, int id, int x, int y, int dx, int dy )
-	{
-		CScrollbar * w = new CScrollbar();
-		layout->Add( w, id, x, y, dx, dy );
-		// Should be set after scrollbar is added to layout
-		w->cClick.Init( p[4].toString(), w );
-		w->setMin( p[0].toInt() );
-		w->setMax( p[1].toInt() );
-		w->setItemsperbox( p[2].toInt() );
-		w->iVar = CScriptableVars::GetVarP<int>( p[3].toString() );
-		if( w->iVar )
-			w->setValue( *w->iVar );
-		return w;
-	};
-	
-	void	ProcessGuiSkinEvent(int iEvent) 
-	{
-		if( iEvent == CGuiSkin::SHOW_WIDGET )
-		{
-			if( iVar )
-				setValue( *iVar );
-		}
-		if( iEvent == SCR_CHANGE )
-		{
-			if( iVar )
-				*iVar = iValue;
-			cClick.Call();
-		}
-	}
 };
 
 } // namespace DeprecatedGUI

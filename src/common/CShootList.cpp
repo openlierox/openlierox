@@ -338,11 +338,11 @@ void CShootList::writeSmallShot( shoot_t *psFirst, CBytestream *bs, const Versio
 		flags |= SHF_ANGLEOFF;
 	if( psShot->nSpeed != psFirst->nSpeed )
 		flags |= SHF_SPEEDOFF;
-	if( (int)psShot->cPos.x < (int)psShot->cPos.x ) {
+	if( (int)psShot->cPos.x < (int)psFirst->cPos.x ) {
 		flags |= SHF_NG_XPOSOFF;
 		flags &= ~SHF_XPOSOFF;
 	}
-	if( (int)psShot->cPos.y < (int)psShot->cPos.y ) {
+	if( (int)psShot->cPos.y < (int)psFirst->cPos.y ) {
 		flags |= SHF_NG_YPOSOFF;
 		flags &= ~SHF_YPOSOFF;
 	}

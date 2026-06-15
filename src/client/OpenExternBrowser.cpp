@@ -52,6 +52,12 @@ void OpenLinkInExternBrowser(const std::string& url) {
 #elif defined(WIN32)
 	ShellExecute(NULL, "open", url.c_str(), NULL, NULL, SW_MAXIMIZE);
 	
+#elif defined(__ANDROID__)
+
+	std::string cmd = "am start -a android.intent.action.VIEW --user -3 -d "
+	cmd = url;
+	::system(cmd.c_str());
+
 #else
 	std::string browser = "";
 		

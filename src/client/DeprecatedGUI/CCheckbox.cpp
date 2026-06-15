@@ -19,6 +19,7 @@
 #include "DeprecatedGUI/Menu.h"
 #include "GfxPrimitives.h"
 #include "StringUtils.h"
+#include "sound/SoundsBase.h"
 #include "DeprecatedGUI/CCheckbox.h"
 
 
@@ -46,12 +47,6 @@ void CCheckbox::Create()
 }
 
 
-static bool CCheckBox_WidgetRegistered = 
-	CGuiSkin::RegisterWidget( "checkbox", & CCheckbox::WidgetCreator )
-							( "var", SVT_STRING )
-							( "click", SVT_STRING );
-
-	
 CCheckbox::CCheckbox(ScriptVar_t& var) {
 	assert(var.type == SVT_BOOL);
 	bValue = var.toBool();
@@ -61,8 +56,21 @@ CCheckbox::CCheckbox(ScriptVar_t& var) {
 	iVar = NULL;
 }
 
+int CCheckbox::KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate)
+{
+	if (keysym == SDLK_RETURN ||
+		keysym == SDLK_KP_ENTER ||
+		keysym == SDLK_LALT ||
+		keysym == SDLK_LCTRL ||
+		keysym == SDLK_LSHIFT ||
+		keysym == SDLK_x ||
+		keysym == SDLK_z) {
+		bValue = !bValue;
+		updatePointers();
+		PlaySoundSample(sfxGeneral.smpClick);
+		return CHK_CHANGED;
+	}
+	return CHK_NONE;
+}
 
 }; // namespace DeprecatedGUI
-
-
-

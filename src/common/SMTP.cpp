@@ -69,9 +69,9 @@ bool SmtpClient::connect() {
 	if(intern) reset();
 	intern = new Handler();
 	
-	NetworkAddr addr;
+	NetworkAddr addr, ignored;
 	AbsTime dnsRequestTime = GetTime();
-	if(!GetNetAddrFromNameAsync(host, addr)) {
+	if(!GetNetAddrFromNameAsync(host)) {
 		errors << "SMTP: Error while starting name resolution for " << host << endl;
 		return false;
 	}
@@ -82,6 +82,7 @@ bool SmtpClient::connect() {
 			return false;
 		}
 		SDL_Delay(10);
+		GetFromDnsCache(host, addr, ignored);
 	}
 	
 	std::string host_addr;

@@ -18,7 +18,6 @@
 #include "DedicatedControl.h"
 #include "CrashHandler.h"
 #include "Timer.h"
-#include "NewNetEngine.h"
 #include "OLXCommand.h"
 #include "IRC.h"
 #include "CClient.h"

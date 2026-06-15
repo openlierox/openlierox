@@ -48,16 +48,44 @@ const std::string    ply_def1[] =
 	{"up", "down", "left", "right", "lctrl", "lalt", "lshift", "x", "z", "1", "2", "3", "4", "5" };
 #endif
 const std::string    ply_def2[] = {"kp 8",  "kp 5",    "kp 4",    "kp 6",     "kp +", "kp enter", "kp 0", "kp -", "kp .", "6", "7", "8", "9", "0" };
+// Gamepad defaults, in the same order as ply_keys. These are bound as a
+// second alternative alongside the keyboard defaults above, so each control
+// works from either input out of the box. The pad index is added at
+// registration time (j1 for player 1, j2 for player 2).
+// Movement and aiming are on the d-pad (digital); weapons are intentionally
+// left keyboard-only (you cycle them on the pad with SelectWeapon). Empty
+// string means "no gamepad binding for this control". Note we deliberately
+// avoid the right-stick-Y "throttle" axes here: those switch the worm to
+// analog aiming, which would override the keyboard's digital aiming when both
+// are bound to one control.
+const std::string    ply_gamepad_def[] = {
+	"d_up",         // Up           - d-pad up (aim up)
+	"d_down",       // Down         - d-pad down (aim down)
+	"d_left",       // Left         - d-pad left (move left)
+	"d_right",      // Right        - d-pad right (move right)
+	"triggerright", // Shoot        - right trigger
+	"button_south", // Jump         - A
+	"lshoulder",    // SelectWeapon - left shoulder
+	"button_north", // Rope         - Y
+	"button_east",  // Strafe       - B
+	"",             // Weapon1      - keyboard only
+	"",             // Weapon2      - keyboard only
+	"",             // Weapon3      - keyboard only
+	"",             // Weapon4      - keyboard only
+	"",             // Weapon5      - keyboard only
+};
 const std::string    gen_keys[] = {"Chat", "ShowScore", "ShowHealth", "ShowSettings",  "TakeScreenshot",  "ViewportManager", "SwitchMode", "ToggleTopBar", "TeamChat",	"IrcChat", "Console"};
 const std::string    gen_def[]  = {"i",    "tab",		"h",		  "space",	       "F12",				"F2",				 "alt+enter", "F8",		   "o",			"F4",	"F3"};
 
 static_assert( sizeof(ply_keys) / sizeof(std::string) == __SIN_PLY_BOTTOM, "ply_keys__sizecheck" );
 static_assert( sizeof(ply_def1) / sizeof(std::string) == __SIN_PLY_BOTTOM, "ply_def1__sizecheck" );
 static_assert( sizeof(ply_def2) / sizeof(std::string) == __SIN_PLY_BOTTOM, "ply_def2__sizecheck" );
+static_assert( sizeof(ply_gamepad_def) / sizeof(std::string) == __SIN_PLY_BOTTOM, "ply_gamepad_def__sizecheck" );
 static_assert( sizeof(gen_keys) / sizeof(std::string) == __SIN_GENERAL_BOTTOM, "gen_keys__sizecheck" );
 static_assert( sizeof(gen_def) / sizeof(std::string) == __SIN_GENERAL_BOTTOM, "gen_def__sizecheck" );
 
-static const Version defaultMinVersion("OpenLieroX/0.58_rc1");
+static const char * defaultMinVersionStr = "OpenLieroX/0.58_rc1";
+static const Version defaultMinVersion(defaultMinVersionStr);
 
 
 
@@ -163,7 +191,7 @@ bool GameOptions::Init() {
 		( tLXOptions->bWantsJoinBanned, "Network.WantsToJoinFromBanned", true )
 		( tLXOptions->bAllowRemoteBots, "Network.AllowRemoteBots", true )
 		( tLXOptions->bForceCompatibleConnect, "Network.ForceCompatibleConnect", true, "Force Compatible", "Don't allow incompatible clients to connect" )
-		( tLXOptions->sForceMinVersion, "Network.ForceMinVersion", defaultMinVersion.asString(), "Force Min Version", "Minimal version needed to play on this server" )
+		( tLXOptions->sForceMinVersion, "Network.ForceMinVersion", defaultMinVersionStr, "Force Min Version", "Minimal version needed to play on this server" )
 		( tLXOptions->bCheckChatMessageLength, "Network.CheckChatMessageLength", true)	//Check chat message length
 		( tLXOptions->iMaxChatMessageLength, "Network.MaxChatMessageLength", 800)	//Max chat message length, 800 should be more than enough for reasonable messages? NOTE: Includes nickname and ": " after it.
 		( tLXOptions->bKickOversizedMsgSenders, "Network.KickOversizedMsgSenders", false)	//Drop clients who send oversized messages NOTE: This should be off by default. It can be used on dedicated servers, but it is better to implement kicking in the control script.
@@ -184,8 +212,6 @@ bool GameOptions::Init() {
 		( tLXOptions->bShowHealth, "Game.ShowWormHealth", false )
 		( tLXOptions->bColorizeNicks, "Game.ColorizeNicks", true )
 		( tLXOptions->bAutoTyping, "Game.AutoTyping", false )
-		( tLXOptions->sSkinPath, "Game.SkinPath", "" )
-		( tLXOptions->bNewSkinnedGUI, "Game.NewSkinnedGUI", false )
 		( tLXOptions->sTheme, "Game.Theme", "" )
 		( tLXOptions->bAntiAliasing, "Game.Antialiasing", true )
 		( tLXOptions->bMouseAiming, "Game.MouseAiming", false ) // TODO: rename to mouse control?
@@ -256,8 +282,17 @@ bool GameOptions::Init() {
 
 	for( uint i = 0; i < sizeof(ply_keys) / sizeof(ply_keys[0]) ; i ++ )
 	{
-		CScriptableVars::RegisterVars("GameOptions.Ply1Controls") ( tLXOptions->sPlayerControls[0][i], ply_keys[i], ply_def1[i] );
-		CScriptableVars::RegisterVars("GameOptions.Ply2Controls") ( tLXOptions->sPlayerControls[1][i], ply_keys[i], ply_def2[i] );
+		// Default to keyboard (slot 1) plus a gamepad binding (slot 2).
+		// Player 1 uses pad j1, player 2 uses pad j2. Controls with no
+		// gamepad default (empty suffix, e.g. weapon select) stay keyboard-only.
+		std::string def1 = ply_def1[i];
+		std::string def2 = ply_def2[i];
+		if( !ply_gamepad_def[i].empty() ) {
+			def1 += ", j1_" + ply_gamepad_def[i];
+			def2 += ", j2_" + ply_gamepad_def[i];
+		}
+		CScriptableVars::RegisterVars("GameOptions.Ply1Controls") ( tLXOptions->sPlayerControls[0][i], ply_keys[i], def1 );
+		CScriptableVars::RegisterVars("GameOptions.Ply2Controls") ( tLXOptions->sPlayerControls[1][i], ply_keys[i], def2 );
 	}
 	for( uint i = 0; i < sizeof(gen_keys) / sizeof(gen_keys[0]) ; i ++ )
 	{
@@ -319,8 +354,6 @@ bool GameOptions::Init() {
 		
 	bool ret = tLXOptions->LoadFromDisc();
 
-	/*notes << "Skinnable vars:\n" << CGuiSkin::DumpVars() << endl;
-	notes << "Skinnable widgets:\n" << CGuiSkin::DumpWidgets() << endl;*/
 	return ret;
 }
 

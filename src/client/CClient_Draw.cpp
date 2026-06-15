@@ -1446,8 +1446,10 @@ void CClient::InitializeGameMenu()
 			cGameMenuLayout.Add(new DeprecatedGUI::CLabel(teamName, tLX->clNormalLabel), gm_Winner, 515, 5, 0, 0);
 			if(game.iMatchWinnerTeam >= 0 && game.iMatchWinnerTeam < MAX_TEAMS) {
 				SmartPointer<SDL_Surface> pic = DeprecatedGUI::gfxGame.bmpTeamColours[game.iMatchWinnerTeam];
-				if (pic.get())
+				if (pic.get()) {
 					cGameMenuLayout.Add(new DeprecatedGUI::CImage(DynDrawFromSurface(pic)), gm_TopSkin, 490, 5, pic.get()->w, pic.get()->h);
+					cGameMenuLayout.getWidget(gm_TopSkin)->setKeyboardNavigationOrder(1);
+				}
 			}
 		} else {
 			std::string winnerName = "noone";
@@ -1464,8 +1466,10 @@ void CClient::InitializeGameMenu()
 			if(game.iMatchWinner >= 0 && game.iMatchWinner < MAX_WORMS) {
 				CWorm* w = game.wormById(game.iMatchWinner, false);
 				SmartPointer<DynDrawIntf> pic = w ? w->getPicimg() : NULL;
-				if (pic.get())
+				if (pic.get()) {
 					cGameMenuLayout.Add(new DeprecatedGUI::CImage(pic), gm_TopSkin, 490, 5, WORM_SKIN_WIDTH, WORM_SKIN_HEIGHT);
+					cGameMenuLayout.getWidget(gm_TopSkin)->setKeyboardNavigationOrder(1);
+				}
 			}
 		}
 	}
@@ -1480,12 +1484,14 @@ void CClient::InitializeGameMenu()
 
 	Left->setDrawBorder(false);
 	Right->setDrawBorder(false);
-	Left->setShowSelect(false);
-	Right->setShowSelect(false);
+	Left->setShowSelect(DeprecatedGUI::Menu_IsKeyboardNavigationUsed());
+	Right->setShowSelect(DeprecatedGUI::Menu_IsKeyboardNavigationUsed());
 	Left->setRedrawMenu(false);
 	Right->setRedrawMenu(false);
 	Left->setOldStyle(true);
 	Right->setOldStyle(true);
+	Left->setKeyboardNavigationOrder(1);
+	Right->setKeyboardNavigationOrder(1);
 
 	AddColumns(Left);
 	AddColumns(Right);
@@ -1606,38 +1612,45 @@ void CClient::DrawGameMenu(SDL_Surface * bmpDest)
 
 		case gm_LeftList:
 		case gm_RightList:
-			if (ev->iEventMsg == DeprecatedGUI::LV_WIDGETEVENT)  {
-				ev = ((DeprecatedGUI::CListview *)ev->cWidget)->getWidgetEvent();
+			if (ev->iEventMsg == DeprecatedGUI::LV_WIDGETEVENT) {
+				DeprecatedGUI::gui_event_t * wev = ((DeprecatedGUI::CListview *)ev->cWidget)->getWidgetEvent();
 
 				// Do not display the host menu when not hosting
 				if (game.isClient())
 					break;
 
 				// Click on the command button
-				if (ev->cWidget->getType() == DeprecatedGUI::wid_Button && ev->iEventMsg == DeprecatedGUI::BTN_CLICKED)  {
-					iSelectedPlayer = ev->cWidget->getID();
-					DeprecatedGUI::Menu_HostActionsPopupMenuInitialize(cGameMenuLayout, gm_PopupMenu, gm_PopupPlayerInfo, iSelectedPlayer );
+				if (wev->cWidget->getType() == DeprecatedGUI::wid_Button && wev->iEventMsg == DeprecatedGUI::BTN_CLICKED) {
+					iSelectedPlayer = wev->cWidget->getID();
+					DeprecatedGUI::Menu_HostActionsPopupMenuInitialize(cGameMenuLayout, gm_PopupMenu, gm_PopupPlayerInfo, iSelectedPlayer);
 				}
 			}
 		break;
 
-		case gm_PopupMenu:  {
-			DeprecatedGUI::Menu_HostActionsPopupMenuClick(cGameMenuLayout, gm_PopupMenu, gm_PopupPlayerInfo, iSelectedPlayer, ev->iEventMsg);
+		case gm_PopupMenu:
+			if (ev->iEventMsg >= DeprecatedGUI::MNU_USER) {
+				DeprecatedGUI::Menu_HostActionsPopupMenuClick(cGameMenuLayout, gm_PopupMenu, gm_PopupPlayerInfo, iSelectedPlayer, ev->iEventMsg);
 			} 
 			break;
 			
-		case gm_PopupPlayerInfo:  {
-			DeprecatedGUI::Menu_HostActionsPopupPlayerInfoClick(cGameMenuLayout, gm_PopupMenu, gm_PopupPlayerInfo, iSelectedPlayer, ev->iEventMsg);
+		case gm_PopupPlayerInfo:
+			if (ev->iEventMsg >= DeprecatedGUI::MNU_USER) {
+				DeprecatedGUI::Menu_HostActionsPopupPlayerInfoClick(cGameMenuLayout, gm_PopupMenu, gm_PopupPlayerInfo, iSelectedPlayer, ev->iEventMsg);
 			} 
 			break;
 		}
 	}
 
+	if (DeprecatedGUI::Menu_IsKeyboardNavigationUsed() && (!cGameMenuLayout.getFocusedWidget() || cGameMenuLayout.getFocusedWidget()->getID() != gm_PopupMenu)) {
+		// If popup menu not focused, remove it
+		cGameMenuLayout.removeWidget(gm_PopupMenu);
+		cGameMenuLayout.removeWidget(gm_PopupPlayerInfo);
+	}
+
 	// TODO: why is processing events in a draw-function? move it out here
 	// Process the keyboard
 	if (!bChat_Typing && !DeprecatedGUI::bShowFloatingOptions)  {
-
-		if (WasKeyboardEventHappening(SDLK_RETURN,false) || WasKeyboardEventHappening(SDLK_KP_ENTER,false) || WasKeyboardEventHappening(SDLK_ESCAPE,false))  {
+		if (WasKeyboardEventHappening(SDLK_ESCAPE,false))  {
 			if (game.isLocalGame() && game.gameOver)  {
 				GotoLocalMenu();
 			} else if (!game.gameOver)  {
@@ -2668,7 +2681,7 @@ void CClient::DrawPlayerWaitingColumn(SDL_Surface * bmpDest, int x, int y, std::
 {
 	const int h = getBottomBarTop() - y;
 
-	SDL_Rect newclip = { (Sint16)x, (Sint16)y, (Uint16)WAIT_COL_W, (Uint16)h };
+	SDL_Rect newclip = { (SDLRect::Type) x, (SDLRect::Type) y, (SDLRect::TypeS) WAIT_COL_W, (SDLRect::TypeS) h };
 	ScopedSurfaceClip clip(bmpDest, newclip);
 
 	DrawRectFill(bmpDest, x, y, x + WAIT_COL_W, y + h, tLX->clScoreBackground);

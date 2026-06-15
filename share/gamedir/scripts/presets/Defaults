@@ -23,3 +23,4 @@ setvar("GameOptions.GameInfo.TimeLimit", cfg.GAME_MAX_TIME)
 
 setvar( "GameOptions.GameInfo.FillWithBotsTo", cfg.FILL_WITH_BOTS_TO )
 
+setvar( "GameOptions.GameInfo.Bonuses", "0" )

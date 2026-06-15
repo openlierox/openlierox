@@ -18,7 +18,6 @@
 #define __CTEXTBOX_H__DEPRECATED_GUI__
 
 #include "DeprecatedGUI/CWidget.h"
-#include "DeprecatedGUI/CGuiSkin.h"
 #include "InputEvents.h"
 #include "Cursor.h"
 #include "Timer.h"
@@ -120,7 +119,6 @@ private:
 	int			*iVar;
 	float		*fVar;
 	std::string	*sVar;
-	CGuiSkin::CallbackHandler cClick;
 
 
 public:
@@ -139,8 +137,6 @@ public:
 	int		KeyUp(UnicodeChar c, int keysym, const ModifiersState& modstate);
 
 	void	Draw(SDL_Surface * bmpDest);
-
-	void	LoadStyle() {}
 
 	uintptr_t	SendMessage(int iMsg, uintptr_t Param1, uintptr_t Param2);
 	uintptr_t	SendMessage(int iMsg, const std::string& sStr, uintptr_t Param);
@@ -161,9 +157,6 @@ public:
 	void	CopyText();
 
 	void OnTimerEvent(Timer::EventData ev);
-
-	static CWidget * WidgetCreator( const std::vector< ScriptVar_t > & p, CGuiLayoutBase * layout, int id, int x, int y, int dx, int dy );
-	void	ProcessGuiSkinEvent(int iEvent);
 };
 
 }; // namespace DeprecatedGUI

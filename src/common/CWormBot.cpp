@@ -1366,7 +1366,6 @@ CWorm *CWormBotInputHandler::findTarget()
 
 CWorm* CWormBotInputHandler::nearestEnemyWorm() {
 	CWorm	*trg = NULL;
-	CWorm	*nonsight_trg = NULL;
 	float	fDistance = -1;
 	float	fSightDistance = -1;
 
@@ -1408,7 +1407,6 @@ CWorm* CWormBotInputHandler::nearestEnemyWorm() {
 				trg = w;
 				fSightDistance = l;
 				if (fDistance < 0 || l < fDistance)  {
-					nonsight_trg = w;
 					fDistance = l;
 				}
 			}
@@ -1416,7 +1414,6 @@ CWorm* CWormBotInputHandler::nearestEnemyWorm() {
 		else {
 			// Line of sight blocked
 			if(fDistance < 0 || l < fDistance) {
-				nonsight_trg = w;
 				fDistance = l;
 			}
 		}
@@ -2054,9 +2051,8 @@ bool CWormBotInputHandler::AI_Shoot()
 	
     float fDist;
     int nType = -1;
-    int length = 0;
 
-	length = traceWeaponLine(cTrgPos, &fDist, &nType);
+	traceWeaponLine(cTrgPos, &fDist, &nType);
 
     // If target is blocked by rock we can't use direct firing
     if(nType & PX_ROCK)  {
@@ -3497,6 +3493,7 @@ void CWormBotInputHandler::AI_MoveToTarget()
 		Prevent injuries! If any of the projectiles around is heading to us, try to get away from it
 	*/
 	// TODO: this doesn't work that good atm; so it's better to ignore it at all than to go away in a situation where shooting would be better
+#if 0
 	if (false)  {
 		// TODO: improve this
 
@@ -3554,7 +3551,7 @@ void CWormBotInputHandler::AI_MoveToTarget()
 
 		return;
 	}
-
+#endif
 	// TODO: in general, move away from projectiles
 
 	// prevent suicides
@@ -3960,7 +3957,6 @@ CVec CWormBotInputHandler::AI_FindShootingSpot()
 	// If the worm is not on ground, we cannot hit him with a napalm-like weapon (napalm, blaster etc.)
 	bool have_straight = false;
 	bool have_falling = false;
-	bool have_flying = false;
 
 	// Check what weapons we have
 	for (size_t i=0; i < m_worm->tWeapons.size(); i++)  {
@@ -3976,8 +3972,6 @@ CVec CWormBotInputHandler::AI_FindShootingSpot()
 				have_falling = true;
 			else if (gravity >= -5)
 				have_straight = true;
-			else
-				have_flying = true;
 		}
 	}
 

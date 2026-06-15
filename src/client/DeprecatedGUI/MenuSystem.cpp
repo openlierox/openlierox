@@ -99,6 +99,9 @@ static bool Menu_InitSockets() {
 
 menu_t::menu_t() : cSkin(CGameSkin::WormSkin(), true) {}
 
+static int Menu_MouseWarpedX = 0;
+static int Menu_MouseWarpedY = 0;
+
 ///////////////////
 // Initialize the menu system
 bool Menu_Initialize()
@@ -297,10 +300,6 @@ void Menu_Frame() {
 		// Options
 		case MNU_OPTIONS:
 			Menu_OptionsFrame();
-			break;
-
-		case MNU_GUISKIN:
-			Menu_CGuiSkinFrame();
 			break;
 	}
 
@@ -1014,6 +1013,36 @@ void Menu_EnableNetEvents()
 			tMenu->tSocket[i]->setWithEvents(true);
 }
 
+bool Menu_IsKeyboardNavigationUsed()
+{
+	return CGuiLayout::isKeyboardNavigationUsed();
+}
+
+void Menu_WarpMouse(int x, int y)
+{
+	struct RepositionMouse: public Action
+	{
+		int x, y;
+		RepositionMouse(int _x, int _y): x(_x), y(_y)
+		{
+		}
+		Result handle()
+		{
+			SDL_WarpMouseInWindow(NULL, x, y);
+			return true;
+		}
+	};
+	Menu_MouseWarpedX = x;
+	Menu_MouseWarpedY = y;
+	doActionInMainThread( new RepositionMouse(x, y) );
+}
+
+void Menu_ProcessMouseMotion(int x, int y)
+{
+	if (x != Menu_MouseWarpedX || y != Menu_MouseWarpedY) {
+		CGuiLayout::setKeyboardNavigationUsed(false);
+	}
+}
 	
 	
 bool bGotDetails = false;
@@ -1075,7 +1104,6 @@ void Menu_SvrList_DrawInfo(const std::string& szAddress, int w, int h)
 	std::string		sIP;
     CWorm			cWorms[MAX_WORMS];
 	bool			bHaveLives = false;
-	bool			bHaveVersion = false;
 	std::string		sServerVersion;
 	bool			bHaveGameSpeed = false;
 	float			fGameSpeed = 1.0f;
@@ -1180,7 +1208,6 @@ void Menu_SvrList_DrawInfo(const std::string& szAddress, int w, int h)
 					}
 
 					if(!inbs.isPosAtEnd())  {
-						bHaveVersion = true;
 						sServerVersion = inbs.readString();
 					}
 
@@ -1487,10 +1514,6 @@ void Menu_Current_Shutdown() {
 				// Options
 			case MNU_OPTIONS:
 				Menu_OptionsShutdown();
-				break;
-				
-			case MNU_GUISKIN:
-				Menu_CGuiSkinShutdown();
 				break;
 		}
 	

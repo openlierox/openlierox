@@ -22,6 +22,7 @@
 #include "AuxLib.h"
 #include "DeprecatedGUI/Menu.h"
 #include "StringUtils.h"
+#include "sound/SoundsBase.h"
 #include "DeprecatedGUI/CBox.h"
 #include "DeprecatedGUI/CImage.h"
 #include "DeprecatedGUI/CButton.h"
@@ -29,83 +30,15 @@
 #include "DeprecatedGUI/CLabel.h"
 #include "DeprecatedGUI/CSlider.h"
 #include "DeprecatedGUI/CTextbox.h"
-#include "XMLutils.h"
 #include "OLXConsole.h"
-
-
-// XML parsing library
-#include <libxml/xmlmemory.h>
-#include <libxml/parser.h>
-
-
-/*
- // Useful XML functions
- int		xmlGetInt(xmlNodePtr Node, const std::string& Name);
- float	xmlGetFloat(xmlNodePtr Node, const std::string& Name);
- Uint32	xmlGetColour(xmlNodePtr Node, const std::string& Name);
- */
-
-
-// ==============================
-//
-// Useful XML functions
-//
-// ==============================
-
-#define		CMP(str1,str2)  !xmlStrcmp((const xmlChar *)str1,(const xmlChar *)str2)
-
-/*
- 
- // TODO: why are these xml* functions defined multiple times? (also in XMLUtils)
- 
-///////////////////
-// Get an integer from the specified property
-int xmlGetInt(xmlNodePtr Node, const std::string& Name)
-{
-	xmlChar *sValue;
-	sValue = xmlGetProp(Node,(const xmlChar *)Name.c_str());
-	if(!sValue)
-		return 0;
-	int result = atoi((const char *)sValue);
-	xmlFree(sValue);
-	return result;
-}
-
-///////////////////
-// Get a float from the specified property
-float xmlGetFloat(xmlNodePtr Node, const std::string& Name)
-{
-	xmlChar *sValue = xmlGetProp(Node,(const xmlChar *)Name.c_str());
-	if (!sValue)
-		return 0;
-	float result = (float)atof((const char *)sValue);
-	xmlFree(sValue);
-	return result;
-}
-
-///////////////////
-// Get a colour from the specified property
-Uint32 xmlGetColour(xmlNodePtr Node, const std::string& Name)
-{
-	xmlChar *sValue;
-	
-	// Get the value
-	sValue = xmlGetProp(Node,(const xmlChar *)Name.c_str());
-	
-	Uint32 result = StrToCol((char*)sValue).get();
-	
-	xmlFree(sValue);
-	return result;
-}
-
-*/
+#include "sound/SoundsBase.h"
 
 
 
 namespace DeprecatedGUI {
 
 
-
+bool CGuiLayout::bKeyboardNavigation = true;
 
 
 ///////////////////
@@ -288,344 +221,11 @@ void CGuiLayout::Draw(SDL_Surface * bmpDest)
 		tooltip->draw(bmpDest);
 }
 
-//////////////////
-// Reads common events, that are available for almost every widget
-void CGuiLayout_ReadEvents(CGuiLayout* gui, xmlNodePtr Node, generic_events_t *Events)
-{
-	// TODO: this function was a member function before; this is now gui
-
-	// Load the values
-	xmlChar *evs[NumEvents];
-	evs[OnMouseOver] = xmlGetProp(Node,(const xmlChar *)"onmouseover");
-	evs[OnMouseOut]  = xmlGetProp(Node,(const xmlChar *)"onmouseout");
-	evs[OnMouseDown] = xmlGetProp(Node,(const xmlChar *)"onmousedown");
-	evs[OnClick]	 = xmlGetProp(Node,(const xmlChar *)"onclick");
-
-	// Copy the values into the events
-	int i;
-	for (i=0;i<NumEvents;i++)  {
-		if (evs[i]) {
-			fix_strncpy(Events->Events[i], (char *)evs[i]);
-		} else
-			Events->Events[i][0] = '\0';
-	}
-
-	// Free the data
-	xmlFree(evs[OnMouseOver]);
-	xmlFree(evs[OnMouseOut]);
-	xmlFree(evs[OnMouseDown]);
-	xmlFree(evs[OnClick]);
-}
 
 //////////////////
 // Build the layout according to code specified in skin file
 bool CGuiLayout::Build()
 {
-
-	//
-	//	1. Get the file to parse
-	//
-
-	std::string sFilename = "";
-
-	// Default skin extension
-	std::string sExtension = "skn";
-
-	// Get the skin path
-	std::string path = tLXOptions->sSkinPath+tLXOptions->sResolution;
-
-	// Temp
-	std::string file = "";
-
-	// Get the file name of the skin file
-	switch (iID)  {
-		case L_MAINMENU: file = "mainmenu"; break;
-		case L_LOCALPLAY: file = "localplay"; break;
-		case L_GAMESETTINGS: file = "gamesettings"; break;
-		case L_WEAPONOPTIONS: file = "weaponoptions"; break;
-		case L_LOADWEAPONS: file = "loadweapons"; break;
-		case L_SAVEWEAPONS: file = "saveweapons"; break;
-		case L_NET: file = "net"; break;
-		case L_NETINTERNET: file = "netinternet"; break;
-		case L_INTERNETDETAILS: file = "internetdetails"; break;
-		case L_ADDSERVER: file = "addserver"; break;
-		case L_NETLAN: file = "netlan"; break;
-		case L_LANDETAILS: file = "landetails"; break;
-		case L_NETHOST: file = "nethost"; break;
-		case L_NETFAVOURITES: file = "netfavourites"; break;
-		case L_FAVOURITESDETAILS: file = "favouritesdetails"; break;
-		case L_RENAMESERVER: file = "renameserver"; break;
-		case L_ADDFAVOURITE: file = "addfavourite"; break;
-		case L_CONNECTING: file = "connecting"; break;
-		case L_NETJOINLOBBY: file = "netjoinlobby"; break;
-		case L_NETHOSTLOBBY: file = "nethostlobby"; break;
-		case L_SERVERSETTINGS: file = "serversettings"; break;
-		case L_BANLIST: file = "banlist"; break;
-		case L_PLAYERPROFILES: file = "playerprofiles"; break;
-		case L_CREATEPLAYER: file = "createplayer"; break;
-		case L_VIEWPLAYERS: file = "viewplayers"; break;
-		case L_LEVELEDITOR: file = "leveleditor"; break;
-		case L_NEWDIALOG: file = "newdialog"; break;
-		case L_SAVELOADLEVEL: file = "saveloadlevel"; break;
-		case L_OPTIONS: file = "options"; break;
-		case L_OPTIONSCONTROLS: file = "optionscontrols"; break;
-		case L_OPTIONSGAME: file = "optionsgame"; break;
-		case L_OPTIONSSYSTEM: file = "optionssystem"; break;
-		case L_MESSAGEBOXOK: file = "messageboxok"; break;
-		case L_MESSAGEBOXYESNO: file = "messageboxyesno"; break;
-		default: file =  "fuckingshit";
-	}
-
-	// Get the Filename + Path
-	sFilename = path+"/"+file+"."+sExtension;
-
-	//
-	//	2. Parse the file
-	//
-
-	xmlDocPtr	tDocument;
-	xmlNodePtr	tCurrentNode;
-
-	// Parse the document
-	tDocument = xmlParseFile(sFilename.c_str());
-	if (tDocument == NULL)  {
-		Error(ERR_COULDNOTPARSE,"Could not parse the document " + sFilename);
-		return false;
-	}
-
-	// Get the root node
-	tCurrentNode = xmlDocGetRootElement(tDocument);
-	if (tCurrentNode == NULL)  {
-		Error(ERR_EMPTYDOC,"The '" + sFilename + "' document is empty");
-		return false;
-	}
-
-	// Validate the root node
-	if (CMP(tCurrentNode->name,"skin"))  {
-		Error(ERR_INVALIDROOT,"The document '" + sFilename + "' contains invalid parent node: " + std::string((char *)tCurrentNode->name));
-		return false;
-	}
-
-	// Get the first child
-	tCurrentNode = tCurrentNode->xmlChildrenNode;
-
-	// Get all the nodes in document and create widgets in layout
-	while (tCurrentNode != NULL)  {
-
-		// Box
-		if (CMP(tCurrentNode->name,"box"))  {
-			int left   = xmlGetInt(tCurrentNode,"left");
-			int top    = xmlGetInt(tCurrentNode,"top");
-			int width  = xmlGetInt(tCurrentNode,"width");
-			int height = xmlGetInt(tCurrentNode,"height");
-			int round  = xmlGetInt(tCurrentNode,"round");
-			int border = xmlGetInt(tCurrentNode,"border");
-			Color light_colour = xmlGetColour(tCurrentNode,"lightcolor");
-			Color dark_colour = xmlGetColour(tCurrentNode,"darkcolor");
-			Color bgcolour = xmlGetColour(tCurrentNode,"bgcolor");
-
-			Add(new CBox(round,border,light_colour,dark_colour,bgcolour),-1,left,top,width,height);
-		}
-
-		// Image
-		if (CMP(tCurrentNode->name,"img"))  {
-			int left   = xmlGetInt(tCurrentNode,"left");
-			int top    = xmlGetInt(tCurrentNode,"top");
-			int width  = xmlGetInt(tCurrentNode,"width");
-			int height = xmlGetInt(tCurrentNode,"height");
-			xmlChar *name = xmlGetProp(tCurrentNode,(const xmlChar *)"name");
-			xmlChar *src  = xmlGetProp(tCurrentNode,(const xmlChar *)"src");
-			generic_events_t Events;
-			CGuiLayout_ReadEvents(this,tCurrentNode,&Events);
-
-			// Add the image
-			CImage *Image = new CImage((char *) src);
-			Add(Image,GetIdByName((char*)name),left,top,width,height);
-			Image->SetupEvents(&Events);
-
-			// Free resources
-			xmlFree(name);
-			xmlFree(src);
-
-		}
-
-		// Button
-		if (CMP(tCurrentNode->name,"button"))  {
-			int left   = xmlGetInt(tCurrentNode,"left");
-			int top    = xmlGetInt(tCurrentNode,"top");
-			int width  = xmlGetInt(tCurrentNode,"width");
-			int height = xmlGetInt(tCurrentNode,"height");
-			xmlChar *name	 = xmlGetProp(tCurrentNode,(const xmlChar *)"name");
-			xmlChar *src	 = xmlGetProp(tCurrentNode,(const xmlChar *)"src");
-			generic_events_t Events;
-			CGuiLayout_ReadEvents(this,tCurrentNode,&Events);
-
-			// Add the button
-			CButton *Button = new CButton((char *)src);
-			Add(Button,GetIdByName((char*)name),left,top,width,height);
-			Button->SetupEvents(&Events);
-
-			xmlFree(name);
-			xmlFree(src);
-		}
-
-
-		// Checkbox
-		if (CMP(tCurrentNode->name,"checkbox"))  {
-			int left   = xmlGetInt(tCurrentNode,"left");
-			int top    = xmlGetInt(tCurrentNode,"top");
-			int width  = xmlGetInt(tCurrentNode,"width");
-			int height = xmlGetInt(tCurrentNode,"height");
-			xmlChar *name		 = xmlGetProp(tCurrentNode,(const xmlChar *)"name");
-			generic_events_t Events;
-			CGuiLayout_ReadEvents(this,tCurrentNode,&Events);
-
-			// Add the checkbox
-			CCheckbox *Checkbox = new CCheckbox(false);
-			Add(Checkbox,GetIdByName((char*)name),left,top,width,height);
-			Checkbox->SetupEvents(&Events);
-
-			xmlFree(name);
-		}
-
-
-		// Combobox
-		if (CMP(tCurrentNode->name,"combobox"))  {
-			int left   = xmlGetInt(tCurrentNode,"left");
-			int top    = xmlGetInt(tCurrentNode,"top");
-			int width  = xmlGetInt(tCurrentNode,"width");
-			int height = xmlGetInt(tCurrentNode,"height");
-			xmlChar *name		 = xmlGetProp(tCurrentNode,(const xmlChar *)"name");
-			generic_events_t Events;
-			CGuiLayout_ReadEvents(this,tCurrentNode,&Events);
-
-			// Add the combobox
-			CCombobox *Combobox = new CCombobox();
-			Add(Combobox,GetIdByName((char*)name),left,top,width,height);
-			Combobox->SetupEvents(&Events);
-
-			xmlFree(name);
-		}
-
-		// Inputbox
-		if (CMP(tCurrentNode->name,"inputbox"))  {
-/*			 // TODO: not used
-            int left   = xmlGetInt(tCurrentNode,"left");
-			int top    = xmlGetInt(tCurrentNode,"top");
-			int width  = xmlGetInt(tCurrentNode,"width");
-			int height = xmlGetInt(tCurrentNode,"height"); */
-			xmlChar *name	 = xmlGetProp(tCurrentNode,(const xmlChar *)"name");
-			xmlChar *image	 = xmlGetProp(tCurrentNode,(const xmlChar *)"image");
-			xmlChar *title	 = xmlGetProp(tCurrentNode,(const xmlChar *)"title");
-			generic_events_t Events;
-			CGuiLayout_ReadEvents(this,tCurrentNode,&Events);
-
-			//CInputbox *Inputbox = new CInputbox(0,"",(char *)image,(char *)title);
-			//Add(Inputbox,GetIdByName(name),left,top,width,height);
-			//Inputbox->SetupEvents(&Events);
-
-			xmlFree(name);
-			xmlFree(image);
-			xmlFree(title);
-		}
-
-		// Label
-		if (CMP(tCurrentNode->name,"label"))  {
-			int left   = xmlGetInt(tCurrentNode,"left");
-			int top    = xmlGetInt(tCurrentNode,"top");
-			int width  = xmlGetInt(tCurrentNode,"width");
-			int height = xmlGetInt(tCurrentNode,"height");
-			xmlChar *name = xmlGetProp(tCurrentNode,(const xmlChar *)"name");
-			xmlChar *text = xmlGetProp(tCurrentNode,(const xmlChar *)"text");
-			Color colour = xmlGetColour(tCurrentNode,"color");
-			generic_events_t Events;
-			CGuiLayout_ReadEvents(this,tCurrentNode,&Events);
-
-			// Add the label
-			CLabel *Label = new CLabel((char *)text,colour);
-			Add(Label,GetIdByName((char*)name),left,top,width,height);
-			Label->SetupEvents(&Events);
-
-			xmlFree(name);
-			xmlFree(text);
-		}
-
-		// Listview
-		if (CMP(tCurrentNode->name,"listview"))  {
-			int left   = xmlGetInt(tCurrentNode,"left");
-			int top    = xmlGetInt(tCurrentNode,"top");
-			int width  = xmlGetInt(tCurrentNode,"width");
-			int height = xmlGetInt(tCurrentNode,"height");
-			xmlChar *name		 = xmlGetProp(tCurrentNode,(const xmlChar *)"name");
-			generic_events_t Events;
-			CGuiLayout_ReadEvents(this,tCurrentNode,&Events);
-
-			// Add the listview
-			CListview *Listview = new CListview();
-			Add(Listview,GetIdByName((char*)name),left,top,width,height);
-			Listview->SetupEvents(&Events);
-
-			xmlFree(name);
-		}
-
-		// Scrollbar
-		if (CMP(tCurrentNode->name,"scrollbar"))  {
-			int left   = xmlGetInt(tCurrentNode,"left");
-			int top    = xmlGetInt(tCurrentNode,"top");
-			int width  = xmlGetInt(tCurrentNode,"width");
-			int height = xmlGetInt(tCurrentNode,"height");
-			xmlChar *name	= xmlGetProp(tCurrentNode,(const xmlChar *)"name");
-			generic_events_t Events;
-			CGuiLayout_ReadEvents(this,tCurrentNode,&Events);
-
-			// Add the scrollbar
-			CScrollbar *Scrollbar = new CScrollbar();
-			Add(Scrollbar,GetIdByName((char*)name),left,top,width,height);
-			Scrollbar->SetupEvents(&Events);
-
-			xmlFree(name);
-		}
-
-		// Slider
-		if (CMP(tCurrentNode->name,"slider"))  {
-			int left   = xmlGetInt(tCurrentNode,"left");
-			int top    = xmlGetInt(tCurrentNode,"top");
-			int width  = xmlGetInt(tCurrentNode,"width");
-			int height = xmlGetInt(tCurrentNode,"height");
-			xmlChar *name		 = xmlGetProp(tCurrentNode,(const xmlChar *)"name");
-			generic_events_t Events;
-			CGuiLayout_ReadEvents(this,tCurrentNode,&Events);
-
-			// Add the slider
-			CSlider *Slider = new CSlider(1);
-			Add(Slider,GetIdByName((char*)name),left,top,width,height);
-			Slider->SetupEvents(&Events);
-
-			xmlFree(name);
-		}
-
-		// Textbox
-		if (CMP(tCurrentNode->name,"checkbox"))  {
-			int left   = xmlGetInt(tCurrentNode,"left");
-			int top    = xmlGetInt(tCurrentNode,"top");
-			int width  = xmlGetInt(tCurrentNode,"width");
-			int height = xmlGetInt(tCurrentNode,"height");
-			xmlChar *name	= xmlGetProp(tCurrentNode,(const xmlChar *)"name");
-			generic_events_t Events;
-			CGuiLayout_ReadEvents(this,tCurrentNode,&Events);
-
-			// Add the textbox
-			CTextbox *Textbox = new CTextbox();
-			Add(Textbox,GetIdByName((char*)name),left,top,width,height);
-			Textbox->SetupEvents(&Events);
-
-			xmlFree(name);
-		}
-
-
-		tCurrentNode = tCurrentNode->next;
-	}
-
 	return true;
 }
 
@@ -658,11 +258,57 @@ gui_event_t *CGuiLayout::Process()
 	if (cFocused && !ApplicationHasFocus())
 		cFocused->setLoseFocus(true);
 
+	bool widgetSelectedWithKeyboard = false;
+
 	// Parse keyboard events to the focused widget
 	// Make sure a key event happened
 	keyboard_t *Keyboard = GetKeyboard();
 	if(!Con_IsVisible() && Keyboard->queueLength > 0) {
 
+		// Process Escape key in menus
+		for(int i = 0; i < Keyboard->queueLength; i++) {
+			const KeyboardEvent& kbev = Keyboard->keyQueue[i];
+			if(!kbev.down && kbev.sym == SDLK_ESCAPE) {
+				// Try to find 'Resume game' button first, hitting Escape during the match should go back to the match
+				for(auto widget: cWidgets) {
+					if(widget && widget->getType() == wid_Button &&
+						((CButton *) widget)->getImageID() == BUT_RESUME) {
+						ev = widget->MouseClicked(GetMouse(), 1);
+						tEvent->iEventMsg = ev;
+						tEvent->iControlID = widget->getID();
+						tEvent->cWidget = widget;
+						return tEvent;
+					}
+				}
+				// Try to find 'Back' or 'Quit' button
+				for(auto widget: cWidgets) {
+					if(widget && widget->getType() == wid_Button && (
+						((CButton *) widget)->getImageID() == BUT_BACK ||
+						((CButton *) widget)->getImageID() == BUT_QUIT ||
+						((CButton *) widget)->getImageID() == BUT_QUITGAME ||
+						((CButton *) widget)->getImageID() == BUT_LEAVE ||
+						((CButton *) widget)->getImageID() == BUT_CANCEL ||
+						((CButton *) widget)->getImageID() == BUT_NO)) {
+						ev = widget->MouseClicked(GetMouse(), 1);
+						tEvent->iEventMsg = ev;
+						tEvent->iControlID = widget->getID();
+						tEvent->cWidget = widget;
+						return tEvent;
+					}
+				}
+				// Some dialogs have only 'OK' button, press it if nothing else works
+				for(auto widget: cWidgets) {
+					if(widget && widget->getType() == wid_Button &&
+						((CButton *) widget)->getImageID() == BUT_OK) {
+						ev = widget->MouseClicked(GetMouse(), 1);
+						tEvent->iEventMsg = ev;
+						tEvent->iControlID = widget->getID();
+						tEvent->cWidget = widget;
+						return tEvent;
+					}
+				}
+			}
+		}
 
 		// If we don't have any focused widget, get the first textbox
 		if (!cFocused)  {
@@ -692,10 +338,74 @@ gui_event_t *CGuiLayout::Process()
 				tEvent->iEventMsg = ev;
 				tEvent->iControlID = cFocused->getID();
 				tEvent->cWidget = cFocused;
-				tEvent->cWidget->ProcessGuiSkinEvent(ev);
 				return tEvent;
 			}
 		}
+
+		// Navigate menu with arrow keys
+		for(int i = 0; i < Keyboard->queueLength; i++) {
+			const KeyboardEvent& kbev = Keyboard->keyQueue[i];
+
+			if (kbev.down && (kbev.sym == SDLK_UP || kbev.sym == SDLK_LEFT || kbev.sym == SDLK_DOWN || kbev.sym == SDLK_RIGHT)) {
+
+				bKeyboardNavigation = true;
+				CWidget * selected = NULL;
+
+				if (!bCanFocus || cFocused == NULL || !cFocused->CanLoseFocus()) {
+					// Do nothing
+				} else if (kbev.sym == SDLK_UP || kbev.sym == SDLK_LEFT) {
+					int posmin = 0;
+					int posmax = cFocused->getX() + cFocused->getY() * 0x10000 + cFocused->getKeyboardNavigationOrder() * 0x10000000;
+					for(auto widget: cWidgets) {
+						if (!widget->getEnabled() || widget == cFocused || widget->getType() == wid_Label || widget->getType() == wid_None)
+							continue;
+						int pos = widget->getX() + widget->getY() * 0x10000 + widget->getKeyboardNavigationOrder() * 0x10000000;
+						if (posmin < pos && posmax > pos) {
+							posmin = pos;
+							selected = widget;
+						}
+					}
+				} else if (kbev.sym == SDLK_DOWN || kbev.sym == SDLK_RIGHT) {
+					int posmin = cFocused->getX() + cFocused->getY() * 0x10000 + cFocused->getKeyboardNavigationOrder() * 0x10000000;
+					int posmax = INT_MAX;
+					for(auto widget: cWidgets) {
+						if (!widget->getEnabled() || widget == cFocused || widget->getType() == wid_Label || widget->getType() == wid_None)
+							continue;
+						int pos = widget->getX() + widget->getY() * 0x10000 + widget->getKeyboardNavigationOrder() * 0x10000000;
+						if (posmin < pos && posmax > pos) {
+							posmax = pos;
+							selected = widget;
+						}
+					}
+				}
+
+				if (cFocused && selected && cFocused != selected) {
+					cFocused->setFocused(false);
+					cFocused = selected;
+					widgetSelectedWithKeyboard = true;
+				}
+			}
+		}
+	}
+
+	if (!cFocused && bKeyboardNavigation) {
+		int posmax = INT_MAX;
+		for(auto widget: cWidgets) {
+			if (!widget->getEnabled() || widget->getType() == wid_Label || widget->getType() == wid_None)
+				continue;
+			int pos = widget->getX() + widget->getY() * 0x10000 + widget->getKeyboardNavigationOrder() * 0x10000000;
+			if (posmax > pos) {
+				posmax = pos;
+				cFocused = widget;
+			}
+		}
+		widgetSelectedWithKeyboard = true;
+	}
+
+	if (cFocused && widgetSelectedWithKeyboard) {
+		cFocused->setFocused(true);
+		Menu_WarpMouse(cFocused->getX() + 1, cFocused->getY() + cFocused->getHeight() - 2);
+		PlaySoundSample(sfxGeneral.smpClick);
 	}
 
 	// Special mouse button event first (for focused widgets)
@@ -704,31 +414,22 @@ gui_event_t *CGuiLayout::Process()
 		widget = true;
 		
 		if(tMouse->Down) {
-			// Process the skin-defined code
-			cFocused->ProcessEvent(OnMouseDown);
-			
 			if( (ev = cFocused->MouseDown(tMouse, tMouse->Down)) >= 0) {
 				tEvent->iEventMsg = ev;
 				tEvent->iControlID = cFocused->getID();
 				tEvent->cWidget = cFocused;
-				tEvent->cWidget->ProcessGuiSkinEvent(ev);
 				return tEvent;
 			}
 		}
 		else if(tMouse->Up) {
 			bCanFocus = true;
-			
-			// Process the skin defined code
-			// OnClick is only fired if mouseup was done over the widget
-			if(cFocused->InBox(tMouse->X,tMouse->Y))
-				cFocused->ProcessEvent(OnClick);
+			bKeyboardNavigation = false; // Mouse click disables key navigation mode
 			
 			if(cFocused->InBox(tMouse->X,tMouse->Y))
 				if( (ev = cFocused->MouseClicked(tMouse, tMouse->Up)) >= 0) {
 					tEvent->iEventMsg = ev;
 					tEvent->iControlID = cFocused->getID();
 					tEvent->cWidget = cFocused;
-					tEvent->cWidget->ProcessGuiSkinEvent(ev);
 					return tEvent;
 				}
 
@@ -736,7 +437,6 @@ gui_event_t *CGuiLayout::Process()
 				tEvent->iEventMsg = ev;
 				tEvent->iControlID = cFocused->getID();
 				tEvent->cWidget = cFocused;
-				tEvent->cWidget->ProcessGuiSkinEvent(ev);
 				return tEvent;
 			}
 			
@@ -768,7 +468,6 @@ gui_event_t *CGuiLayout::Process()
 
 				if( (ev = (*w)->MouseWheelUp(tMouse)) >= 0) {
 					tEvent->iEventMsg = ev;
-					tEvent->cWidget->ProcessGuiSkinEvent(ev);
 					return tEvent;
 				}
 			}
@@ -783,7 +482,6 @@ gui_event_t *CGuiLayout::Process()
 
 				if( (ev = (*w)->MouseWheelDown(tMouse)) >= 0) {
 					tEvent->iEventMsg = ev;
-					tEvent->cWidget->ProcessGuiSkinEvent(ev);
 					return tEvent;
 				}
 			}
@@ -809,59 +507,20 @@ gui_event_t *CGuiLayout::Process()
 
 				}
 
-				// Process the skin defined code
-				(*w)->ProcessEvent(OnMouseDown);
-
 				if( (ev = (*w)->MouseDown(tMouse, tMouse->Down)) >= 0) {
 					tEvent->iEventMsg = ev;
-					tEvent->cWidget->ProcessGuiSkinEvent(ev);
 					return tEvent;
 				}
 			}
-
-			// TODO: i don't understand that. mouseup should always only be sent to the widget where we have sent the mousedown
-			/*
-			// Mouse up event
-			if(tMouse->Up) {
-				bCanFocus = true;
-				widget = true;
-				if(cFocused)  {
-					if(cFocused->CanLoseFocus())  {
-						cFocused->setFocused(false);
-						(*w)->setFocused(true);
-						cFocused = *w;
-					}
-				}
-				else  {
-					(*w)->setFocused(true);
-					cFocused = *w;
-				}
-
-				// Process the skin defined code
-				(*w)->ProcessEvent(OnClick);
-
-				if( (ev = (*w)->MouseUp(tMouse, tMouse->Up)) >= 0) {
-					tEvent->iEventMsg = ev;
-					return tEvent;
-				}
-			}
-			 */
 
 			// Mouse over
 			if (*w != cMouseOverWidget)  {
-				(*w)->ProcessEvent(OnMouseOver);
-
-				// For the current Mouse over widget this means a mouse out event
-				if(cMouseOverWidget)
-					cMouseOverWidget->ProcessEvent(OnMouseOut);
-
 				cMouseOverWidget = *w;
 			}
 
 			if( (ev = (*w)->MouseOver(tMouse)) >= 0) {
 				widget = true;
 				tEvent->iEventMsg = ev;
-				tEvent->cWidget->ProcessGuiSkinEvent(ev);
 				return tEvent;
 			}
 
@@ -873,7 +532,6 @@ gui_event_t *CGuiLayout::Process()
 
 	// If mouse is over empty space it means, it's not over any widget ;-)
 	if (cMouseOverWidget)  {
-		cMouseOverWidget->ProcessEvent(OnMouseOut);
 		cMouseOverWidget = NULL;
 	}
 

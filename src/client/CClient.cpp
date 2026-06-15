@@ -348,9 +348,6 @@ int CClient::Initialize()
 	cShootList.Initialize();
 
 	this->SetupGameInputs();
-	
-    // Initialize the weather
-    //cWeather.Initialize(wth_snow);
 
 	m_flagInfo = new FlagInfo();
 	
@@ -994,32 +991,8 @@ void CClient::Frame()
 		game.gameMap()->isLoaded() &&
 		game.gameScript())
 	{
-		if( NewNet::Active() )
-			NewNet_Frame();
-		else
-			Simulation();
+		Simulation();
 	}
-}
-
-void CClient::NewNet_Frame()
-{
-	CBytestream out, packet;
-	if( game.localWorms()->size() <= 0 )
-		return;
-	out.writeByte( C2S_NEWNET_KEYS );
-	out.writeByte( game.localWorms()->get()->getID() );
-	while( NewNet::Frame(&out) )
-	{
-		packet.Append(&out);
-		out.Clear();
-		out.writeByte( C2S_NEWNET_KEYS );
-		out.writeByte( game.localWorms()->get()->getID() );
-	}
-	
-	if( NewNet::ChecksumRecalculated() )
-		getNetEngine()->SendNewNetChecksum();
-
-	cNetChan->AddReliablePacketToSend(packet);
 }
 
 ///////////////////
@@ -1096,9 +1069,6 @@ bool CClient::ReadPackets()
 		if (bDownloadingMap && cHttpDownloader)
 			cHttpDownloader->CancelFileDownload(sMapDownloadName);
 		getUdpFileDownloader()->reset();
-
-		if( NewNet::Active() )
-			NewNet::EndRound();
 
 		// The next frame will pickup the server error flag set & handle the msgbox, disconnecting & quiting
 	}
@@ -1233,11 +1203,9 @@ void CClient::Connect(const std::string& address)
 		strServerAddr_HumanReadable = strServerAddr + " (...)";
 		Timer("client connect DNS timeout", null, NULL, DNS_TIMEOUT * 1000 + 50, true).startHeadless();
 
-		if(!GetNetAddrFromNameAsync(address, cServerAddr)) {
-			iNetStatus = NET_DISCONNECTED;
-			bBadConnection = true;
-			strBadConnectMsg = "Unknown error while resolving address '" + address + "'";
-		}
+		iNetStatus = NET_DISCONNECTED;
+		bBadConnection = true;
+		strBadConnectMsg = "Invalid server address '" + address + "'";
 	}
 
 	// Connecting to a server behind a NAT?
@@ -1324,10 +1292,9 @@ void CClient::ConnectingBehindNAT()
 
 		// Resolve the UDP master server address
 		SetNetAddrValid(cServerAddr, false);
-		if(!GetNetAddrFromNameAsync(sUdpMasterserverAddress, cServerAddr)) {
-			iNetStatus = NET_DISCONNECTED;
-			bBadConnection = true;
-			strBadConnectMsg = "Unknown error while resolving UDP masterserver address '" + sUdpMasterserverAddress + "'";
+		NetworkAddr ignored;
+		if(!GetFromDnsCache(sUdpMasterserverAddress, cServerAddr, ignored)) {
+			GetNetAddrFromNameAsync(sUdpMasterserverAddress);
 			return;
 		}
 
@@ -2134,8 +2101,8 @@ bool CClient::RebindSocket()
 	if(!tSocket->isOpen())
 		return false;
 	tSocket->Close();
-	if(NegResult r = tSocket->OpenUnreliable(0)) {
-		errors << "CClient::RebindSocket: Could not open UDP socket! " << r.res.humanErrorMsg << endl;
+	if(!tSocket->OpenUnreliable(0)) {
+		errors << "CClient::RebindSocket: Could not open UDP socket! " << endl;
 		return false;
 	}
 	return true;
@@ -2156,7 +2123,8 @@ CChannel * CClient::createChannel(const Version& v)
 
 void CClient::setNetEngineFromServerVersion()
 {
-	if(cNetEngine) delete cNetEngine; cNetEngine = NULL;
+	if(cNetEngine) delete cNetEngine;
+	cNetEngine = NULL;
 	if( getServerVersion() >= OLXBetaVersion(0,58,1) )
 		cNetEngine = new CClientNetEngineBeta9(this);
 	else if( getServerVersion() >= OLXBetaVersion(0,57,7) )
@@ -2231,16 +2199,6 @@ void CClient::SetupGameInputs()
 
 	InitializeSpectatorViewportKeys();
 
-}
-
-void CClient::NewNet_SaveProjectiles()
-{
-//	NewNet_SavedProjectiles = cProjectiles;
-}
-
-void CClient::NewNet_LoadProjectiles()
-{
-//	cProjectiles = NewNet_SavedProjectiles;
 }
 
 long CClient::MapPosIndex::index(const CMap* m) const {

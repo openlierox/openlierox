@@ -75,8 +75,6 @@ void CWormHumanInputHandler::getInput() {
 		m_worm->fLastInputTime = GetPhysicsTime();
 	}
 
-	int		weap = false;
-
 	mouse_t *ms = GetMouse();
 
 	worm_state_t *ws = &m_worm->tState.write();
@@ -258,7 +256,7 @@ void CWormHumanInputHandler::getInput() {
 		const float carveDelay = 0.2f;
 
 		if(		(mouseControl && ws->bMove && m_worm->iMoveDirectionSide == DIR_LEFT)
-			||	( ( (cLeft.isJoystick() && cLeft.isDown()) /*|| (cLeft.isKeyboard() && leftOnce)*/ ) && !cSelWeapon.isDown())
+			||	( cLeft.isJoystickDown() /*|| (cLeft.isKeyboard() && leftOnce)*/ && !cSelWeapon.isDown())
 			) {
 
 			if(tLX->currentTime - m_worm->fLastCarve >= carveDelay) {
@@ -269,7 +267,7 @@ void CWormHumanInputHandler::getInput() {
 		}
 
 		if(		(mouseControl && ws->bMove && m_worm->iMoveDirectionSide == DIR_RIGHT)
-			||	( ( (cRight.isJoystick() && cRight.isDown()) /*|| (cRight.isKeyboard() && rightOnce)*/ ) && !cSelWeapon.isDown())
+			||	( cRight.isJoystickDown() /*|| (cRight.isKeyboard() && rightOnce)*/ && !cSelWeapon.isDown())
 			) {
 
 			if(tLX->currentTime - m_worm->fLastCarve >= carveDelay) {
@@ -292,7 +290,6 @@ void CWormHumanInputHandler::getInput() {
 		if(cSelWeapon.isDown()) {
 			// TODO: was is the intention of this var? if weapon change, then it's wrong
 			// if cSelWeapon.isDown(), then we don't need it
-			weap = true;
 
 			// we don't want keyrepeats here, so only count the first down-event
 			int change = (rightOnce ? 1 : 0) - (leftOnce ? 1 : 0);
@@ -300,7 +297,7 @@ void CWormHumanInputHandler::getInput() {
 			MOD(m_worm->iCurrentWeapon, m_worm->getWeaponSlotsCount());
 
 			// Joystick: if the button is pressed, change the weapon (it is annoying to move the axis for weapon changing)
-			if (cSelWeapon.isJoystick() && change == 0 && cSelWeapon.isDownOnce())  {
+			if (change == 0 && cSelWeapon.isJoystickDownOnce())  {
 				m_worm->iCurrentWeapon++;
 				MOD(m_worm->iCurrentWeapon, m_worm->getWeaponSlotsCount());
 			}
@@ -351,6 +348,15 @@ void CWormHumanInputHandler::getInput() {
 				ws->bCarve = true;
 				m_worm->fLastCarve = tLX->currentTime;
 			}
+		}
+
+		const float carveDelay = 0.2f;
+
+		if (cStrafe.isDown() && tLX->currentTime - m_worm->fLastCarve >= carveDelay) {
+			// Strafe also acts like dig button, so gamepad/touchscreen digging works
+			ws->bCarve = true;
+			ws->bMove = true;
+			m_worm->fLastCarve = tLX->currentTime;
 		}
 
 		// inform player about disallowed strafing
@@ -418,219 +424,6 @@ void CWormHumanInputHandler::getInput() {
 	cStrafe.reset();
 	for( size_t i = 0; i < sizeof(cWeapons) / sizeof(cWeapons[0]) ; i++  )
 		cWeapons[i].reset();
-}
-
-// This function will get the keypresses for new net engine from different input like mouse/joystic or bot AI
-// by comparing worm state variables before and after getInput() call
-NewNet::KeyState_t CWorm::NewNet_GetKeys()
-{
-	CWorm oldState;
-	oldState.NewNet_CopyWormState(*this);
-	getInput();
-	NewNet::KeyState_t ret;
-
-	if( tState.get().bJump )
-		ret.keys[NewNet::K_JUMP] = true;
-
-	if( tState.get().bShoot )
-		ret.keys[NewNet::K_SHOOT] = true;
-
-	if( tState.get().bCarve )
-	{
-		ret.keys[NewNet::K_LEFT] = true;
-		ret.keys[NewNet::K_RIGHT] = true;
-	}
-	
-	if( tState.get().bMove )
-	{
-		if( iMoveDirectionSide == DIR_LEFT )
-			ret.keys[NewNet::K_LEFT] = true;
-		else
-			ret.keys[NewNet::K_RIGHT] = true;
-		if( iMoveDirectionSide != iFaceDirectionSide )
-			ret.keys[NewNet::K_STRAFE] = true;
-	}
-	
-	if( oldState.fAngle > fAngle )
-		ret.keys[NewNet::K_UP] = true;
-	if( oldState.fAngle < fAngle )
-		ret.keys[NewNet::K_DOWN] = true;
-
-	if( oldState.iCurrentWeapon != iCurrentWeapon )
-	{
-		// TODO: ignores fast weapon selection keys, they will just not work
-		// I'll probably remove K_SELWEAP and add K_SELWEAP_1 - K_SELWEAP_5 "buttons"
-		ret.keys[NewNet::K_SELWEAP] = true;
-		int WeaponLeft = iCurrentWeapon + 1;
-		MOD(WeaponLeft, tWeapons.size());
-		if( WeaponLeft == oldState.iCurrentWeapon )
-			ret.keys[NewNet::K_LEFT] = true;
-		int WeaponRight = iCurrentWeapon - 1;
-		MOD(WeaponRight, tWeapons.size());
-		if( WeaponRight == oldState.iCurrentWeapon )
-			ret.keys[NewNet::K_RIGHT] = true;
-	};
-	
-	return ret;
-};
-
-// Synthetic input from new net engine - should modify worm state in the same as CWormHumanInputHandler::getInput()
-void CWorm::NewNet_SimulateWorm( NewNet::KeyState_t keys, NewNet::KeyState_t keysChanged ) 
-{
-	TimeDiff dt ( (int)NewNet::TICK_TIME );
-
-	if( GetPhysicsTime() > fLastInputTime )
-		dt = GetPhysicsTime() - fLastInputTime;
-	fLastInputTime = GetPhysicsTime();
-	
-	// do it here to ensure that it is called exactly once in a frame (needed because of intern handling)
-	bool leftOnce = keys.keys[NewNet::K_LEFT] && keysChanged.keys[NewNet::K_LEFT];
-	bool rightOnce = keys.keys[NewNet::K_RIGHT] && keysChanged.keys[NewNet::K_RIGHT];
-	
-	worm_state_t *ws = &tState.write();
-
-	// Init the ws
-	ws->reset();
-
-	{
-		if( keys.keys[NewNet::K_UP] && keys.keys[NewNet::K_DOWN] )
-		{
-			// Do not change angle speed (precise aiming as in original Liero)
-		}
-		else if(keys.keys[NewNet::K_UP]) {
-			// HINT: 500 is the original value here (rev 1)
-			fAngleSpeed -= 500 * dt.seconds();
-		} else if(keys.keys[NewNet::K_DOWN]) { // Down
-			// HINT: 500 is the original value here (rev 1)
-			fAngleSpeed += 500 * dt.seconds();
-		} else {
-				// HINT: this is the original order and code (before mouse patch - rev 1007)
-				CLAMP_DIRECT(fAngleSpeed, -100.0f, 100.0f);
-				REDUCE_CONST(fAngleSpeed, 200*dt.seconds());
-				RESET_SMALL(fAngleSpeed, 5.0f);
-
-		}
-
-		fAngle += fAngleSpeed * dt.seconds();
-		if(CLAMP_DIRECT(fAngle.write(), -90.0f, 60.0f) != 0)
-			fAngleSpeed = 0;
-
-	} // end angle section
-
-	{ // set carving
-
-		const float carveDelay = 0.2f;
-
-		if(leftOnce && !keys.keys[NewNet::K_SELWEAP]) {
-
-			if(GetPhysicsTime() >= fLastCarve + carveDelay ) {
-				ws->bCarve = true;
-				ws->bMove = true;
-				fLastCarve = GetPhysicsTime();
-			}
-		}
-
-		if(rightOnce && !keys.keys[NewNet::K_SELWEAP]) {
-
-			if(GetPhysicsTime() >= fLastCarve + carveDelay ) {
-				ws->bCarve = true;
-				ws->bMove = true;
-				fLastCarve = GetPhysicsTime();
-			}
-		}
-	}
-
-    //
-    // Weapon changing
-	//
-	if(keys.keys[NewNet::K_SELWEAP]) {
-		// we don't want keyrepeats here, so only count the first down-event
-		int change = (rightOnce ? 1 : 0) - (leftOnce ? 1 : 0);
-		iCurrentWeapon += change;
-		MOD(iCurrentWeapon, tWeapons.size());
-	}
-
-	// Safety: clamp the current weapon
-	iCurrentWeapon = CLAMP((int)iCurrentWeapon, 0, (int)tWeapons.size()-1);
-
-	ws->bShoot = keys.keys[NewNet::K_SHOOT];
-
-	if(!keys.keys[NewNet::K_SELWEAP]) {
-		if(keys.keys[NewNet::K_LEFT]) {
-			ws->bMove = true;
-			lastMoveTime = GetPhysicsTime();
-
-			if(!keys.keys[NewNet::K_RIGHT]) {
-				if(!cClient->isHostAllowingStrafing() || !keys.keys[NewNet::K_STRAFE]) 
-					iFaceDirectionSide = DIR_LEFT;
-				iMoveDirectionSide = DIR_LEFT;
-			}
-
-			if(rightOnce) {
-				ws->bCarve = true;
-				fLastCarve = GetPhysicsTime();
-			}
-		}
-
-		if(keys.keys[NewNet::K_RIGHT]) {
-			ws->bMove = true;
-			lastMoveTime = GetPhysicsTime();
-
-			if(!keys.keys[NewNet::K_LEFT]) {
-				if(!cClient->isHostAllowingStrafing() || !keys.keys[NewNet::K_STRAFE]) 
-					iFaceDirectionSide = DIR_RIGHT;
-				iMoveDirectionSide = DIR_RIGHT;
-			}
-
-			if(leftOnce) {
-				ws->bCarve = true;
-				fLastCarve = GetPhysicsTime();
-			}
-		}
-	}
-
-
-	bool jumpdownonce = keys.keys[NewNet::K_JUMP] && keysChanged.keys[NewNet::K_JUMP];
-
-	// Jump
-	if(jumpdownonce) {
-			ws->bJump = true;
-
-			if(cNinjaRope.get().isReleased())
-				cNinjaRope.write().Clear();
-	}
-
-	// Newer style rope throwing
-	// Seperate dedicated button for throwing the rope
-	if( keys.keys[NewNet::K_ROPE] && keysChanged.keys[NewNet::K_ROPE] ) {
-		cNinjaRope.write().Shoot(getFaceDirection());
-		// Throw sound
-		if( NewNet::CanPlaySound(getID()) )
-			PlaySoundSample(sfxGame.smpNinja);
-	}
-
-	// Clean up expired damage report values
-	if( tLXOptions->bColorizeDamageByWorm )
-	{
-		for( std::map<int, DamageReport> ::iterator it = cDamageReport.begin(); it != cDamageReport.end(); )
-		{
-			if( GetPhysicsTime() > it->second.lastTime + 1.5f )
-			{
-				cDamageReport.erase(it);
-				it = cDamageReport.begin();
-			}
-			else
-				it++;
-		}
-	}
-	else
-	{
-		std::map< AbsTime, int > DamageReportDrawOrder;
-		for( std::map<int, DamageReport> ::iterator it = cDamageReport.begin(); it != cDamageReport.end(); it++ )
-				DamageReportDrawOrder[it->second.lastTime] = it->first;
-		if( ! DamageReportDrawOrder.empty() && GetPhysicsTime() > DamageReportDrawOrder.begin()->first + 1.5f )
-				cDamageReport.clear();
-	}
 }
 
 

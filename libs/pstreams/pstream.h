@@ -1113,7 +1113,7 @@ namespace redi
               // parent can get error code from ck_exec pipe
               error_ = errno;
 
-              if(::write(ck_exec[WR], &error_, sizeof(error_)) < 0); // ignore error
+              (void) ::write(ck_exec[WR], &error_, sizeof(error_)); // ignore error
               ::close(ck_exec[WR]);
               ::close(ck_exec[RD]);
 

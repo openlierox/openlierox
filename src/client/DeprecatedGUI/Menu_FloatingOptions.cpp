@@ -329,7 +329,7 @@ bool Menu_FloatingOptionsInitialize()
 	// TODO: Fix cSlider so it's value thing doesn't take up a square of 100x100 pixels.
 
 	// The OK button
-	cFloatingOptions.Add( new CButton(BUT_OK, tMenu->bmpButtons), op_Ok, 540,440, 40,20);
+	cFloatingOptions.Add( new CButton(BUT_BACK, tMenu->bmpButtons), op_Ok, 540,440, 40,20);
 
 	// Set the values
 	cFloatingOpt_Game.SendMessage( og_BloodAmount,  SLM_SETVALUE, tLXOptions->iBloodAmount, 0);

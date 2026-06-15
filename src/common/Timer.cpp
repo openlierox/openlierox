@@ -157,7 +157,8 @@ struct TimerData {
 	}
 	~TimerData() {
 		breakThread();
-		if(thread) threadPool->wait(thread, NULL); thread = NULL;
+		if(thread) threadPool->wait(thread, NULL);
+		thread = NULL;
 		SDL_DestroyMutex(mutex); mutex = NULL;
 		SDL_DestroyCond(quitCond); quitCond = NULL;
 		RemoveTimerFromGlobalList(this);

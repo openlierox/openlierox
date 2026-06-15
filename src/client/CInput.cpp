@@ -17,6 +17,7 @@
 // By Jason Boettcher
 
 #include <assert.h>
+#include <vector>
 
 
 #include "LieroX.h"
@@ -177,11 +178,13 @@ int keys_t::keySymFromName(const std::string & name)
 
 	
 	
-#if defined(DEDICATED_ONLY) || defined(DISABLE_JOYSTICK)
+#ifdef DEDICATED_ONLY
 
 void updateAxisStates() {}
 void CInput::InitJoysticksTemp() {}
 void CInput::UnInitJoysticksTemp() {}
+void CInput::OnControllerAdded(int) {}
+void CInput::OnControllerRemoved(int) {}
 
 #else
 
@@ -192,71 +195,65 @@ static const int JOY_DEADZONE = 8000;
 // Trigger threshold: triggers range 0..32767; fire at 75% travel
 static const int JOY_TRIGGER_THRESHOLD = 24576;
 
-// Binding table — maps config string to JOY_* flag and SDL constant (sdl_index).
+// Binding table — maps the per-pad suffix to JOY_* flag and SDL constant.
+// Config strings use the form "j<N>_<suffix>" where N is 1-based pad index
+// (e.g. "j1_button_south", "j5_lefty_up"). Pad count is unbounded; the N is
+// parsed at Setup() time and the suffix is matched against this table.
 // Text names use SDL's naming: SDL_GameControllerGetStringForButton/Axis
 // For axes:    sdl_index = SDL_GameControllerAxis
 // For buttons: sdl_index = SDL_GameControllerButton
 joystick_t Joysticks[] = {
-	{ "j1_lefty_up",      JOY_UP,             SDL_CONTROLLER_AXIS_LEFTY},
-	{ "j1_lefty_down",    JOY_DOWN,           SDL_CONTROLLER_AXIS_LEFTY},
-	{ "j1_leftx_left",    JOY_LEFT,           SDL_CONTROLLER_AXIS_LEFTX},
-	{ "j1_leftx_right",   JOY_RIGHT,          SDL_CONTROLLER_AXIS_LEFTX},
-	{ "j1_button_south",  JOY_BUTTON,         SDL_CONTROLLER_BUTTON_A},
-	{ "j1_button_east",   JOY_BUTTON,         SDL_CONTROLLER_BUTTON_B},
-	{ "j1_button_west",   JOY_BUTTON,         SDL_CONTROLLER_BUTTON_X},
-	{ "j1_button_north",  JOY_BUTTON,         SDL_CONTROLLER_BUTTON_Y},
-	{ "j1_back",          JOY_BUTTON,         SDL_CONTROLLER_BUTTON_BACK},
-	{ "j1_guide",         JOY_BUTTON,         SDL_CONTROLLER_BUTTON_GUIDE},
-	{ "j1_start",         JOY_BUTTON,         SDL_CONTROLLER_BUTTON_START},
-	{ "j1_leftstick",     JOY_BUTTON,         SDL_CONTROLLER_BUTTON_LEFTSTICK},
-	{ "j1_rightstick",    JOY_BUTTON,         SDL_CONTROLLER_BUTTON_RIGHTSTICK},
-	{ "j1_lshoulder",     JOY_BUTTON,         SDL_CONTROLLER_BUTTON_LEFTSHOULDER},
-	{ "j1_rshoulder",     JOY_BUTTON,         SDL_CONTROLLER_BUTTON_RIGHTSHOULDER},
-	{ "j1_rightx_left",   JOY_TURN_LEFT,      SDL_CONTROLLER_AXIS_RIGHTX},
-	{ "j1_rightx_right",  JOY_TURN_RIGHT,     SDL_CONTROLLER_AXIS_RIGHTX},
-	{ "j1_righty_up",     JOY_THROTTLE_LEFT,  SDL_CONTROLLER_AXIS_RIGHTY},
-	{ "j1_righty_down",   JOY_THROTTLE_RIGHT, SDL_CONTROLLER_AXIS_RIGHTY},
-	{ "j1_d_up",          JOY_HAT,            SDL_CONTROLLER_BUTTON_DPAD_UP},
-	{ "j1_d_down",        JOY_HAT,            SDL_CONTROLLER_BUTTON_DPAD_DOWN},
-	{ "j1_d_left",        JOY_HAT,            SDL_CONTROLLER_BUTTON_DPAD_LEFT},
-	{ "j1_d_right",       JOY_HAT,            SDL_CONTROLLER_BUTTON_DPAD_RIGHT},
-	{ "j1_triggerleft",   JOY_TRIGGER_LEFT,   SDL_CONTROLLER_AXIS_TRIGGERLEFT},
-	{ "j1_triggerright",  JOY_TRIGGER_RIGHT,  SDL_CONTROLLER_AXIS_TRIGGERRIGHT},
-	{ "j2_lefty_up",      JOY_UP,             SDL_CONTROLLER_AXIS_LEFTY},
-	{ "j2_lefty_down",    JOY_DOWN,           SDL_CONTROLLER_AXIS_LEFTY},
-	{ "j2_leftx_left",    JOY_LEFT,           SDL_CONTROLLER_AXIS_LEFTX},
-	{ "j2_leftx_right",   JOY_RIGHT,          SDL_CONTROLLER_AXIS_LEFTX},
-	{ "j2_button_south",  JOY_BUTTON,         SDL_CONTROLLER_BUTTON_A},
-	{ "j2_button_east",   JOY_BUTTON,         SDL_CONTROLLER_BUTTON_B},
-	{ "j2_button_west",   JOY_BUTTON,         SDL_CONTROLLER_BUTTON_X},
-	{ "j2_button_north",  JOY_BUTTON,         SDL_CONTROLLER_BUTTON_Y},
-	{ "j2_back",          JOY_BUTTON,         SDL_CONTROLLER_BUTTON_BACK},
-	{ "j2_guide",         JOY_BUTTON,         SDL_CONTROLLER_BUTTON_GUIDE},
-	{ "j2_start",         JOY_BUTTON,         SDL_CONTROLLER_BUTTON_START},
-	{ "j2_leftstick",     JOY_BUTTON,         SDL_CONTROLLER_BUTTON_LEFTSTICK},
-	{ "j2_rightstick",    JOY_BUTTON,         SDL_CONTROLLER_BUTTON_RIGHTSTICK},
-	{ "j2_lshoulder",     JOY_BUTTON,         SDL_CONTROLLER_BUTTON_LEFTSHOULDER},
-	{ "j2_rshoulder",     JOY_BUTTON,         SDL_CONTROLLER_BUTTON_RIGHTSHOULDER},
-	{ "j2_rightx_left",   JOY_TURN_LEFT,      SDL_CONTROLLER_AXIS_RIGHTX},
-	{ "j2_rightx_right",  JOY_TURN_RIGHT,     SDL_CONTROLLER_AXIS_RIGHTX},
-	{ "j2_righty_up",     JOY_THROTTLE_LEFT,  SDL_CONTROLLER_AXIS_RIGHTY},
-	{ "j2_righty_down",   JOY_THROTTLE_RIGHT, SDL_CONTROLLER_AXIS_RIGHTY},
-	{ "j2_d_up",          JOY_HAT,            SDL_CONTROLLER_BUTTON_DPAD_UP},
-	{ "j2_d_down",        JOY_HAT,            SDL_CONTROLLER_BUTTON_DPAD_DOWN},
-	{ "j2_d_left",        JOY_HAT,            SDL_CONTROLLER_BUTTON_DPAD_LEFT},
-	{ "j2_d_right",       JOY_HAT,            SDL_CONTROLLER_BUTTON_DPAD_RIGHT},
-	{ "j2_triggerleft",   JOY_TRIGGER_LEFT,   SDL_CONTROLLER_AXIS_TRIGGERLEFT},
-	{ "j2_triggerright",  JOY_TRIGGER_RIGHT,  SDL_CONTROLLER_AXIS_TRIGGERRIGHT},
+	{ "lefty_up",      JOY_UP,             SDL_CONTROLLER_AXIS_LEFTY},
+	{ "lefty_down",    JOY_DOWN,           SDL_CONTROLLER_AXIS_LEFTY},
+	{ "leftx_left",    JOY_LEFT,           SDL_CONTROLLER_AXIS_LEFTX},
+	{ "leftx_right",   JOY_RIGHT,          SDL_CONTROLLER_AXIS_LEFTX},
+	{ "button_south",  JOY_BUTTON,         SDL_CONTROLLER_BUTTON_A},
+	{ "button_east",   JOY_BUTTON,         SDL_CONTROLLER_BUTTON_B},
+	{ "button_west",   JOY_BUTTON,         SDL_CONTROLLER_BUTTON_X},
+	{ "button_north",  JOY_BUTTON,         SDL_CONTROLLER_BUTTON_Y},
+	{ "back",          JOY_BUTTON,         SDL_CONTROLLER_BUTTON_BACK},
+	{ "guide",         JOY_BUTTON,         SDL_CONTROLLER_BUTTON_GUIDE},
+	{ "start",         JOY_BUTTON,         SDL_CONTROLLER_BUTTON_START},
+	{ "leftstick",     JOY_BUTTON,         SDL_CONTROLLER_BUTTON_LEFTSTICK},
+	{ "rightstick",    JOY_BUTTON,         SDL_CONTROLLER_BUTTON_RIGHTSTICK},
+	{ "lshoulder",     JOY_BUTTON,         SDL_CONTROLLER_BUTTON_LEFTSHOULDER},
+	{ "rshoulder",     JOY_BUTTON,         SDL_CONTROLLER_BUTTON_RIGHTSHOULDER},
+	{ "rightx_left",   JOY_TURN_LEFT,      SDL_CONTROLLER_AXIS_RIGHTX},
+	{ "rightx_right",  JOY_TURN_RIGHT,     SDL_CONTROLLER_AXIS_RIGHTX},
+	{ "righty_up",     JOY_THROTTLE_LEFT,  SDL_CONTROLLER_AXIS_RIGHTY},
+	{ "righty_down",   JOY_THROTTLE_RIGHT, SDL_CONTROLLER_AXIS_RIGHTY},
+	{ "d_up",          JOY_HAT,            SDL_CONTROLLER_BUTTON_DPAD_UP},
+	{ "d_down",        JOY_HAT,            SDL_CONTROLLER_BUTTON_DPAD_DOWN},
+	{ "d_left",        JOY_HAT,            SDL_CONTROLLER_BUTTON_DPAD_LEFT},
+	{ "d_right",       JOY_HAT,            SDL_CONTROLLER_BUTTON_DPAD_RIGHT},
+	{ "triggerleft",   JOY_TRIGGER_LEFT,   SDL_CONTROLLER_AXIS_TRIGGERLEFT},
+	{ "triggerright",  JOY_TRIGGER_RIGHT,  SDL_CONTROLLER_AXIS_TRIGGERRIGHT},
 };
 
-static SDL_GameController* controllers[2] = {NULL, NULL};
+// Pad slots grow on demand; closed pads remain as NULL holes so existing
+// jN_* bindings keep referring to the same physical position.
+static std::vector<SDL_GameController*> controllers;
+static std::vector<bool> controllers_inited_temp;
+
+static SDL_GameController* getController(int idx) {
+	if(idx < 0 || (size_t)idx >= controllers.size()) return NULL;
+	return controllers[idx];
+}
+
+static void ensureControllerSlot(int idx) {
+	if(idx < 0) return;
+	if((size_t)idx >= controllers.size()) {
+		controllers.resize(idx + 1, NULL);
+		controllers_inited_temp.resize(idx + 1, false);
+	}
+}
 
 // Called each frame by the event loop — nothing to snapshot with the GameController API
 void updateAxisStates() {}
 
 static int getControllerValue(int flag, int sdl_index, int idx)
 {
-	SDL_GameController *gc = controllers[idx];
+	SDL_GameController *gc = getController(idx);
 	if(!gc) return 0;
 
 	switch(flag) {
@@ -283,7 +280,7 @@ static int getControllerValue(int flag, int sdl_index, int idx)
 static bool checkControllerState(int flag, int sdl_index, int idx)
 {
 	if(!bJoystickSupport) return false;
-	SDL_GameController *gc = controllers[idx];
+	SDL_GameController *gc = getController(idx);
 	if(!gc) return false;
 
 	switch(flag) {
@@ -309,11 +306,10 @@ static bool checkControllerState(int flag, int sdl_index, int idx)
 	return false;
 }
 
-static bool controllers_inited_temp[2] = {false, false};
-
 static void initController(int i, bool isTemp) {
-	assert(i == 0 || i == 1);
+	if(i < 0) return;
 	if(!bJoystickSupport) return;
+	ensureControllerSlot(i);
 	if(controllers[i] != NULL) return;
 	if(SDL_NumJoysticks() <= i) return;
 
@@ -345,13 +341,14 @@ static void initController(int i, bool isTemp) {
 
 void CInput::InitJoysticksTemp() {
 	if(!bJoystickSupport) return;
+	const int n = SDL_NumJoysticks();
 	notes << "Initing controllers temporary..." << endl;
-	notes << "Available joysticks: " << SDL_NumJoysticks() << endl;
-	initController(0, true);
-	initController(1, true);
+	notes << "Available joysticks: " << n << endl;
+	for(int i = 0; i < n; ++i) initController(i, true);
 }
 
 static void uninitTempController(int i) {
+	if(i < 0 || (size_t)i >= controllers.size()) return;
 	if(controllers_inited_temp[i]) {
 		notes << "Uninit temporary controller " << i << endl;
 		SDL_GameControllerClose(controllers[i]);
@@ -361,8 +358,71 @@ static void uninitTempController(int i) {
 }
 
 void CInput::UnInitJoysticksTemp() {
-	uninitTempController(0);
-	uninitTempController(1);
+	for(size_t i = 0; i < controllers.size(); ++i) uninitTempController((int)i);
+}
+
+void CInput::OnControllerAdded(int deviceIndex) {
+	if(!bJoystickSupport) return;
+	// SDL fires SDL_CONTROLLERDEVICEADDED for every controller present
+	// during SDL_INIT_GAMECONTROLLER (not only true hot-plug events).
+	// Skip if this device is already open in some slot — otherwise the
+	// boot-time scan in InitJoysticksTemp() and this handler will both
+	// open the same physical pad and we'll bind it to two slots.
+	SDL_JoystickID newId = SDL_JoystickGetDeviceInstanceID(deviceIndex);
+	if(newId >= 0) {
+		for(size_t j = 0; j < controllers.size(); ++j) {
+			if(!controllers[j]) continue;
+			SDL_Joystick* joy = SDL_GameControllerGetJoystick(controllers[j]);
+			if(joy && SDL_JoystickInstanceID(joy) == newId) return;
+		}
+	}
+	if(!SDL_IsGameController(deviceIndex)) {
+		warnings << "OnControllerAdded: device " << deviceIndex
+		         << " is not a recognised SDL GameController — skipping" << endl;
+		return;
+	}
+	// Fill the first free slot, or append a new one. Slots freed by
+	// OnControllerRemoved stay as NULL holes so existing bindings keep
+	// pointing at the same physical position.
+	int slot = -1;
+	for(size_t i = 0; i < controllers.size(); ++i) {
+		if(controllers[i] == NULL) { slot = (int)i; break; }
+	}
+	if(slot < 0) {
+		slot = (int)controllers.size();
+		ensureControllerSlot(slot);
+	}
+	const char* name = SDL_GameControllerNameForIndex(deviceIndex);
+	notes << "OnControllerAdded: opening device " << deviceIndex
+	      << " (\"" << (name ? name : "unknown") << "\") in slot " << slot << endl;
+	controllers[slot] = SDL_GameControllerOpen(deviceIndex);
+	if(!controllers[slot]) {
+		warnings << "  Could not open game controller: " << SDL_GetError() << endl;
+		return;
+	}
+	SDL_Joystick* joy = SDL_GameControllerGetJoystick(controllers[slot]);
+	notes << "  Axes: "    << SDL_JoystickNumAxes(joy)    << endl;
+	notes << "  Buttons: " << SDL_JoystickNumButtons(joy) << endl;
+	notes << "  Hats: "    << SDL_JoystickNumHats(joy)    << endl;
+	// Hot-plugged controllers persist past the menu's temp-init
+	// teardown — leave controllers_inited_temp[slot] false.
+	SDL_GameControllerUpdate();
+}
+
+void CInput::OnControllerRemoved(int instanceId) {
+	if(!bJoystickSupport) return;
+	for(size_t i = 0; i < controllers.size(); ++i) {
+		if(!controllers[i]) continue;
+		SDL_Joystick* joy = SDL_GameControllerGetJoystick(controllers[i]);
+		if(!joy) continue;
+		if(SDL_JoystickInstanceID(joy) != (SDL_JoystickID)instanceId) continue;
+		notes << "OnControllerRemoved: closing slot " << i
+		      << " (instance " << instanceId << ")" << endl;
+		SDL_GameControllerClose(controllers[i]);
+		controllers[i] = NULL;
+		controllers_inited_temp[i] = false;
+		return;
+	}
 }
 
 #endif // !DEDICATED_ONLY
@@ -373,12 +433,7 @@ void CInput::UnInitJoysticksTemp() {
 
 
 CInput::CInput() {
-	Type = INP_NOTUSED;
-	Data = 0;
-	SdlIndex = 0;
 	resetEachFrame = true;
-	bDown = false;
-	reset();
 
 	RegisterCInput(this);
 }
@@ -463,14 +518,13 @@ int CInput::Wait(std::string& strText)
 	}
 
 #ifdef HAVE_JOYSTICK
-	// controller
-	// TODO: more controllers
-	for(uint n = 0; n < sizeof(Joysticks) / sizeof(joystick_t); n++) {
-		int i = Joysticks[n].text[1] - '1'; // at pos 1, there is the number ("j1_...")
-
-		if(controllers[i] != NULL && checkControllerState(Joysticks[n].value, Joysticks[n].sdl_index, i)) {
-			strText = Joysticks[n].text;
-			return true;
+	for(size_t idx = 0; idx < controllers.size(); ++idx) {
+		if(!controllers[idx]) continue;
+		for(uint n = 0; n < sizeof(Joysticks) / sizeof(joystick_t); n++) {
+			if(checkControllerState(Joysticks[n].value, Joysticks[n].sdl_index, (int)idx)) {
+				strText = "j" + itoa((int)idx + 1) + "_" + Joysticks[n].text;
+				return true;
+			}
 		}
 	}
 #endif
@@ -481,10 +535,53 @@ int CInput::Wait(std::string& strText)
 
 ///////////////////
 // Setup
+// The config value may be a single binding or a comma-separated list of
+// bindings (e.g. "lalt, j1_button_south"). Each token is parsed into its own
+// Binding; the action is active when any of them is active.
 int CInput::Setup(const std::string& string)
 {
 	m_EventName = string;
 	resetEachFrame = true;
+	m_bindings.clear();
+
+	int ret = false;
+	std::vector<std::string> tokens = explode(string, ",");
+	for(std::vector<std::string>::iterator it = tokens.begin(); it != tokens.end(); ++it) {
+		std::string token = Trimmed(*it);
+		if(token.empty()) continue;
+		Binding b;
+		bool ok = b.setup(token);
+		m_bindings.push_back(b);
+		if(ok) ret = true;
+	}
+
+	// Fallback: nothing usable came out of splitting (e.g. the binding is the
+	// comma key itself, written as ","). Treat the whole string as one token.
+	if(m_bindings.empty()) {
+		std::string whole = Trimmed(string);
+		if(!whole.empty()) {
+			Binding b;
+			ret = b.setup(whole);
+			m_bindings.push_back(b);
+		}
+	}
+
+	// Always keep at least one (unused) binding so the rest of the code can
+	// treat a control uniformly whether or not it parsed to anything.
+	if(m_bindings.empty())
+		m_bindings.push_back(Binding());
+
+	return ret;
+}
+
+///////////////////
+// Parse a single binding token
+bool CInput::Binding::setup(const std::string& string)
+{
+	Type = INP_NOTUSED;
+	Data = 0;
+	SdlIndex = 0;
+	JoystickIndex = 0;
 	m_modifiers.clear();
 
 	// Parse optional modifier prefixes: "alt+", "ctrl+", "shift+"
@@ -538,49 +635,31 @@ int CInput::Setup(const std::string& string)
 	}
 
 #ifdef HAVE_JOYSTICK
-	// Check if it's a joystick #1
-	// TODO: allow more joysticks
-	if(remaining.substr(0,3) == "j1_") {
-		Type = INP_JOYSTICK1;
-		Data = 0;
+	// Joystick binding: "j<N>_<suffix>" — N is the 1-based pad index, any N.
+	if(remaining.size() >= 3 && remaining[0] == 'j' && remaining[1] >= '1' && remaining[1] <= '9') {
+		size_t digitsEnd = 1;
+		while(digitsEnd < remaining.size() && remaining[digitsEnd] >= '0' && remaining[digitsEnd] <= '9')
+			++digitsEnd;
+		if(digitsEnd < remaining.size() && remaining[digitsEnd] == '_') {
+			int padNumber = atoi(remaining.substr(1, digitsEnd - 1).c_str());
+			int padIndex = padNumber - 1;
+			Type = INP_JOYSTICK;
+			JoystickIndex = padIndex;
+			Data = 0;
 
-		// Make sure there is a joystick present
-		if(SDL_NumJoysticks()<=0) {
-			SetError("Could not open joystick1");
-			return false;
-		}
+			// Pad not connected — leave the binding unusable (Data stays 0).
+			if(SDL_NumJoysticks() <= padIndex) return false;
 
-		// Open the controller if it hasn't been already opened
-		initController(0, false);
+			// Open the controller if it hasn't been already opened
+			initController(padIndex, false);
 
-		// Go through the joystick list
-		for(uint32_t n=0; n<sizeof(Joysticks) / sizeof(joystick_t); n++) {
-			if(strcasecmp(Joysticks[n].text, remaining.c_str()) == 0) {
-				Data = Joysticks[n].value;
-				SdlIndex = Joysticks[n].sdl_index;
-				return true;
-			}
-		}
-	}
-
-	// Check if it's a joystick #2
-	if(remaining.substr(0,3) == "j2_") {
-		Type = INP_JOYSTICK2;
-		Data = 0;
-
-		// Make sure there is a joystick present
-		if(SDL_NumJoysticks()<=1)
-			return false;
-
-		// Open the controller if it hasn't been already opened
-		initController(1, false);
-
-		// Go through the joystick list
-		for(uint32_t n=0; n < sizeof(Joysticks) / sizeof(joystick_t); n++) {
-			if(strcasecmp(Joysticks[n].text, remaining.c_str()) == 0) {
-				Data = Joysticks[n].value;
-				SdlIndex = Joysticks[n].sdl_index;
-				return true;
+			std::string suffix = remaining.substr(digitsEnd + 1);
+			for(uint32_t n=0; n<sizeof(Joysticks) / sizeof(joystick_t); n++) {
+				if(strcasecmp(Joysticks[n].text, suffix.c_str()) == 0) {
+					Data = Joysticks[n].value;
+					SdlIndex = Joysticks[n].sdl_index;
+					return true;
+				}
 			}
 		}
 	}
@@ -604,39 +683,52 @@ int CInput::Setup(const std::string& string)
 
 ////////////////////
 // Returns the "force" value for a joystick axis
-int CInput::getJoystickValue()
+int CInput::Binding::getJoystickValue() const
 {
 #ifdef HAVE_JOYSTICK
-	switch (Type)  {
-	case INP_JOYSTICK1:
-		return getControllerValue(Data, SdlIndex, 0);
-	case INP_JOYSTICK2:
-		return getControllerValue(Data, SdlIndex, 1);
-	default:
-		return 0;
-	}
+	if(Type == INP_JOYSTICK)
+		return getControllerValue(Data, SdlIndex, JoystickIndex);
 #endif
 	return 0;
+}
+
+int CInput::getJoystickValue()
+{
+	// Return the joystick binding with the largest force (by magnitude).
+	int best = 0;
+	for(std::vector<Binding>::iterator it = m_bindings.begin(); it != m_bindings.end(); ++it) {
+		int v = it->getJoystickValue();
+		int vMag = (v < 0) ? -v : v;
+		int bestMag = (best < 0) ? -best : best;
+		if(vMag > bestMag) best = v;
+	}
+	return best;
 }
 
 
 ////////////////////
 // Returns true if this joystick is a throttle
-bool CInput::isJoystickThrottle()
+bool CInput::Binding::isJoystickThrottle() const
 {
 #ifdef HAVE_JOYSTICK
-	if (Type == INP_JOYSTICK1 || Type == INP_JOYSTICK2)
+	if (Type == INP_JOYSTICK)
 		return (Data == JOY_THROTTLE_LEFT) || (Data == JOY_THROTTLE_RIGHT);
 #endif
+	return false;
+}
+
+bool CInput::isJoystickThrottle()
+{
+	for(std::vector<Binding>::iterator it = m_bindings.begin(); it != m_bindings.end(); ++it)
+		if(it->isJoystickThrottle()) return true;
 	return false;
 }
 
 
 ///////////////////
 // Returns if the input has just been released
-bool CInput::isUp()
+bool CInput::Binding::isUp() const
 {
-
 	switch(Type) {
 
 		// Keyboard
@@ -653,8 +745,7 @@ bool CInput::isUp()
 
 #ifdef HAVE_JOYSTICK
 		// Joystick
-		case INP_JOYSTICK1:
-		case INP_JOYSTICK2:
+		case INP_JOYSTICK:
 			return nUp > 0;
 #endif
 	}
@@ -662,10 +753,17 @@ bool CInput::isUp()
 	return false;
 }
 
+bool CInput::isUp()
+{
+	for(std::vector<Binding>::iterator it = m_bindings.begin(); it != m_bindings.end(); ++it)
+		if(it->isUp()) return true;
+	return false;
+}
+
 
 ///////////////////
 // Returns if the input is down
-bool CInput::isDown() const
+bool CInput::Binding::isDown() const
 {
 	switch(Type) {
 
@@ -682,13 +780,18 @@ bool CInput::isDown() const
 
 #ifdef HAVE_JOYSTICK
 		// Joystick
-		case INP_JOYSTICK1:
-			return checkControllerState(Data, SdlIndex, 0);
-		case INP_JOYSTICK2:
-			return checkControllerState(Data, SdlIndex, 1);
+		case INP_JOYSTICK:
+			return checkControllerState(Data, SdlIndex, JoystickIndex);
 #endif
 	}
 
+	return false;
+}
+
+bool CInput::isDown() const
+{
+	for(std::vector<Binding>::const_iterator it = m_bindings.begin(); it != m_bindings.end(); ++it)
+		if(it->isDown()) return true;
 	return false;
 }
 
@@ -697,63 +800,190 @@ bool CInput::isDown() const
 // Returns if the input was pushed down once
 bool CInput::isDownOnce()
 {
-	return nDownOnce != 0;
-}
-
-int CInput::wasDown_withoutRepeats() const {
-	return nDownOnce;
+	for(std::vector<Binding>::iterator it = m_bindings.begin(); it != m_bindings.end(); ++it)
+		if(it->nDownOnce != 0) return true;
+	return false;
 }
 
 // goes through the event-signals and searches for the event
+int CInput::Binding::wasDown() const {
+	switch(Type) {
+	case INP_KEYBOARD:
+		return nDown;
+
+	case INP_MOUSE:
+		// TODO: to make this possible, we need to go extend HandleNextEvent to save the mouse events
+		return nDownOnce; // no other way at the moment
+
+#ifdef HAVE_JOYSTICK
+	case INP_JOYSTICK:
+		return nDownOnce; // no other way at the moment
+#endif
+	}
+
+	return 0;
+}
+
 int CInput::wasDown() const {
 	int counter = 0;
+	for(std::vector<Binding>::const_iterator it = m_bindings.begin(); it != m_bindings.end(); ++it)
+		counter += it->wasDown();
+	return counter;
+}
 
-	switch(Type) {
-	case INP_KEYBOARD:
-		counter = nDown;
-		break;
-
-	case INP_MOUSE:
-		// TODO: to make this possible, we need to go extend HandleNextEvent to save the mouse events
-		counter = nDownOnce; // no other way at the moment
-		break;
-
-#ifdef HAVE_JOYSTICK
-	case INP_JOYSTICK1:
-	case INP_JOYSTICK2:
-		counter = nDownOnce; // no other way at the moment
-		break;
-#endif
-	}
-
+int CInput::wasDown(bool withRepeats) const {
+	if(withRepeats) return wasDown();
+	int counter = 0;
+	for(std::vector<Binding>::const_iterator it = m_bindings.begin(); it != m_bindings.end(); ++it)
+		counter += it->wasDown_withoutRepeats();
 	return counter;
 }
 
 // goes through the event-signals and searches for the event
-int CInput::wasUp() {
-	int counter = 0;
-
+int CInput::Binding::wasUp() const {
 	switch(Type) {
 	case INP_KEYBOARD:
-		counter = nUp;
-		break;
+		return nUp;
 
 	case INP_MOUSE:
 		// TODO: to make this possible, we need to go extend HandleNextEvent to save the mouse events
-		counter = 0;  // no other way at the moment
-		break;
+		return 0;  // no other way at the moment
 
 #ifdef HAVE_JOYSTICK
-	case INP_JOYSTICK1:
-	case INP_JOYSTICK2:
-		counter = 0; // no other way at the moment
-		break;
+	case INP_JOYSTICK:
+		return 0; // no other way at the moment
 #endif
 	}
 
+	return 0;
+}
+
+int CInput::wasUp() {
+	int counter = 0;
+	for(std::vector<Binding>::iterator it = m_bindings.begin(); it != m_bindings.end(); ++it)
+		counter += it->wasUp();
 	return counter;
+}
+
+bool CInput::isUsed() const {
+	for(std::vector<Binding>::const_iterator it = m_bindings.begin(); it != m_bindings.end(); ++it)
+		if(it->isUsed()) return true;
+	return false;
+}
+
+bool CInput::isJoystick() const {
+	for(std::vector<Binding>::const_iterator it = m_bindings.begin(); it != m_bindings.end(); ++it)
+		if(it->isJoystick()) return true;
+	return false;
+}
+
+bool CInput::isJoystickDown() const {
+	for(std::vector<Binding>::const_iterator it = m_bindings.begin(); it != m_bindings.end(); ++it)
+		if(it->isJoystick() && it->isDown()) return true;
+	return false;
+}
+
+bool CInput::isJoystickDownOnce() const {
+	for(std::vector<Binding>::const_iterator it = m_bindings.begin(); it != m_bindings.end(); ++it)
+		if(it->isJoystick() && it->nDownOnce != 0) return true;
+	return false;
+}
+
+bool CInput::isKeyboard() const {
+	for(std::vector<Binding>::const_iterator it = m_bindings.begin(); it != m_bindings.end(); ++it)
+		if(it->isKeyboard()) return true;
+	return false;
+}
+
+bool CInput::usesKeyboardKey(int sym) const {
+	for(std::vector<Binding>::const_iterator it = m_bindings.begin(); it != m_bindings.end(); ++it)
+		if(it->isKeyboard() && it->Data == sym) return true;
+	return false;
 }
 
 void CInput::reset() {
-	nDown = nDownOnce = nUp = 0;
+	for(std::vector<Binding>::iterator it = m_bindings.begin(); it != m_bindings.end(); ++it)
+		it->reset();
+}
+
+
+///////////////////
+// Update keyboard bindings from a key event
+void CInput::handleKeyEvent(const KeyboardEvent& ev) {
+	for(std::vector<Binding>::iterator b = m_bindings.begin(); b != m_bindings.end(); ++b) {
+		if(!b->isKeyboard() || b->Data != ev.sym)
+			continue;
+		// If the binding requires specific modifiers, enforce an exact match.
+		// If no modifiers are required, fire regardless of modifier state (backward compat).
+		const ModifiersState& req = b->m_modifiers;
+		if(req.bAlt || req.bCtrl || req.bShift || req.bGui) {
+			if(req.bAlt   != ev.state.bAlt)   continue;
+			if(req.bCtrl  != ev.state.bCtrl)  continue;
+			if(req.bShift != ev.state.bShift) continue;
+			if(req.bGui   != ev.state.bGui)   continue;
+		}
+		if(ev.down) {
+			b->nDown++;
+			if(!b->bDown) {
+				b->nDownOnce++;
+				b->bDown = true;
+			}
+		} else {
+			b->bDown = false;
+			b->nUp++;
+		}
+	}
+}
+
+
+///////////////////
+// Update down-once state for non-keyboard bindings (polled each frame)
+void CInput::updateDownOnceForNonKeyboard() {
+	for(std::vector<Binding>::iterator b = m_bindings.begin(); b != m_bindings.end(); ++b) {
+		if(!b->isUsed() || b->isKeyboard())
+			continue;
+
+		// HINT: It is possible that wasUp() and !Down (a case which is not covered in further code)
+		if(b->wasUp() && !b->bDown) {
+			b->nDownOnce++;
+			continue;
+		}
+
+		// HINT: It's possible that wasDown() > 0 and !isDown().
+		// That is the case when we press a key and release it directly after (in one frame).
+		// Though wasDown() > 0 doesn't mean directly isDownOnce because it also counts keypresses.
+		// HINT: It's also possible that wasDown() == 0 and isDown().
+		// That is the case when we have pressed the key in a previous frame and we still hold it
+		// and the keyrepeat-interval is bigger than FPS. (Rare case.)
+		if(b->wasDown() || b->isDown()) {
+			// wasUp() > 0 always means that it was down once (though it is not down anymore).
+			// Though the released key in wasUp() > 0 was probably already recognised before.
+			if(b->wasUp()) {
+				b->bDown = b->isDown();
+				if(b->bDown) // if it is again down, there is another new press
+					b->nDownOnce++;
+				continue;
+			}
+			// !Down means that we haven't recognised yet that it is down.
+			if(!b->bDown) {
+				b->bDown = b->isDown();
+				b->nDownOnce++;
+				continue;
+			}
+		}
+		else
+			b->bDown = false;
+	}
+}
+
+
+///////////////////
+// Update up state for non-keyboard bindings (polled each frame)
+void CInput::updateUpForNonKeyboard() {
+	for(std::vector<Binding>::iterator b = m_bindings.begin(); b != m_bindings.end(); ++b) {
+		if(!b->isUsed() || b->isKeyboard())
+			continue;
+		if(b->isDown() && !b->bDown)
+			b->nUp++;
+	}
 }

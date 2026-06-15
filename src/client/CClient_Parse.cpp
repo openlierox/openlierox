@@ -622,10 +622,6 @@ bool CClientNetEngine::ParsePacket(CBytestream *bs)
 			case S2C_HIDEWORM:
 				ParseHideWorm(bs);
 				break;
-				
-			case S2C_NEWNET_KEYS:
-				ParseNewNetKeys(bs);
-				break;
 
 			case S2C_TEAMSCOREUPDATE:
 				ParseTeamScoreUpdate(bs);
@@ -1006,34 +1002,6 @@ void CClientNetEngine::ParseStartGame(CBytestream *bs)
 void CClientNetEngineBeta9::ParseStartGame(CBytestream *bs)
 {
 	CClientNetEngine::ParseStartGame(bs);
-	if( (bool)client->getGameLobby()[FT_NewNetEngine] )
-	{
-		NewNet::StartRound( bs->readInt(4) );
-		CClient * cl = client;
-		delete cl->cNetEngine; // Warning: deletes *this, so "client" var is inaccessible
-		cl->cNetEngine = new CClientNetEngineBeta9NewNet(cl);
-	}
-}
-
-void CClientNetEngineBeta9NewNet::ParseGotoLobby(CBytestream *bs)
-{
-	NewNet::EndRound();
-	CClientNetEngine::ParseGotoLobby(bs);
-	CClient * cl = client;
-	delete cl->cNetEngine; // Warning: deletes *this, so "client" var is inaccessib:le
-	cl->cNetEngine = new CClientNetEngineBeta9(cl);
-}
-
-void CClientNetEngineBeta9NewNet::ParseNewNetKeys(CBytestream *bs)
-{
-	int worm = bs->readByte();
-	if( worm < 0 || worm >= MAX_WORMS )
-	{
-		warnings << "CClientNetEngineBeta9NewNet::ParseNewNetKeys(): invalid worm id " << worm << endl;
-		bs->Skip( NewNet::NetPacketSize() );
-		return;
-	}
-	NewNet::ReceiveNetPacket( bs, worm );
 }
 
 ///////////////////
@@ -1099,22 +1067,6 @@ void CClientNetEngine::ParseSpawnWorm(CBytestream *bs)
 		break;
 	}
 }
-
-void CClientNetEngineBeta9NewNet::ParseSpawnWorm(CBytestream *bs)
-{
-	/* int id = */ bs->readByte();
-	/* int x = */ bs->readInt(2);
-	/* int y = */ bs->readInt(2);
-	// Skip this info for now, we'll use it later
-}
-
-void CClientNetEngineBeta9NewNet::ParseWormDown(CBytestream *bs)
-{
-	/* byte id = */ bs->readByte();
-	// Skip this info for now, we'll use it later
-}
-
-
 
 ///////////////////
 // Parse a worm info packet
@@ -1711,9 +1663,6 @@ void CClientNetEngine::ParseWormsOut(CBytestream *bs)
 			}
 		}
 		
-		if( NewNet::Active() )
-			NewNet::PlayerLeft(id);
-
 		game.removeWorm(w);
 	}
 
@@ -1771,18 +1720,6 @@ void CClientNetEngine::ParseUpdateWorms(CBytestream *bs)
 	DeprecatedGUI::bJoin_Update = true;
 	DeprecatedGUI::bHost_Update = true;
 }
-
-void CClientNetEngineBeta9NewNet::ParseUpdateWorms(CBytestream *bs)
-{
-	byte count = bs->readByte();
-	// Skip to the right position
-	for (byte i=0;i<count;i++)  
-	{
-		bs->Skip(1);
-		CWorm::skipPacketState(bs);
-	}
-}
-
 
 template<typename T>
 static bool onlyUpdateInLobby(CClient* client, FeatureIndex i, const T& update) {
@@ -1965,9 +1902,6 @@ void CClientNetEngine::ParseServerLeaving(CBytestream *bs)
 		convoLogger->leaveServer();
 
 	NotifyUserOnEvent();
-	
-	if( NewNet::Active() )
-		NewNet::EndRound();
 }
 
 
@@ -2077,9 +2011,6 @@ void CClientNetEngine::ParseDropped(CBytestream *bs)
 	// Log
 	if (tLXOptions->bLogConvos && convoLogger)
 		convoLogger->logMessage(client->strServerErrorMsg, TXT_NETWORK);
-	
-	if( NewNet::Active() )
-		NewNet::EndRound();
 }
 
 // Server sent us some file

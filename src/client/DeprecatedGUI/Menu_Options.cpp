@@ -23,6 +23,7 @@
 #include "GfxPrimitives.h"
 #include "FindFile.h"
 #include "StringUtils.h"
+#include "CScriptableVars.h"
 #include "DeprecatedGUI/CAnimation.h"
 #include "DeprecatedGUI/CButton.h"
 #include "DeprecatedGUI/CLabel.h"
@@ -38,9 +39,26 @@ namespace DeprecatedGUI {
 
 int OptionsMode = 0;
 CGuiLayout	cOptions;
-CGuiLayout	cOpt_Controls;
+CGuiLayout	cOpt_Controls;     // Player 1 controls (sub-tab 0)
+CGuiLayout	cOpt_Controls2;    // Player 2 controls (sub-tab 1)
+CGuiLayout	cOpt_ControlsGen;  // General controls (sub-tab 2)
 CGuiLayout	cOpt_System;
 CGuiLayout	cOpt_Game;
+
+// The Controls screen is split into three sub-tabs so each section gets the
+// full width. ControlsSubTab selects which one is shown.
+enum {
+	ct_Player1 = 0,
+	ct_Player2,
+	ct_General,
+	ct__Count
+};
+int ControlsSubTab = ct_Player1;
+static const char* ControlsTabNames[ct__Count] = { "Player 1", "Player 2", "General" };
+// Tab header hit-boxes, filled in when drawn (see Menu_OptionsDrawControlsTabs).
+static SDL_Rect ControlsTabRects[ct__Count];
+// "Reset defaults" button hit-box, filled in when drawn.
+static SDL_Rect ResetBtnRect;
 CButton		TopButtons[3];
 
 // Control id's
@@ -143,8 +161,95 @@ std::string InputNames[] = {
 	"Strafe"
 };
 
+// General controls shown on the "General" sub-tab: display label, index into
+// tLXOptions->sGeneralControls, and the row's control id.
+struct GenCtrl { const char* label; int sin; int id; };
+static const GenCtrl GeneralControlsList[] = {
+	{ "Chat",              SIN_CHAT,          oc_Gen_Chat },
+	{ "Scoreboard",        SIN_SCORE,         oc_Gen_Score },
+	{ "Health Bar",        SIN_HEALTH,        oc_Gen_Health },
+	{ "Current Settings",  SIN_SETTINGS,      oc_Gen_CurSettings },
+	{ "Take Screenshot",   SIN_SCREENSHOTS,   oc_Gen_TakeScreenshot },
+	{ "Viewport Manager",  SIN_VIEWPORTS,     oc_Gen_ViewportManager },
+	{ "Switch Video Mode", SIN_SWITCHMODE,    oc_Gen_SwitchMode },
+	{ "Toggle Top Bar",    SIN_TOGGLETOPBAR,  oc_Gen_ToggleTopBar },
+	{ "Teamchat",          SIN_TEAMCHAT,      oc_Gen_TeamChat },
+	{ "IRC chat window",   SIN_IRCCHAT,       oc_Gen_IrcChat },
+	{ "Toggle console",    SIN_CONSOLETOGGLE, oc_Gen_ConsoleToggle },
+};
+static const int kNumGeneralControls = sizeof(GeneralControlsList) / sizeof(GeneralControlsList[0]);
+
 
 bool bSpeedTest = false;
+
+// Each control can hold several bindings (a comma-separated list). On the
+// Controls screen we show one input box per binding slot, side by side, so
+// the keyboard (slot 0) and gamepad (slot 1) bindings can be edited
+// independently. This is how many slot-columns we display per control.
+static const int kControlSlots = 2;
+static const char* ControlSlotNames[kControlSlots] = { "Keyboard", "Gamepad" };
+// Control-id offset added per slot column so each box has a distinct id.
+static const int kSlotIdStride = 100;
+
+// Return the binding at the given 0-based slot of a (possibly comma-separated)
+// control value, or "" if that slot is empty.
+static std::string Menu_ControlSlotText(const std::string& full, int slot)
+{
+	if(slot < 0) return full;
+	std::vector<std::string> parts = explode(full, ",");
+	if(slot >= (int)parts.size()) return "";
+	return Trimmed(parts[slot]);
+}
+
+// Return a copy of full with the binding at the given slot replaced by value,
+// keeping the other slots in place. Trailing empty slots are dropped.
+static std::string Menu_ControlSetSlot(const std::string& full, int slot, const std::string& value)
+{
+	if(slot < 0) return value;
+	std::vector<std::string> parts = explode(full, ",");
+	for(size_t k = 0; k < parts.size(); k++) parts[k] = Trimmed(parts[k]);
+	while((int)parts.size() <= slot) parts.push_back("");
+	parts[slot] = Trimmed(value);
+	while(!parts.empty() && parts.back().empty()) parts.pop_back();
+	std::string res;
+	for(size_t k = 0; k < parts.size(); k++) {
+		if(k) res += ", ";
+		res += parts[k];
+	}
+	return res;
+}
+
+// Input-box width on the Controls screen, sized so long bindings like
+// "j1_button_south" fit. The box widens via a 3-slice in CInputbox::Draw.
+// Column positions account for the wider boxes (box1 300-399, box2 420-519).
+static const int kControlBoxW = 99;
+static const int kControlSlotX[kControlSlots] = { 300, 420 };
+static const int kControlLabelX = 140;
+
+// Adds the "Keyboard" / "Gamepad" column headers to a controls layout,
+// centered over their columns (the boxes draw their text centered too).
+static void Menu_AddControlHeaders(CGuiLayout& layout, int y)
+{
+	for(int s = 0; s < kControlSlots; s++) {
+		const int colCentre = kControlSlotX[s] + kControlBoxW / 2;
+		const int textW = tLX->cFont.GetWidth(ControlSlotNames[s]);
+		layout.Add( new CLabel(ControlSlotNames[s], tLX->clSubHeading), Static, colCentre - textW / 2, y, 0, 0);
+	}
+}
+
+// Adds one control row: a name label plus one input box per binding slot.
+// sinIndex is the control's index into its options array; fullValue is its
+// current (possibly comma-separated) value; baseId is the row's control id.
+static void Menu_AddControlRow(CGuiLayout& layout, const std::string& label, int sinIndex,
+                               const std::string& fullValue, int baseId, int y)
+{
+	layout.Add( new CLabel(label, tLX->clNormalLabel), Static, kControlLabelX, y, 0, 0);
+	for(int s = 0; s < kControlSlots; s++) {
+		const std::string boxName = label + " (" + ControlSlotNames[s] + ")";
+		layout.Add( new CInputbox(sinIndex, Menu_ControlSlotText(fullValue, s), tMenu->bmpInputbox, boxName, s),
+		            baseId + s * kSlotIdStride, kControlSlotX[s], y, kControlBoxW, 17 );
+	}
+}
 
 ///////////////////
 // Initialize the options
@@ -183,6 +288,12 @@ bool Menu_OptionsInitialize()
 	cOpt_Controls.Shutdown();
 	cOpt_Controls.Initialize();
 
+	cOpt_Controls2.Shutdown();
+	cOpt_Controls2.Initialize();
+
+	cOpt_ControlsGen.Shutdown();
+	cOpt_ControlsGen.Initialize();
+
 	cOpt_Game.Shutdown();
 	cOpt_Game.Initialize();
 
@@ -191,74 +302,41 @@ bool Menu_OptionsInitialize()
 	cOptions.Add( new CButton(BUT_BACK, tMenu->bmpButtons), op_Back, 25,440, 50,15);
 
 
-	// Controls
-	cOpt_Controls.Add( new CLabel("Player Controls", tLX->clHeading), Static, 40,  150, 0,0);
-	cOpt_Controls.Add( new CLabel("Player 1",tLX->clSubHeading),      Static, 163, 170, 0,0);
-	cOpt_Controls.Add( new CLabel("Player 2",tLX->clSubHeading),      Static, 268, 170, 0,0);
-	cOpt_Controls.Add( new CLabel("General Controls", tLX->clHeading),Static, 390, 150, 0,0);
-
-	int y = 190;
-	for(i=0;i<9;i++,y+=25) {
-		cOpt_Controls.Add( new CLabel(InputNames[i],tLX->clNormalLabel), Static, 40, y, 0,0);
-
-		cOpt_Controls.Add( new CInputbox(SIN_UP+i, tLXOptions->sPlayerControls[0][SIN_UP+i], tMenu->bmpInputbox, InputNames[i]),
-			               oc_Ply1_Up+i, 165, y, 50,17);
-		cOpt_Controls.Add( new CInputbox(SIN_UP+i, tLXOptions->sPlayerControls[1][SIN_UP+i], tMenu->bmpInputbox, InputNames[i]),
-			               oc_Ply2_Up+i, 270, y, 50,17);
-
+	// Controls — Player 1 / Player 2 each get their own sub-tab. Every control
+	// shows one input box per binding slot (Keyboard, Gamepad) so the slots can
+	// be edited independently.
+	{
+		int y = 205;
+		Menu_AddControlHeaders(cOpt_Controls,  y - 20);
+		Menu_AddControlHeaders(cOpt_Controls2, y - 20);
+		for(i=0;i<9;i++,y+=26) {
+			Menu_AddControlRow(cOpt_Controls,  InputNames[i], SIN_UP+i,
+			                   tLXOptions->sPlayerControls[0][SIN_UP+i], oc_Ply1_Up+i, y);
+			Menu_AddControlRow(cOpt_Controls2, InputNames[i], SIN_UP+i,
+			                   tLXOptions->sPlayerControls[1][SIN_UP+i], oc_Ply2_Up+i, y);
+		}
 	}
 
-	// General Controls
-	cOpt_Controls.Add( new CLabel("Chat", tLX->clNormalLabel), Static, 390, 190, 0,0);
-	cOpt_Controls.Add( new CInputbox(SIN_CHAT, tLXOptions->sGeneralControls[SIN_CHAT], tMenu->bmpInputbox, "Chat"),
-						   oc_Gen_Chat, 525, 190, 50,17);
+	// Controls — General (third sub-tab), same per-slot columns
+	{
+		int y = 200;
+		Menu_AddControlHeaders(cOpt_ControlsGen, y - 18);
+		for(int g=0; g<kNumGeneralControls; g++, y+=22) {
+			Menu_AddControlRow(cOpt_ControlsGen, GeneralControlsList[g].label, GeneralControlsList[g].sin,
+			                   tLXOptions->sGeneralControls[GeneralControlsList[g].sin], GeneralControlsList[g].id, y);
+		}
+	}
 
-    cOpt_Controls.Add( new CLabel("Scoreboard", tLX->clNormalLabel), Static, 390, 215, 0,0);
-	cOpt_Controls.Add( new CInputbox(SIN_SCORE, tLXOptions->sGeneralControls[SIN_SCORE], tMenu->bmpInputbox, "Scoreboard"),
-						   oc_Gen_Score, 525, 215, 50,17);
+	// The "Reset defaults" button is drawn manually (see
+	// Menu_OptionsDrawResetButton) so it can show that exact text — the atlas
+	// buttons only offer a generic "Default" graphic.
 
-    cOpt_Controls.Add( new CLabel("Health Bar", tLX->clNormalLabel), Static, 390, 240, 0,0);
-	cOpt_Controls.Add( new CInputbox(SIN_HEALTH, tLXOptions->sGeneralControls[SIN_HEALTH], tMenu->bmpInputbox, "Health Bar"),
-						   oc_Gen_Health, 525, 240, 50,17);
 
-    cOpt_Controls.Add( new CLabel("Current Settings", tLX->clNormalLabel), Static, 390, 265, 0,0);
-	cOpt_Controls.Add( new CInputbox(SIN_SETTINGS, tLXOptions->sGeneralControls[SIN_SETTINGS], tMenu->bmpInputbox, "Current Settings"),
-						   oc_Gen_CurSettings, 525, 265, 50,17);
-
-    cOpt_Controls.Add( new CLabel("Take Screenshot", tLX->clNormalLabel), Static, 390, 290, 0,0);
-	cOpt_Controls.Add( new CInputbox(SIN_SCREENSHOTS, tLXOptions->sGeneralControls[SIN_SCREENSHOTS], tMenu->bmpInputbox, "Take Screenshot"),
-						   oc_Gen_TakeScreenshot, 525, 290, 50,17);
-
-    cOpt_Controls.Add( new CLabel("Viewport Manager", tLX->clNormalLabel), Static, 390, 315, 0,0);
-	cOpt_Controls.Add( new CInputbox(SIN_VIEWPORTS, tLXOptions->sGeneralControls[SIN_VIEWPORTS], tMenu->bmpInputbox, "Viewport Manager"),
-						   oc_Gen_ViewportManager, 525, 315, 50,17);
-
-    cOpt_Controls.Add( new CLabel("Switch Video Mode", tLX->clNormalLabel), Static, 390, 340, 0,0);
-	cOpt_Controls.Add( new CInputbox(SIN_SWITCHMODE, tLXOptions->sGeneralControls[SIN_SWITCHMODE], tMenu->bmpInputbox, "Switch Video Mode"),
-						   oc_Gen_SwitchMode, 525, 340, 50,17);
-
-    cOpt_Controls.Add( new CLabel("Toggle Top Bar", tLX->clNormalLabel), Static, 390, 365, 0,0);
-	cOpt_Controls.Add( new CInputbox(SIN_TOGGLETOPBAR, tLXOptions->sGeneralControls[SIN_TOGGLETOPBAR], tMenu->bmpInputbox, "Toggle Top Bar"),
-						   oc_Gen_ToggleTopBar, 525, 365, 50,17);
-
-	cOpt_Controls.Add( new CLabel("Teamchat", tLX->clNormalLabel), Static, 390, 390, 0,0);
-	cOpt_Controls.Add( new CInputbox(SIN_TEAMCHAT, tLXOptions->sGeneralControls[SIN_TEAMCHAT], tMenu->bmpInputbox, "Teamchat"),
-						   oc_Gen_TeamChat, 525, 390, 50,17);
-
-	cOpt_Controls.Add( new CLabel("IRC chat window", tLX->clNormalLabel), Static, 390, 415, 0,0);
-	cOpt_Controls.Add( new CInputbox(SIN_IRCCHAT, tLXOptions->sGeneralControls[SIN_IRCCHAT], tMenu->bmpInputbox, "IRC chat"),
-						   oc_Gen_IrcChat, 525, 415, 50,17);
-
-	cOpt_Controls.Add( new CLabel("Toggle console", tLX->clNormalLabel), Static, 390, 440, 0,0);
-	cOpt_Controls.Add( new CInputbox(SIN_CONSOLETOGGLE, tLXOptions->sGeneralControls[SIN_CONSOLETOGGLE], tMenu->bmpInputbox, "Console"),
-	                   oc_Gen_ConsoleToggle, 525, 440, 50,17);
-	
-	
 
 	// System
 	const Color lineCol = tLX->clLine; //tLX->clHeading.derived(0,0,0,-200);
 	const int starty = 130;
-	y = starty;
+	int y = starty;
 	cOpt_System.Add( new CLabel("Video",tLX->clHeading),              Static, 40, y, 0,0);
 	cOpt_System.Add( new CLine(0,0,0,0, lineCol), Static, 90, y + 8, 620 - 90, 0);
 	y += 20;
@@ -478,6 +556,109 @@ void Menu_OptionsUpdateUpload(float speed)
 
 
 ///////////////////
+// Returns the gui layout for the currently selected Controls sub-tab
+static CGuiLayout& Menu_OptionsControlsLayout()
+{
+	switch(ControlsSubTab) {
+		case ct_Player2: return cOpt_Controls2;
+		case ct_General: return cOpt_ControlsGen;
+		default:         return cOpt_Controls;
+	}
+}
+
+///////////////////
+// Draws the Controls sub-tab headers (Player 1 / Player 2 / General) and
+// records their hit-boxes in ControlsTabRects.
+static void Menu_OptionsDrawControlsTabs(SDL_Surface* dest)
+{
+	const int tabY = 150;
+	const int gap = 35;
+	const int h = tLX->cFont.GetHeight();
+	int x = 60;
+	for(int t = 0; t < ct__Count; t++) {
+		const std::string name = ControlsTabNames[t];
+		const int w = tLX->cFont.GetWidth(name);
+
+		ControlsTabRects[t].x = x;
+		ControlsTabRects[t].y = tabY;
+		ControlsTabRects[t].w = w;
+		ControlsTabRects[t].h = h;
+
+		const bool active = (t == ControlsSubTab);
+		tLX->cFont.Draw(dest, x, tabY, active ? tLX->clHeading : tLX->clNormalLabel, name);
+		if(active)
+			DrawRectFill(dest, x, tabY + h + 1, x + w, tabY + h + 2, tLX->clHeading);
+
+		x += w + gap;
+	}
+}
+
+///////////////////
+// Draws the "Reset defaults" button (a bordered text button, so it can show
+// that exact label) and records its hit-box in ResetBtnRect.
+static void Menu_OptionsDrawResetButton(SDL_Surface* dest)
+{
+	mouse_t* Mouse = GetMouse();
+	const std::string text = "Reset defaults";
+	const int textW = tLX->cFont.GetWidth(text);
+	const int h = 18;
+	// Left-aligned under the action-name column (same x as "Up", "Down", ...).
+	const int x = kControlLabelX;
+	const int y = 440;
+
+	ResetBtnRect.x = x;
+	ResetBtnRect.y = y;
+	ResetBtnRect.w = textW;
+	ResetBtnRect.h = h;
+
+	// No border: match the borderless clickable text used by the sub-tabs.
+	// A hover colour change signals it is clickable.
+	const bool hover = (Mouse->X >= x && Mouse->X <= x + textW && Mouse->Y >= y && Mouse->Y <= y + h);
+	tLX->cFont.Draw(dest, x, y + 3, hover ? tLX->clHeading : tLX->clNormalLabel, text);
+}
+
+///////////////////
+// Restore a whole control section (Ply1Controls / Ply2Controls /
+// GeneralControls) to its registered default values.
+static void Menu_ResetControlSection(const std::string& prefix)
+{
+	for(CScriptableVars::const_iterator it = CScriptableVars::lower_bound(prefix);
+	    it != CScriptableVars::end(); ++it) {
+		if(!strStartsWith(it->first, prefix)) break;
+		it->second.var.setDefault();
+	}
+}
+
+// Update the per-slot input boxes of one control row to match the given value.
+static void Menu_RefreshControlRow(CGuiLayout& layout, int baseId, const std::string& full)
+{
+	for(int s = 0; s < kControlSlots; s++) {
+		CWidget* w = layout.getWidget(baseId + s * kSlotIdStride);
+		if(w && w->getType() == wid_Inputbox)
+			((CInputbox*)w)->setText(Menu_ControlSlotText(full, s));
+	}
+}
+
+// Reset the currently shown Controls sub-tab to its defaults and refresh boxes.
+static void Menu_ResetControlsTab(int tab)
+{
+	if(tab == ct_General) {
+		Menu_ResetControlSection("GameOptions.GeneralControls.");
+		for(int g = 0; g < kNumGeneralControls; g++)
+			Menu_RefreshControlRow(cOpt_ControlsGen, GeneralControlsList[g].id,
+			                       tLXOptions->sGeneralControls[GeneralControlsList[g].sin]);
+	} else {
+		const int ply = (tab == ct_Player2) ? 1 : 0;
+		Menu_ResetControlSection(ply == 0 ? "GameOptions.Ply1Controls." : "GameOptions.Ply2Controls.");
+		CGuiLayout& layout = (ply == 0) ? cOpt_Controls : cOpt_Controls2;
+		const int baseId = (ply == 0) ? oc_Ply1_Up : oc_Ply2_Up;
+		for(int i = 0; i < 9; i++)
+			Menu_RefreshControlRow(layout, baseId + i, tLXOptions->sPlayerControls[ply][SIN_UP + i]);
+	}
+	tLX->setupInputs();
+}
+
+///////////////////
 // Options main frame
 void Menu_OptionsFrame()
 {
@@ -540,9 +721,35 @@ void Menu_OptionsFrame()
 
 	if(OptionsMode == 0) {
 
-		// Controls
-		ev = bSpeedTest ? NULL : cOpt_Controls.Process();
-		cOpt_Controls.Draw(VideoPostProcessor::videoSurface().get());
+		// Sub-tabs: Player 1 / Player 2 / General — only one shown at a time
+		Menu_OptionsDrawControlsTabs(VideoPostProcessor::videoSurface().get());
+		if(!bSpeedTest && Mouse->Up) {
+			for(int t = 0; t < ct__Count; t++) {
+				if(t == ControlsSubTab) continue;
+				const SDL_Rect& r = ControlsTabRects[t];
+				if(Mouse->X >= r.x && Mouse->X <= r.x + r.w && Mouse->Y >= r.y && Mouse->Y <= r.y + r.h) {
+					ControlsSubTab = t;
+					// Clear the old sub-tab's widgets from the screen
+					DrawImageAdv(VideoPostProcessor::videoSurface().get(), tMenu->bmpBuffer, 20,140, 20,140, 620,340);
+					PlaySoundSample(sfxGeneral.smpClick);
+					break;
+				}
+			}
+		}
+
+		// Active sub-tab content
+		CGuiLayout& ctrlLayout = Menu_OptionsControlsLayout();
+		ev = bSpeedTest ? NULL : ctrlLayout.Process();
+		ctrlLayout.Draw(VideoPostProcessor::videoSurface().get());
+
+		// "Reset defaults" button (manual, so it can show that exact label)
+		Menu_OptionsDrawResetButton(VideoPostProcessor::videoSurface().get());
+		if(!bSpeedTest && Mouse->Up &&
+		   Mouse->X >= ResetBtnRect.x && Mouse->X <= ResetBtnRect.x + ResetBtnRect.w &&
+		   Mouse->Y >= ResetBtnRect.y && Mouse->Y <= ResetBtnRect.y + ResetBtnRect.h) {
+			Menu_ResetControlsTab(ControlsSubTab);
+			PlaySoundSample(sfxGeneral.smpClick);
+		}
 
 		if(ev) {
 
@@ -550,11 +757,8 @@ void Menu_OptionsFrame()
 
 				if(ev->iEventMsg == INB_MOUSEUP) {
 
-					int ply = 0;
-					if(ev->iControlID >= oc_Ply2_Up && ev->iControlID <= oc_Ply2_Strafe)
-						ply = 1;
-					if(ev->iControlID >= oc_Gen_Chat)
-						ply = -1;
+					// 0 = Player 1, 1 = Player 2, -1 = general controls
+					int ply = (ControlsSubTab == ct_General) ? -1 : ControlsSubTab;
 
 					// Get an input
 					CInputbox *b = (CInputbox *)ev->cWidget;
@@ -912,7 +1116,8 @@ void Menu_OptionsWaitInput(int ply, const std::string& name, CInputbox *b)
 
 	// Draw the back buffer
 	cOptions.Draw(tMenu->bmpBuffer.get());
-	cOpt_Controls.Draw(tMenu->bmpBuffer.get());
+	Menu_OptionsControlsLayout().Draw(tMenu->bmpBuffer.get());
+	Menu_OptionsDrawControlsTabs(tMenu->bmpBuffer.get());
 
 	Menu_DrawBox(tMenu->bmpBuffer.get(), 210, 170, 430, 310);
 	//DrawImageAdv(tMenu->bmpBuffer, tMenu->bmpMainBack, 212,172, 212,172, 217,137);
@@ -960,11 +1165,15 @@ void Menu_OptionsWaitInput(int ply, const std::string& name, CInputbox *b)
 	}
 	CInput::UnInitJoysticksTemp();
 
-	// Change the options
+	// Change the options. The box only edits its own binding slot, so merge
+	// the captured input back into the control's comma-separated value.
 	if(ply >= 0) {
-		tLXOptions->sPlayerControls[ply][b->getValue()] = b->getText();
-	} else
-		tLXOptions->sGeneralControls[b->getValue()] = b->getText();
+		std::string& ctrl = tLXOptions->sPlayerControls[ply][b->getValue()];
+		ctrl = Menu_ControlSetSlot(ctrl, b->getSlot(), b->getText());
+	} else {
+		std::string& ctrl = tLXOptions->sGeneralControls[b->getValue()];
+		ctrl = Menu_ControlSetSlot(ctrl, b->getSlot(), b->getText());
+	}
 
 	// Disable quick weapon selection keys if they collide with other keys
 	for( uint ply1 = 0; ply1 < tLXOptions->sPlayerControls.size(); ply1 ++ )
@@ -1003,6 +1212,8 @@ void Menu_OptionsShutdown()
 {
 	cOptions.Shutdown();
 	cOpt_Controls.Shutdown();
+	cOpt_Controls2.Shutdown();
+	cOpt_ControlsGen.Shutdown();
 	cOpt_System.Shutdown();
 	cOpt_Game.Shutdown();
 

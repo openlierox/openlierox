@@ -140,74 +140,18 @@ static void ResetCInputs() {
 }
 
 void HandleCInputs_KeyEvent(const KeyboardEvent& ev) {
-	for(std::set<CInput*>::iterator it = cInputs.begin(); it != cInputs.end(); it++) {
-		if(!(*it)->isKeyboard() || (*it)->getData() != ev.sym)
-			continue;
-		// If the binding requires specific modifiers, enforce an exact match.
-		// If no modifiers are required, fire regardless of modifier state (backward compat).
-		const ModifiersState& req = (*it)->m_modifiers;
-		if(req.bAlt || req.bCtrl || req.bShift || req.bGui) {
-			if(req.bAlt   != ev.state.bAlt)   continue;
-			if(req.bCtrl  != ev.state.bCtrl)  continue;
-			if(req.bShift != ev.state.bShift) continue;
-			if(req.bGui   != ev.state.bGui)   continue;
-		}
-		if(ev.down) {
-			(*it)->nDown++;
-			if(!(*it)->bDown) {
-				(*it)->nDownOnce++;
-				(*it)->bDown = true;
-			}
-		} else {
-			(*it)->bDown = false;
-			(*it)->nUp++;
-		}
-	}
+	for(std::set<CInput*>::iterator it = cInputs.begin(); it != cInputs.end(); it++)
+		(*it)->handleKeyEvent(ev);
 }
 
 void HandleCInputs_UpdateDownOnceForNonKeyboard() {
 	for(std::set<CInput*>::iterator it = cInputs.begin(); it != cInputs.end(); it++)
-		if((*it)->isUsed() && !(*it)->isKeyboard()) {
-			// HINT: It is possible that wasUp() and !Down (a case which is not covered in further code)
-			if((*it)->wasUp() && !(*it)->bDown) {
-				(*it)->nDownOnce++;
-				continue;
-			}
-
-			// HINT: It's possible that wasDown() > 0 and !isDown().
-			// That is the case when we press a key and release it directly after (in one frame).
-			// Though wasDown() > 0 doesn't mean directly isDownOnce because it also counts keypresses.
-			// HINT: It's also possible that wasDown() == 0 and isDown().
-			// That is the case when we have pressed the key in a previous frame and we still hold it
-			// and the keyrepeat-interval is bigger than FPS. (Rare case.)
-			if((*it)->wasDown() || (*it)->isDown()) {
-				// wasUp() > 0 always means that it was down once (though it is not down anymore).
-				// Though the released key in wasUp() > 0 was probably already recognised before.
-				if((*it)->wasUp()) {
-					(*it)->bDown = (*it)->isDown();
-					if((*it)->bDown) // if it is again down, there is another new press
-						(*it)->nDownOnce++;
-					continue;
-				}
-				// !Down means that we haven't recognised yet that it is down.
-				if(!(*it)->bDown) {
-					(*it)->bDown = (*it)->isDown();
-					(*it)->nDownOnce++;
-					continue;
-				}
-			}
-			else
-				(*it)->bDown = false;
-		}
+		(*it)->updateDownOnceForNonKeyboard();
 }
 
 void HandleCInputs_UpdateUpForNonKeyboard() {
 	for(std::set<CInput*>::iterator it = cInputs.begin(); it != cInputs.end(); it++)
-		if((*it)->isUsed() && !(*it)->isKeyboard()) {
-			if((*it)->isDown() && !(*it)->bDown) {
-				(*it)->nUp++;
-			}
-		}
+		(*it)->updateUpForNonKeyboard();
 }
 
 static void ResetCurrentEventStorage() {
@@ -356,7 +300,7 @@ static void EvHndl_KeyDownUp(SDL_Event* ev) {
 
 static void EvHndl_TextInput(SDL_Event* _ev) {
 	SDL_TextInputEvent& ev = _ev->text;
-	
+
 	auto p = ev.text; // 0-terminated utf8
 	auto end = p + sizeof(ev.text);
 	while(p != end) {
@@ -382,6 +326,8 @@ static void EvHndl_MouseMotion(SDL_Event* ev) {
 	mouseY = CLAMP(mouseY, 0, VideoPostProcessor::get()->screenHeight());*/
 	mouseX = ev->motion.x;
 	mouseY = ev->motion.y;
+	// If the mouse really moved (not warped by keyboard navigation), leave keyboard navigation mode
+	DeprecatedGUI::Menu_ProcessMouseMotion(ev->motion.x, ev->motion.y);
 }
 
 static void EvHndl_MouseButtonDown(SDL_Event* ev) {}
@@ -405,6 +351,32 @@ static void EvHndl_UserEvent(SDL_Event* ev) {
 	}
 }
 
+static void EvHndl_ControllerDeviceAdded(SDL_Event* ev) {
+	// ev->cdevice.which is the device index here (per SDL2 docs).
+	CInput::OnControllerAdded(ev->cdevice.which);
+}
+
+static void EvHndl_ControllerDeviceRemoved(SDL_Event* ev) {
+	// ev->cdevice.which is the joystick instance id here.
+	CInput::OnControllerRemoved(ev->cdevice.which);
+}
+
+static void EvHndl_ControllerButton(SDL_Event* ev) {
+	// The START button on any controller mirrors the Escape key, so it
+	// opens/closes the in-game menu (and acts as Escape elsewhere) exactly
+	// like the keyboard. We synthesize a matching Escape key event rather
+	// than special-casing the menu, so every Escape-driven behaviour stays
+	// in sync automatically.
+	if(ev->cbutton.button != SDL_CONTROLLER_BUTTON_START)
+		return;
+	KeyboardEvent kbev;
+	kbev.sym = SDLK_ESCAPE;
+	kbev.ch = 0;
+	kbev.down = (ev->type == SDL_CONTROLLERBUTTONDOWN);
+	kbev.state = evtModifiersState;
+	pushKeyboardEv(kbev);
+}
+
 void InitEventSystem() {	
 	Mouse.Button = 0;
 	Mouse.Down = 0;
@@ -421,6 +393,10 @@ void InitEventSystem() {
 	sdlEvents[SDL_MOUSEWHEEL].handler() = getEventHandler(&EvHndl_MouseWheel);
 	sdlEvents[SDL_QUIT].handler() = getEventHandler(&EvHndl_Quit);
 	sdlEvents[SDL_USEREVENT].handler() = getEventHandler(&EvHndl_UserEvent);
+	sdlEvents[SDL_CONTROLLERDEVICEADDED  ].handler() = getEventHandler(&EvHndl_ControllerDeviceAdded);
+	sdlEvents[SDL_CONTROLLERDEVICEREMOVED].handler() = getEventHandler(&EvHndl_ControllerDeviceRemoved);
+	sdlEvents[SDL_CONTROLLERBUTTONDOWN   ].handler() = getEventHandler(&EvHndl_ControllerButton);
+	sdlEvents[SDL_CONTROLLERBUTTONUP     ].handler() = getEventHandler(&EvHndl_ControllerButton);
 	// Note: SDL_SYSWMEVENT is handled directly on the main thread by handleSDLEvents().
 	
 	bEventSystemInited = true;
@@ -575,12 +551,10 @@ void ProcessEvents()
 
 		HandleMouseState();
 #ifndef DEDICATED_ONLY
-#ifndef DISABLE_JOYSTICK
 		if(bJoystickSupport)  {
 			SDL_GameControllerUpdate();
 			updateAxisStates();
 		}
-#endif
 #endif
 		HandleCInputs_UpdateUpForNonKeyboard();
 		HandleCInputs_UpdateDownOnceForNonKeyboard();

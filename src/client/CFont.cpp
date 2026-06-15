@@ -433,7 +433,7 @@ void CFont::DrawGlyph(SDL_Surface *dst, int x, int y, Color col, UnicodeChar c)
 		return;
 
 	// Clipping
-	SDL_Rect r = { x, y, FontWidth[index], bmpFont->h };
+	SDL_Rect r = { (SDLRect::Type) x, (SDLRect::Type) y, (SDLRect::TypeS) FontWidth[index], (SDLRect::TypeS) bmpFont->h };
 	if (!ClipRefRectWith((SDLRect &)r, (SDLRect &)dst->clip_rect))
 		return;
 

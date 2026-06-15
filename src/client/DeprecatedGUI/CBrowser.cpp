@@ -727,8 +727,12 @@ int CBrowser::KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate)
 			} else {
 				ClearSelection();
 			}
+		} else {
+			if (Menu_IsKeyboardNavigationUsed())
+				return BRW_NONE; // Switch to next widget
 		}
 	return BRW_KEY_PROCESSED;
+
 	case SDLK_UP:
 		if (iCursorLine > 0 && iCursorLine < tLines.size())  {
 			--iCursorLine;
@@ -750,9 +754,13 @@ int CBrowser::KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate)
 			} else {
 				ClearSelection();
 			}
+		} else {
+			if (Menu_IsKeyboardNavigationUsed())
+				return BRW_NONE; // Switch to next widget
 		}
 	return BRW_KEY_PROCESSED;
 
+#if 0 /* This will disallow to navigate menu with arrow keys */
 	case SDLK_RIGHT:
 		if (iCursorLine < tLines.size())  {
 			if (iCursorColumn >= Utf8StringSize(tLines[iCursorLine]->getPureText()))  {
@@ -810,6 +818,7 @@ int CBrowser::KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate)
 			}
 		}
 	return BRW_KEY_PROCESSED;
+#endif // 0
 
 	case SDLK_HOME:
 		if (tLines.size() > 0 && iCursorLine < tLines.size())  {
@@ -888,7 +897,7 @@ int CBrowser::KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate)
 		keysym == SDLK_LALT || keysym == SDLK_RALT)
 		return BRW_KEY_PROCESSED;
 
-	return BRW_KEY_NOT_PROCESSED;
+	return BRW_NONE;
 }
 
 ////////////////////
@@ -1613,7 +1622,8 @@ void CBrowser::RenderContent()
 	DrawRectFill(bmpBuffer.get(), iBorderSize, iBorderSize, iWidth, iHeight, tBgColor);
 
 	// Setup the clipping
-	SDL_Rect clipRect = {iBorderSize, iBorderSize, iWidth - iBorderSize * 2, iHeight - iBorderSize * 2};
+	SDL_Rect clipRect = {(SDLRect::Type) iBorderSize, (SDLRect::Type) iBorderSize,
+						(SDLRect::TypeS) (iWidth - iBorderSize * 2), (SDLRect::TypeS) (iHeight - iBorderSize * 2)};
 	ScopedSurfaceClip clip(bmpBuffer.get(), clipRect);
 
 	// Selection

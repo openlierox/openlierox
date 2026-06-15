@@ -613,8 +613,7 @@ void CWorm::Spawn(CVec position) {
 	fSpawnTime = fPreLastPosUpdate = fLastPosUpdate = GetPhysicsTime();
 
 	if(bLocal) {
-		if( !NewNet::Active() )
-			clearInput();
+		clearInput();
 		if(!m_inputHandler) {
 			warnings << "CWorm::Spawn for local worm: input handler not set" << endl;
 		}
@@ -878,7 +877,7 @@ const int	LeftMuzzle[14] =  {4,-12, -1,-12, -1,-9, -3,-8, -2,0, -2,4, 1,3};
 
 
 void CWorm::UpdateDrawPos() {
-	if( tLXOptions->bAntilagMovementPrediction && !cClient->OwnsWorm(this->getID()) && !NewNet::Active() ) {
+	if( tLXOptions->bAntilagMovementPrediction && !cClient->OwnsWorm(this->getID()) ) {
 		//if(fLastPosUpdate > tLX->currentTime) return; // something is wrong, we probably have not gotten any update yet
 
 		// tmp hack
@@ -1490,20 +1489,21 @@ bool CWorm::CanType()
 bool CWormHumanInputHandler::canType() {
 	keyboard_t* kb = GetKeyboard();
 	for (int i = 0; i < kb->queueLength; i++)  {
-		if (cUp.getData() == kb->keyQueue[i].sym ||
-			cDown.getData() == kb->keyQueue[i].sym ||
-			cLeft.getData() == kb->keyQueue[i].sym ||
-			cRight.getData() == kb->keyQueue[i].sym ||
-			cShoot.getData() == kb->keyQueue[i].sym ||
-			cJump.getData() == kb->keyQueue[i].sym ||
-			cSelWeapon.getData() == kb->keyQueue[i].sym ||
-			cInpRope.getData() == kb->keyQueue[i].sym ||
-			cStrafe.getData() == kb->keyQueue[i].sym ||
-			cWeapons[0].getData() == kb->keyQueue[i].sym ||
-			cWeapons[1].getData() == kb->keyQueue[i].sym ||
-			cWeapons[2].getData() == kb->keyQueue[i].sym ||
-			cWeapons[3].getData() == kb->keyQueue[i].sym ||
-			cWeapons[4].getData() == kb->keyQueue[i].sym)
+		const int sym = kb->keyQueue[i].sym;
+		if (cUp.usesKeyboardKey(sym) ||
+			cDown.usesKeyboardKey(sym) ||
+			cLeft.usesKeyboardKey(sym) ||
+			cRight.usesKeyboardKey(sym) ||
+			cShoot.usesKeyboardKey(sym) ||
+			cJump.usesKeyboardKey(sym) ||
+			cSelWeapon.usesKeyboardKey(sym) ||
+			cInpRope.usesKeyboardKey(sym) ||
+			cStrafe.usesKeyboardKey(sym) ||
+			cWeapons[0].usesKeyboardKey(sym) ||
+			cWeapons[1].usesKeyboardKey(sym) ||
+			cWeapons[2].usesKeyboardKey(sym) ||
+			cWeapons[3].usesKeyboardKey(sym) ||
+			cWeapons[4].usesKeyboardKey(sym))
 			return false;
 	}
 	return true;
@@ -1638,62 +1638,6 @@ int CWorm::getWeaponSlotsCount() const {
 	else
 		return (int)m_weapons.size();
 }
-
-
-void CWorm::NewNet_CopyWormState(const CWorm & w)
-{
-	// Macro to do less copypaste
-	// Only the gamestate variables are copied, score is updated by server in separate packet
-	#define COPY(X) X = w.X;
-	COPY( tState );
-	COPY( vPos );
-	COPY( vVelocity );
-	COPY( vLastPos );
-	COPY( vDrawPos );
-	COPY( bOnGround );
-	COPY( fLastInputTime );
-	COPY( lastMoveTime );
-	COPY( fServertime );
-    COPY( fLastCarve );
-	COPY( health );
-	// Do not copy fDamage / suicides / teamkills etc - they are managed by scoreboard routines on server
-	COPY( bAlive );
-	COPY( fTimeofDeath );
-	COPY( iFaceDirectionSide );
-	COPY( iMoveDirectionSide );
-	COPY( bGotTarget );
-	COPY( fAngle );
-	COPY( fAngleSpeed );
-	COPY( fMoveSpeedX );
-	COPY( fFrame );
-	COPY( cNinjaRope );
-	COPY( bVisibleForWorm );
-	COPY( fSpawnTime );
-	COPY( iCurrentWeapon );
-	COPY( fLastAirJumpTime );
-	COPY( cDamageReport );
-	
-	COPY( NewNet_random );
-	
-	COPY( tWeapons );
-
-	#undef COPY
-};
-
-void CWorm::NewNet_InitWormState(int seed)
-{
-	NewNet_random.seed(seed);
-	// These vars most probably getting reset in Spawn() but I want to be sure
-	fLastInputTime = AbsTime();
-	lastMoveTime = AbsTime();
-	fServertime = TimeDiff();
-	fLastCarve = AbsTime();
-	fTimeofDeath = AbsTime();
-	iFaceDirectionSide = DIR_LEFT;
-	fSpawnTime = AbsTime();
-	fLastAirJumpTime = AbsTime();
-}
-
 
 const Version& CWorm::getClientVersion() {
 	if(game.isServer())
