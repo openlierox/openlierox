@@ -119,7 +119,6 @@ void CWormHumanInputHandler::getInput() {
 	mouse_t *ms = GetMouse();
 
 	worm_state_t *ws = &m_worm->tState.write();
-	bool lastShoot = ws->bShoot;
 
 	// Init the ws
 	ws->bCarve = false;
