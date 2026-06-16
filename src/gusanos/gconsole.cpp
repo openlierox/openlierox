@@ -13,7 +13,7 @@
 #include "FindFile.h"
 
 #include "gusanos/allegro.h"
-#include <boost/bind.hpp>
+#include <boost/bind/bind.hpp>
 #include <boost/lexical_cast.hpp>
 using boost::lexical_cast;
 

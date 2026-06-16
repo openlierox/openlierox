@@ -15,7 +15,7 @@
 
 #include <vector>
 #include <boost/lambda/lambda.hpp>
-#include <boost/bind.hpp>
+#include <boost/bind/bind.hpp>
 
 #include "LieroX.h"
 #include "CServer.h"
@@ -41,6 +41,7 @@
 #include "Utils.h"
 #include "game/GameState.h"
 
+using namespace boost::placeholders;
 
 // declare them only locally here as nobody really should use them explicitly
 std::string OldLxCompatibleString(const std::string &Utf8String);

@@ -56,7 +56,9 @@
 
 #include <boost/shared_ptr.hpp>
 #include <boost/lambda/lambda.hpp>
-#include <boost/bind.hpp>
+#include <boost/bind/bind.hpp>
+
+using namespace boost::placeholders;
 
 Game game;
 

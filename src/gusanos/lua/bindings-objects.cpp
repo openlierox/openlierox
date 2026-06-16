@@ -28,7 +28,7 @@ extern "C" {
 using std::cerr;
 using std::endl;
 #include <boost/lexical_cast.hpp>
-#include <boost/bind.hpp>
+#include <boost/bind/bind.hpp>
 using boost::lexical_cast;
 
 

@@ -10,7 +10,7 @@
 #include <set>
 #include <vector>
 #include <boost/shared_ptr.hpp>
-#include <boost/bind.hpp>
+#include <boost/bind/bind.hpp>
 #include "Attr.h"
 #include "util/macros.h"
 #include "util/StaticVar.h"
@@ -27,6 +27,8 @@
 #include "Debug.h"
 #include "FindFile.h"
 #include "LieroX.h"
+
+using namespace boost::placeholders;
 
 static CServerConnection* attrUpdateByClientScope = NULL;
 static bool attrUpdateByServerScope = false;

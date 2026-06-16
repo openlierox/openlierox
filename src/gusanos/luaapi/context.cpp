@@ -20,10 +20,12 @@ extern "C"
 #include <cmath>
 #include <map>
 #include <set>
-#include <boost/bind.hpp>
+#include <boost/bind/bind.hpp>
 
 #define FREELIST_REF 1
 #define ARRAY_SIZE   2
+
+using namespace boost::placeholders;
 
 LuaContext luaIngame;
 LuaContext luaGlobal;

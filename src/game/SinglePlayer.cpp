@@ -7,7 +7,7 @@
  *
  */
 
-#include <boost/bind.hpp>
+#include <boost/bind/bind.hpp>
 #include "SinglePlayer.h"
 #include "Options.h"
 #include "ConfigHandler.h"

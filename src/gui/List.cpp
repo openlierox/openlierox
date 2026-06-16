@@ -7,7 +7,7 @@
  *
  */
 
-#include <boost/bind.hpp>
+#include <boost/bind/bind.hpp>
 #include "gui/List.h"
 #include "Debug.h"
 

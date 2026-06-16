@@ -7,7 +7,7 @@
  *
  */
 
-#include <boost/bind.hpp>
+#include <boost/bind/bind.hpp>
 #include "SettingsPreset.h"
 #include "Mod.h"
 #include "CGameScript.h"
