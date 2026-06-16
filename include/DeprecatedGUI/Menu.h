@@ -466,12 +466,6 @@ void	Menu_FloatingOptionsShutdown();
 void	Menu_FloatingOptionsFrame();
 void	Menu_FloatingOptionsWaitInput(int ply, const std::string& name, CInputbox *b);
 
-// Speed test
-void	Menu_SpeedTest_Initialize();
-bool	Menu_SpeedTest_Frame();
-void	Menu_SpeedTest_Shutdown();
-float	Menu_SpeedTest_GetSpeed();
-
 
 // Main net
 bool	Menu_NetInitialize(bool withSubMenu = true);

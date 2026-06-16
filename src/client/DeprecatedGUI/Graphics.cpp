@@ -78,7 +78,6 @@ bool LoadGraphics()
 	LOAD_IMAGE(gfxGUI.bmpScrollbar,"data/frontend/scrollbar.png");
 	LOAD_IMAGE(gfxGUI.bmpSliderBut,"data/frontend/sliderbut.png");
 	LOAD_IMAGE_WITHALPHA__OR(gfxGUI.bmpCommandBtn, "data/frontend/commandbtn.png", getAlternativeCommandButtonGfx());
-	LOAD_IMAGE_WITHALPHA__OR(gfxGUI.bmpSpeedTestProgress, "data/frontend/speedtest.png", getAlternativeProgressGfx());
 
 	Load_Image_WithAlpha(gfxGame.bmpCrosshair, "data/gfx/crosshair.png");
 	if (gfxGame.bmpCrosshair.get() == NULL)

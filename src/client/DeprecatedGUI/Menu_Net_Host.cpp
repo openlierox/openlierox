@@ -93,8 +93,6 @@ enum {
 
 int iHumanPlayers = 0;
 
-bool		bSpeedTestDialog = false;
-bool		bTestedSpeed = false;
 AbsTime		fHostMenuPlyStart = AbsTime();
 
 ///////////////////
@@ -103,8 +101,6 @@ bool Menu_Net_HostInitialize()
 {
 	iNetMode = net_host;
 	iHostType = 0;
-	bTestedSpeed = false;
-	bSpeedTestDialog = false;
 	fHostMenuPlyStart = tLX->currentTime;
 
 	// Player gui layout
@@ -273,36 +269,6 @@ void Menu_Net_HostPlyFrame(int mouse)
 	ev = cHostPly.Process();
 	cHostPly.Draw( VideoPostProcessor::videoSurface().get() );
 
-	
-	// Speed test dialog
-	if (bSpeedTestDialog)  {
-		if (Menu_SpeedTest_Frame())  {
-			Menu_Net_HostUpdateUploadSpeed(Menu_SpeedTest_GetSpeed() * 0.9f); // lower a bit to leave some rest free
-			bSpeedTestDialog = false;
-			Menu_SpeedTest_Shutdown();
-		}
-	}
-	
-	// If hosting for the first time or the network speed is low, ask for the upload speed test
-	if (!bDedicated && tLX->currentTime - fHostMenuPlyStart >= 0.5f && !bTestedSpeed)  { // Show a half second after coming to the lobby
-		if (tLXOptions->bFirstHosting)  {  
-			bTestedSpeed = true;
-			
-			std::string message = "You are hosting for the first time. To reduce lag, OpenLieroX needs to know the speed of your connection.\n\nDo you want to perform a connection test now?";
-			if (tLXOptions->iNetworkSpeed == NST_MODEM || tLXOptions->iMaxUploadBandwidth < 5000)
-				message = "The network speed is set to a very low value. This can cause lag issues on your server. It is recommended to run a connection test.\n\nDo you want to perform a connection test now?";
-			
-			// TODO: Move that out here. Horrible how many hacks are needed to show a message box
-			//DrawImage(tMenu->bmpBuffer.get(), VideoPostProcessor::videoSurface(), 0, 0);
-			if (Menu_MessageBox("Perform a Connection Test", message, LMB_YESNO) == MBR_YES)  {
-				Menu_SpeedTest_Initialize();
-				bSpeedTestDialog = true;
-			}
-			//Menu_Net_HostLobbyDraw();  // Restore the buffer
-			//Menu_HostShowMinimap();
-			//Menu_HostDrawLobby(VideoPostProcessor::videoSurface());
-		}
-	}
 	
 	// Process any events
 	if(ev) {
@@ -982,7 +948,7 @@ void Menu_Net_HostLobbyFrame(int mouse)
 	Menu_HostDrawLobby(VideoPostProcessor::videoSurface().get());
 
 	// Process & Draw the gui
-	if (!Con_IsVisible() && !bSpeedTestDialog && !CChatWidget::GlobalEnabled())  // Don't process when the console is opened or speed test is being performed
+	if (!Con_IsVisible() && !CChatWidget::GlobalEnabled())  // Don't process when the console is opened or speed test is being performed
 		ev = cHostLobby.Process();
 	cHostLobby.Draw( VideoPostProcessor::videoSurface().get() );
 	if(CChatWidget::GlobalEnabled())

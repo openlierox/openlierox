@@ -116,7 +116,6 @@ enum {
 	os_NetworkSpeed,
 	os_NetworkUploadBandwidth,
 	os_NetworkUploadBandwidthLabel,
-	os_NetworkUploadCheck,
 	os_UseIpToCountry,
 	os_HttpProxy,
 	os_ShowFPS,
@@ -126,8 +125,6 @@ enum {
 	os_ScreenshotFormat,
 	os_MaxFPS,
 	os_Apply,
-	os_TestBandwidth,
-	os_TestAnimation,
 	os_ShowCountryFlags,
 	os_CheckForUpdates,
 };
@@ -217,8 +214,6 @@ static const GenCtrl GeneralControlsList[] = {
 static const int kNumGeneralControls = sizeof(GeneralControlsList) / sizeof(GeneralControlsList[0]);
 
 
-bool bSpeedTest = false;
-
 // Each control can hold several bindings (a comma-separated list). On the
 // Controls screen we show one input box per binding slot, side by side, so
 // the keyboard (slot 0) and gamepad (slot 1) bindings can be edited
@@ -298,7 +293,6 @@ bool Menu_OptionsInitialize()
 	tMenu->iMenuType = MNU_OPTIONS;
 	OptionsMode = 0;
     int i;
-	bSpeedTest = false;
 
 	// Create the buffer
 	DrawImage(tMenu->bmpBuffer.get(),tMenu->bmpMainBack_common,0,0);
@@ -425,10 +419,6 @@ bool Menu_OptionsInitialize()
 	
 	cOpt_System.Add( new CLabel("Server max upload bandwidth",tLX->clNormalLabel),    os_NetworkUploadBandwidthLabel, 330, y, 0,0);
 	cOpt_System.Add( new CTextbox(),                        os_NetworkUploadBandwidth, 530, y - 2, 50,tLX->cFont.GetHeight());
-	cOpt_System.Add( new CButton(BUT_TEST, tMenu->bmpButtons), os_TestBandwidth, 585, y - 2, 30, 22); y += 25;
-	
-	cOpt_System.Add( new CLabel("Check bandwidth sanity",tLX->clNormalLabel),    Static, 330, y, 0,0);
-	cOpt_System.Add( new CCheckbox(tLXOptions->bCheckBandwidthSanity),  os_NetworkUploadCheck, 530, y,17,17);
 	
 	y += 20;
 	cOpt_System.Add( new CLabel("Miscellanous",tLX->clHeading),       Static, 40, y, 0,0);
@@ -478,7 +468,6 @@ bool Menu_OptionsInitialize()
 	((CTextbox *)cOpt_System.getWidget( os_NetworkUploadBandwidth ))->setText( itoa(tLXOptions->iMaxUploadBandwidth) );
 	cOpt_System.getWidget( os_NetworkUploadBandwidth )->setEnabled( tLXOptions->iNetworkSpeed >= NST_LAN );
 	cOpt_System.getWidget( os_NetworkUploadBandwidthLabel )->setEnabled( tLXOptions->iNetworkSpeed >= NST_LAN );
-	cOpt_System.getWidget( os_TestBandwidth )->setEnabled( tLXOptions->iNetworkSpeed >= NST_LAN );
 	
 	// Screenshot format
 	cOpt_System.SendMessage(os_ScreenshotFormat, CBS_ADDITEM, "Bmp", FMT_BMP);
@@ -846,7 +835,7 @@ void Menu_OptionsFrame()
 
 		TopButtons[i].Draw(VideoPostProcessor::videoSurface().get());
 
-		if(i==OptionsMode || bSpeedTest)
+		if(i==OptionsMode)
 			continue;
 
 		if(TopButtons[i].InBox(Mouse->X,Mouse->Y)) {
@@ -860,7 +849,7 @@ void Menu_OptionsFrame()
 	}
 
 	// Process the gui layout
-	ev = bSpeedTest ? NULL : cOptions.Process();
+	ev = cOptions.Process();
 	cOptions.Draw(VideoPostProcessor::videoSurface().get());
 
 	if(ev) {
@@ -889,7 +878,7 @@ void Menu_OptionsFrame()
 
 		// Sub-tabs: Player 1 / Player 2 / General — only one shown at a time
 		Menu_OptionsDrawControlsTabs(VideoPostProcessor::videoSurface().get());
-		if(!bSpeedTest && Mouse->Up) {
+		if(Mouse->Up) {
 			for(int t = 0; t < ct__Count; t++) {
 				if(t == ControlsSubTab) continue;
 				if(!IsControlsTabVisible(t)) continue;
@@ -907,13 +896,13 @@ void Menu_OptionsFrame()
 
 		// Active sub-tab content
 		CGuiLayout& ctrlLayout = Menu_OptionsControlsLayout();
-		ev = bSpeedTest ? NULL : ctrlLayout.Process();
+		ev = ctrlLayout.Process();
 		ctrlLayout.Draw(VideoPostProcessor::videoSurface().get());
 
 		if(ControlsSubTab == ct_Touchscreen) {
 			// Top row: On / Off / Auto selector for Game.TouchscreenControls.
 			Menu_OptionsDrawTouchMode(VideoPostProcessor::videoSurface().get());
-			if(!bSpeedTest && Mouse->Up) {
+			if(Mouse->Up) {
 				for(int i = 0; i < kTouchModeCount; i++) {
 					const SDL_Rect& r = gTouchModeRects[i];
 					if(Mouse->X >= r.x && Mouse->X <= r.x + r.w &&
@@ -931,7 +920,7 @@ void Menu_OptionsFrame()
 			// Layout tiles + click handling. No "Reset defaults" here — the
 			// touch-screen tab has nothing to reset.
 			Menu_OptionsDrawTouchTiles(VideoPostProcessor::videoSurface().get());
-			if(!bSpeedTest && Mouse->Up) {
+			if(Mouse->Up) {
 				for(size_t i = 0; i < gTouchLayoutTileRects.size(); ++i) {
 					const SDL_Rect& r = gTouchLayoutTileRects[i];
 					if(r.w == 0) continue;
@@ -950,7 +939,7 @@ void Menu_OptionsFrame()
 		} else {
 			// "Reset defaults" button (manual, so it can show that exact label)
 			Menu_OptionsDrawResetButton(VideoPostProcessor::videoSurface().get());
-			if(!bSpeedTest && Mouse->Up &&
+			if(Mouse->Up &&
 			   Mouse->X >= ResetBtnRect.x && Mouse->X <= ResetBtnRect.x + ResetBtnRect.w &&
 			   Mouse->Y >= ResetBtnRect.y && Mouse->Y <= ResetBtnRect.y + ResetBtnRect.h) {
 				Menu_ResetControlsTab(ControlsSubTab);
@@ -981,7 +970,7 @@ void Menu_OptionsFrame()
 	if(OptionsMode == 1) {
 
 		// Game
-		ev = bSpeedTest ? NULL : cOpt_Game.Process();
+		ev = cOpt_Game.Process();
 		cOpt_Game.Draw(VideoPostProcessor::videoSurface().get());
 
 		val = (int)cOpt_Game.SendMessage(og_BloodAmount, SLM_GETVALUE, (uintptr_t)0, 0);
@@ -1130,7 +1119,7 @@ void Menu_OptionsFrame()
 
 
 		// System
-		ev = bSpeedTest ? NULL : cOpt_System.Process();
+		ev = cOpt_System.Process();
 		cOpt_System.Draw(VideoPostProcessor::videoSurface().get());
 
 		if(ev) {
@@ -1249,14 +1238,6 @@ void Menu_OptionsFrame()
 					}
 					break;
 
-				// Test bandwidth
-				case os_TestBandwidth:  {
-					if (ev->iEventMsg == BTN_CLICKED)  {
-						bSpeedTest = true;
-						Menu_SpeedTest_Initialize();
-					}
-				} break;
-				
 				case os_CheckForUpdates:
 					if(ev->iEventMsg == CHK_CHANGED)  {
 						tLXOptions->bCheckForUpdates = cOpt_System.SendMessage(os_CheckForUpdates, CKM_GETCHECK, (uintptr_t)0, 0) != 0;
@@ -1274,11 +1255,9 @@ void Menu_OptionsFrame()
 		tLXOptions->sHttpProxy = t->getText();
 
 		tLXOptions->iNetworkSpeed = (int)cOpt_System.SendMessage(os_NetworkSpeed, CBM_GETCURINDEX,(uintptr_t)0,0);
-		tLXOptions->bCheckBandwidthSanity = cOpt_System.SendMessage(os_NetworkUploadCheck, CKM_GETCHECK, (uintptr_t)0, 0) != 0;
 		
 		cOpt_System.getWidget( os_NetworkUploadBandwidth )->setEnabled( tLXOptions->iNetworkSpeed >= NST_LAN );
 		cOpt_System.getWidget( os_NetworkUploadBandwidthLabel )->setEnabled( tLXOptions->iNetworkSpeed >= NST_LAN );
-		cOpt_System.getWidget( os_TestBandwidth )->setEnabled( tLXOptions->iNetworkSpeed >= NST_LAN );
 		if( cOpt_System.getWidget( os_NetworkUploadBandwidth )->getEnabled() )
 			tLXOptions->iMaxUploadBandwidth = atoi( ((CTextbox *)cOpt_System.getWidget( os_NetworkUploadBandwidth ))->getText().c_str() );
 		if( tLXOptions->iMaxUploadBandwidth <= 0 )
@@ -1297,17 +1276,6 @@ void Menu_OptionsFrame()
 			cOpt_System.getWidget(os_Apply)->redrawBuffer();
         }
 	}
-
-	// Process the speed test window
-	if (bSpeedTest)  {
-		if (Menu_SpeedTest_Frame())  {
-			// Finished
-			Menu_OptionsUpdateUpload(Menu_SpeedTest_GetSpeed());
-			Menu_SpeedTest_Shutdown();
-			bSpeedTest = false;
-		}
-	}
-
 
 	// Draw the mouse
 	DrawCursor(VideoPostProcessor::videoSurface().get());
@@ -1424,9 +1392,6 @@ void Menu_OptionsShutdown()
 	cOpt_ControlsTouch.Shutdown();
 	cOpt_System.Shutdown();
 	cOpt_Game.Shutdown();
-
-	if (bSpeedTest)
-		Menu_SpeedTest_Shutdown();
 }
 
 }; // namespace DeprecatedGUI

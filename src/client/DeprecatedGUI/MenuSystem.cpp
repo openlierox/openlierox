@@ -1494,32 +1494,6 @@ void Menu_Current_Shutdown() {
 				break;
 		}
 	
-	/*Menu_MainShutdown();
-	Menu_LocalShutdown();
-	Menu_PlayerShutdown();
-	Menu_MapEdShutdown();
-	Menu_GameSettingsShutdown();
-	Menu_WeaponsRestrictionsShutdown();
-	Menu_WeaponPresetsShutdown();
-	Menu_BanListShutdown();
-	Menu_ServerSettingsShutdown();
-	Menu_OptionsShutdown();
-	Menu_FloatingOptionsShutdown();
-	Menu_SpeedTest_Shutdown();
-	Menu_NetShutdown();
-	Menu_Net_MainShutdown();
-	Menu_Net_HostPlyShutdown();
-	Menu_Net_HostLobbyShutdown();
-	Menu_Net_LANShutdown();
-	Menu_Net_JoinShutdown();
-	Menu_Net_FavouritesShutdown();
-	Menu_Net_NewsShutdown();
-	Menu_Net_JoinShutdown();
-	Menu_Net_ChatShutdown();
-	Menu_Net_JoinConnectionShutdown();
-	Menu_Net_JoinLobbyShutdown();
-	Menu_Net_NETShutdown();
-	Menu_CGuiSkinShutdown();*/
 }
 	
 } // namespace DeprecatedGUI
