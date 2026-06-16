@@ -67,18 +67,34 @@ own_xml2_config() {
 }
 
 # get somehow a version-string (like "0.57_beta4_r1090")
-# reads the file VERSION if available or else reads out from Version.h
-# if SVN-data is available, it adds the revision number to the string
-# prints out the version on stdout
+# prints the OLX version on stdout, in the form
+#
+#   YYYYMMDD.N+git.HASH      e.g. 20260615.1+git.a6632ac
+#
+# where
+#   YYYYMMDD - date of the HEAD commit
+#   N        - number of commits dated on that same day
+#   HASH     - 7-char hash of the HEAD commit
+#
+# Everything is derived from the HEAD commit, so the same commit always
+# yields the same version regardless of when or where it is built.
+#
+# When git is unavailable (e.g. building from a source tarball) it falls
+# back to the VERSION file if one is present, otherwise "unknown".
 get_olx_version() {
-	VERSION=""
-	if [ -e VERSION ]; then
-		VERSION="$(cat VERSION)"
-	else
-		VERSION="$(grep LX_VERSION src/common/Version.cpp | \
-			grep define | grep -o -e "\".*\"" | cut -d "\"" -f 2)"
+	if command -v git >/dev/null 2>&1 && git rev-parse --git-dir >/dev/null 2>&1; then
+		_olx_date="$(git show -s --format=%cd --date=format:%Y%m%d HEAD)"
+		_olx_count="$(git log --format=%cd --date=format:%Y%m%d HEAD | grep -c "^${_olx_date}$")"
+		_olx_hash="$(git rev-parse --short=7 HEAD)"
+		echo "${_olx_date}.${_olx_count}+git.${_olx_hash}"
+		return
 	fi
-	echo "$VERSION"
+
+	if [ -e VERSION ]; then
+		cat VERSION
+	else
+		echo "unknown"
+	fi
 }
 
 # builds a parameter string for a list of paths

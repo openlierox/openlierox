@@ -43,7 +43,7 @@ if [ -f share/macosx.icns ]; then
 fi
 
 # Info.plist
-VERSION_RAW="$(cat VERSION)"
+VERSION_RAW="$(./get_version.sh)"
 cat > "$APP/Contents/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -92,7 +92,7 @@ dylibbundler -od -b \
     -p "@executable_path/../Frameworks/"
 
 # Zip uses tilde instead of underscore so e.g. "beta9" sorts correctly.
-VERSION="$(tr '_' '~' < VERSION)"
+VERSION="$(./get_version.sh | tr '_' '~')"
 ZIP="openlierox_${VERSION}_macos.zip"
 rm -f "$REPO_ROOT/$ZIP"
 (cd "$REPO_ROOT/mac-stage" && zip -qry "$REPO_ROOT/$ZIP" OpenLieroX.app)
