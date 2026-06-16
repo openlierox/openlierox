@@ -119,6 +119,7 @@ void CWormHumanInputHandler::getInput() {
 	mouse_t *ms = GetMouse();
 
 	worm_state_t *ws = &m_worm->tState.write();
+	bool lastShoot = ws->bShoot;
 
 	// Init the ws
 	ws->bCarve = false;
@@ -329,6 +330,22 @@ void CWormHumanInputHandler::getInput() {
 
 	ws->bShoot = cShoot.isDown() || tFire;
 
+	if (ws->bShoot) {
+		const float comboTapTime = 0.3f;
+		if (TouchControls::IsActive() && allowCombo && !m_worm->bTouchscreenWeaponCycle) {
+			if (m_worm->fLastShoot + comboTapTime > tLX->currentTime) {
+				// Cycle weapons by tapping Shoot button rapidly
+				m_worm->iCurrentWeapon++;
+				MOD(m_worm->iCurrentWeapon, m_worm->getWeaponSlotsCount());
+				m_worm->bForceWeapon_Name = true;
+				m_worm->fForceWeapon_Time = tLX->currentTime + 0.5f;
+			}
+		}
+		m_worm->fLastShoot = tLX->currentTime;
+	}
+
+	m_worm->bTouchscreenWeaponCycle = ws->bShoot;
+
 	if(m_worm->getWeaponSlotsCount() > 0 && (!ws->bShoot || allowCombo)) {
 		//
 		// Weapon changing
@@ -421,7 +438,6 @@ void CWormHumanInputHandler::getInput() {
 			// TODO: perhaps in chat?
 			hints << "strafing is not allowed on this server." << endl;
 	}
-
 
 	const bool oldskool = tLXOptions->bOldSkoolRope;
 
