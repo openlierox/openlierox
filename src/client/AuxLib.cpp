@@ -554,7 +554,11 @@ bool VideoPostProcessor::resetVideo() {
 	dumpRenderInfo(m_renderer.get());
 	
 	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "best");  // make the scaled rendering look smoother.
-	SDL_RenderSetLogicalSize(m_renderer.get(), screenWidth(), screenHeight());
+	if (tLXOptions->bKeepAspectRatio) {
+		SDL_RenderSetLogicalSize(m_renderer.get(), screenWidth(), screenHeight());
+	} else {
+		SDL_RenderSetLogicalSize(m_renderer.get(), 0, 0);
+	}
 	
 	// IMPORTANT: Don't reallocate if we already have the buffers.
 	// If we would do, the old surfaces would get deleted. This is bad

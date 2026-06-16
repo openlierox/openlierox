@@ -219,9 +219,10 @@ public:
 	// Video
 	bool	bFullscreen;
 	bool	bShowFPS;
-	bool	bOpenGL;
+	bool	bOpenGL; // TODO: remove this, SDL2 already renders using OpenGL
 	std::string	sResolution;
 	int		iColourDepth;
+	bool	bKeepAspectRatio;
 
 	// Network
 	int		iNetworkPort;

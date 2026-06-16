@@ -390,8 +390,12 @@ bool InputUsingMouse() {
 }
 
 static void EvHndl_MouseMotion(SDL_Event* ev) {
-/*	mouseX = CLAMP(mouseX, 0, VideoPostProcessor::get()->screenWidth());
-	mouseY = CLAMP(mouseY, 0, VideoPostProcessor::get()->screenHeight());*/
+	if (!tLXOptions->bKeepAspectRatio) {
+		int winW = 0, winH = 0;
+		SDL_GetWindowSize(VideoPostProcessor::get()->sdl_window(), &winW, &winH);
+		ev->motion.x *= (float)VideoPostProcessor::get()->screenWidth() / winW;
+		ev->motion.y *= (float)VideoPostProcessor::get()->screenHeight() / winH;
+	}
 	mouseX = ev->motion.x;
 	mouseY = ev->motion.y;
 	// Genuine mouse movement (not a compatibility event trailing a real tap)
@@ -403,6 +407,12 @@ static void EvHndl_MouseMotion(SDL_Event* ev) {
 }
 
 static void EvHndl_MouseButtonDown(SDL_Event* ev) {
+	if (!tLXOptions->bKeepAspectRatio) {
+		int winW = 0, winH = 0;
+		SDL_GetWindowSize(VideoPostProcessor::get()->sdl_window(), &winW, &winH);
+		ev->button.x *= (float)VideoPostProcessor::get()->screenWidth() / winW;
+		ev->button.y *= (float)VideoPostProcessor::get()->screenHeight() / winH;
+	}
 	// Genuine mouse click → the player is on the mouse (show the cursor).
 	if(!recentRealTouch() && ev->button.which != SDL_TOUCH_MOUSEID)
 		gInputIsMouse = true;
@@ -415,6 +425,12 @@ static void EvHndl_MouseButtonDown(SDL_Event* ev) {
 	}
 }
 static void EvHndl_MouseButtonUp(SDL_Event* ev) {
+	if (!tLXOptions->bKeepAspectRatio) {
+		int winW = 0, winH = 0;
+		SDL_GetWindowSize(VideoPostProcessor::get()->sdl_window(), &winW, &winH);
+		ev->button.x *= (float)VideoPostProcessor::get()->screenWidth() / winW;
+		ev->button.y *= (float)VideoPostProcessor::get()->screenHeight() / winH;
+	}
 	// Release only if we actually started a synthetic touch — this avoids a
 	// stray FINGERUP from a touch's compatibility mouse-up and guarantees a
 	// genuine mouse release always ends the press (no stuck finger).
