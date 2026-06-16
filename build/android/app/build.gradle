@@ -3,8 +3,19 @@ plugins {
 }
 
 def olxRoot = project.rootDir.toPath().resolve('../..').normalize().toFile()
-def versionFile = new File(olxRoot, 'VERSION')
-def olxVersion = versionFile.exists() ? versionFile.text.trim() : '0.59'
+// Derive the version from get_version.sh (VERSION file if present, else the
+// LX_VERSION define in src/common/Version.cpp). Falls back to '0.59' if the
+// script can't be run (e.g. no sh on the host).
+def olxVersion = { ->
+    try {
+        def proc = ['sh', 'get_version.sh'].execute(null, olxRoot)
+        proc.waitFor()
+        def out = proc.text.trim()
+        return (proc.exitValue() == 0 && out) ? out : '0.59'
+    } catch (Exception ignored) {
+        return '0.59'
+    }
+}()
 def architectures = project.hasProperty('architectures') ? project.architectures.split(',') : 'arm64-v8a'
 
 // versionCode = fixed base + number of commits on the current branch, so each

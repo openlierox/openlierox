@@ -133,7 +133,9 @@ The script also:
 
 `build-android.sh` copies `share/gamedir` into
 `output/assets/gamedir` and writes `output/assets/gamedir.version`
-from the [VERSION](../../VERSION) file. Gradle picks this up via
+from [get_version.sh](../../get_version.sh) (the `VERSION` file if
+present, otherwise the `LX_VERSION` define in
+`src/common/Version.cpp`). Gradle picks this up via
 [app/build.gradle:88-92](app/build.gradle#L88-L92):
 
 ```groovy
