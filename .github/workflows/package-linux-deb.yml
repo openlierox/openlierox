@@ -32,6 +32,19 @@ jobs:
           sudo apt install -y \
             ./openlierox-build-deps-depends_*.deb
 
+      # dpkg-buildpackage takes the package version (and thus the .deb
+      # filename) from the top debian/changelog entry, which is pinned to an
+      # old release. Derive it from get_version.sh instead, like every other
+      # package (macOS/wasm/android/linux-bundle). '_' isn't a legal Debian
+      # version character, so map it to '~' (as package-macos.sh does).
+      - name: Set package version from get_version.sh
+        run: |
+          VERSION="$(./get_version.sh | tr '_' '~')"
+          echo "Setting deb version to $VERSION"
+          DEBEMAIL="ci@openlierox.net" DEBFULLNAME="OpenLieroX CI" \
+            dch -b --newversion "$VERSION" --distribution unstable \
+            "Automated build ${VERSION}"
+
       - name: Build
         run: |
           dpkg-buildpackage -us -uc -jauto

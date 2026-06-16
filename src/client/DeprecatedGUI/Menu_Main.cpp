@@ -270,7 +270,10 @@ void Menu_MainFrame()
 
 	// Credits
 
-	static const std::string credits1 = "  " + GetGameVersion().asHumanString(); // TODO: should we print revision here?
+	// Show the short get_version.sh string (e.g. "20260616.4", no git hash)
+	// rather than GetGameVersion().asHumanString(), which forces it through
+	// the old integer num.subnum scheme and would mangle the new format.
+	static const std::string credits1 = "  " + std::string(GetGameName()) + " " + GetGameVersionString();
 
 	static const std::string credits2 = std::string(
 		"- Original code by Jason Boettcher\n"

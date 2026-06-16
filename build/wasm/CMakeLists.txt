@@ -211,6 +211,13 @@ add_executable(openlierox
 
 set_target_properties(openlierox PROPERTIES SUFFIX ".html")
 
+# Generate Version_generated.h (#define LX_VERSION) from get_version_full.sh and
+# put it ahead of ${OLX_ROOT}/include so it wins over the empty stub there.
+# Without this Version.cpp has no LX_VERSION and the build fails (#error).
+include("${OLX_ROOT}/CMakeOlxVersion.cmake")
+olx_generate_version_header("${OLX_ROOT}" OLX_VERSION_INCLUDE_DIR)
+target_include_directories(openlierox BEFORE PRIVATE "${OLX_VERSION_INCLUDE_DIR}")
+
 target_include_directories(openlierox PRIVATE
     "${OLX_ROOT}/include"
     "${OLX_ROOT}/src"

@@ -3,18 +3,19 @@ plugins {
 }
 
 def olxRoot = project.rootDir.toPath().resolve('../..').normalize().toFile()
-// Derive the version from get_version.sh (VERSION file if present, else the
-// LX_VERSION define in src/common/Version.cpp). Falls back to '0.59' if the
-// script can't be run (e.g. no sh on the host).
+// Derive the version from get_version.sh (which uses git or the VERSION
+// file). If it can't determine a version, fail the build rather than ship an
+// APK with a bogus version.
 def olxVersion = { ->
-    try {
-        def proc = ['sh', 'get_version.sh'].execute(null, olxRoot)
-        proc.waitFor()
-        def out = proc.text.trim()
-        return (proc.exitValue() == 0 && out) ? out : '0.59'
-    } catch (Exception ignored) {
-        return '0.59'
+    def proc = ['sh', 'get_version.sh'].execute(null, olxRoot)
+    proc.waitFor()
+    def out = proc.text.trim()
+    if (proc.exitValue() != 0 || !out) {
+        throw new GradleException(
+            "Could not determine the OLX version via get_version.sh. " +
+            "Refusing to build without a real version.")
     }
+    return out
 }()
 def architectures = project.hasProperty('architectures') ? project.architectures.split(',') : 'arm64-v8a'
 

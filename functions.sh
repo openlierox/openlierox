@@ -66,35 +66,57 @@ own_xml2_config() {
 	fi
 }
 
-# get somehow a version-string (like "0.57_beta4_r1090")
-# prints the OLX version on stdout, in the form
+# get the (short) OLX version-string. This is the form used in most places
+# (package filenames, the in-game menu, ...). Prints on stdout:
 #
-#   YYYYMMDD.N+git.HASH      e.g. 20260615.1+git.a6632ac
+#   YYYYMMDD.N      e.g. 20260615.1
 #
 # where
 #   YYYYMMDD - date of the HEAD commit
 #   N        - number of commits dated on that same day
-#   HASH     - 7-char hash of the HEAD commit
 #
 # Everything is derived from the HEAD commit, so the same commit always
 # yields the same version regardless of when or where it is built.
 #
 # When git is unavailable (e.g. building from a source tarball) it falls
-# back to the VERSION file if one is present, otherwise "unknown".
+# back to the VERSION file if one is present. If the version cannot be
+# determined at all it prints an error to stderr and returns non-zero, so
+# the build fails instead of silently producing a bogus version.
+#
+# Use get_olx_version_with_hash() when you also need the git hash.
 get_olx_version() {
 	if command -v git >/dev/null 2>&1 && git rev-parse --git-dir >/dev/null 2>&1; then
 		_olx_date="$(git show -s --format=%cd --date=format:%Y%m%d HEAD)"
 		_olx_count="$(git log --format=%cd --date=format:%Y%m%d HEAD | grep -c "^${_olx_date}$")"
-		_olx_hash="$(git rev-parse --short=7 HEAD)"
-		echo "${_olx_date}.${_olx_count}+git.${_olx_hash}"
-		return
+		echo "${_olx_date}.${_olx_count}"
+		return 0
 	fi
 
 	if [ -e VERSION ]; then
 		cat VERSION
-	else
-		echo "unknown"
+		return 0
 	fi
+
+	echo "ERROR: cannot determine OLX version: no git repository and no VERSION file." >&2
+	return 1
+}
+
+# get the full OLX version-string, i.e. get_olx_version() plus the git hash:
+#
+#   YYYYMMDD.N+git.HASH      e.g. 20260615.1+git.a6632ac
+#
+# where HASH is the 7-char hash of the HEAD commit. Use this where the exact
+# build provenance matters (crash reports, the in-binary version). When git
+# is unavailable it degrades to plain get_olx_version(); if that can't
+# determine a version either, the failure propagates (non-zero return).
+get_olx_version_with_hash() {
+	_olx_ver="$(get_olx_version)" || return 1
+	if command -v git >/dev/null 2>&1 && git rev-parse --git-dir >/dev/null 2>&1; then
+		_olx_hash="$(git rev-parse --short=7 HEAD)"
+		echo "${_olx_ver}+git.${_olx_hash}"
+		return 0
+	fi
+	echo "${_olx_ver}"
 }
 
 # builds a parameter string for a list of paths

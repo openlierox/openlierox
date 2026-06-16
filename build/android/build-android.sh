@@ -114,8 +114,8 @@ if [ "$SKIP_DATA" -eq 0 ]; then
     fi
     cp "$ANDROID_DIR/deps/cacert.pem" "$ANDROID_DIR/output/assets/gamedir/cacert.pem"
     # Drop a marker so the runtime can check that the data was extracted.
-    echo "$("$OLX_ROOT/get_version.sh" 2>/dev/null || echo unknown)" \
-        > "$ANDROID_DIR/output/assets/gamedir.version"
+    # get_version.sh fails the build if the version can't be determined.
+    "$OLX_ROOT/get_version.sh" > "$ANDROID_DIR/output/assets/gamedir.version"
 fi
 
 # ---------- gradle build ---------------------------------------------------
