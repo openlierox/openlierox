@@ -427,7 +427,9 @@ bool VideoPostProcessor::initWindow() {
 #endif
 	
 setvideomode:
-	m_window = SDL_CreateWindow(GetGameVersion().asHumanString().c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, screenWidth(), screenHeight(), vidflags);
+	// Window title: short version string (see GetGameVersionString), not the
+	// integer-parsed asHumanString() which mangles the new format.
+	m_window = SDL_CreateWindow((std::string(GetGameName()) + " " + GetGameVersionString()).c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, screenWidth(), screenHeight(), vidflags);
 	
 	if(m_window.get() == NULL) {
 		if (resetting)  {

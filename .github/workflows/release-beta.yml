@@ -60,14 +60,15 @@ jobs:
         id: meta
         run: |
           set -euo pipefail
+          # Short version (no hash) for the artifact filenames / notes;
+          # full version (with the +git.HASH provenance) for the release
+          # title, which should still identify the exact commit.
           VERSION="$(./get_version.sh)"
-          # 7-char hash: GitHub-native convention, effectively unique for
-          # identifying which commit a release was built from.
-          SHORT_SHA="$(git rev-parse --short=7 "$GITHUB_SHA")"
+          VERSION_FULL="$(./get_version_full.sh)"
           # One rolling pre-release per release branch, refreshed each merge.
           TAG="${GITHUB_REF_NAME}-beta-latest"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "short_sha=${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+          echo "version_full=${VERSION_FULL}" >> "$GITHUB_OUTPUT"
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
           echo "Artifacts to publish:"
           ls -la dist
@@ -77,7 +78,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.meta.outputs.tag }}
           VERSION: ${{ steps.meta.outputs.version }}
-          SHORT_SHA: ${{ steps.meta.outputs.short_sha }}
+          VERSION_FULL: ${{ steps.meta.outputs.version_full }}
         run: |
           set -euo pipefail
 
@@ -121,7 +122,7 @@ jobs:
           gh release delete "$TAG" --cleanup-tag --yes 2>/dev/null || true
 
           gh release create "$TAG" \
-            --title "OpenLieroX ${VERSION} (latest beta, ${SHORT_SHA})" \
+            --title "OpenLieroX ${VERSION_FULL} (latest beta)" \
             --notes "$NOTES" \
             --prerelease \
             --target "$GITHUB_SHA" \

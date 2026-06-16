@@ -123,6 +123,14 @@ PROJECT(openlierox)
 
 EXEC_PROGRAM(mkdir ARGS -p bin OUTPUT_VARIABLE DUMMY)
 
+# Generate Version_generated.h (#define LX_VERSION) from get_version_full.sh
+# (full version incl. git hash). Done for all platforms (Windows/MinGW has sh
+# too) and prepended to the include path so it wins over the empty stub in
+# include/. Without it Version.cpp has no LX_VERSION and fails to build.
+include(${OLXROOTDIR}/CMakeOlxVersion.cmake)
+olx_generate_version_header(${OLXROOTDIR} OLX_VERSION_INCLUDE_DIR)
+INCLUDE_DIRECTORIES(BEFORE ${OLX_VERSION_INCLUDE_DIR})
+
 # main includes
 INCLUDE_DIRECTORIES(${OLXROOTDIR}/optional-includes/generated)
 IF(WIN32 AND NOT MSVC)
@@ -299,10 +307,6 @@ ELSE(WIN32)
 	ADD_DEFINITIONS(-Wall)
 	# -std= belongs to CXX only — AppleClang rejects it for C sources.
 	add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:-std=c++0x>")
-
-	EXEC_PROGRAM(sh ARGS ${CMAKE_CURRENT_SOURCE_DIR}/get_version.sh OUTPUT_VARIABLE OLXVER)
-	string(REGEX REPLACE "[\r\n]" " " OLXVER "${OLXVER}")
-	MESSAGE( "OLX_VERSION = ${OLXVER}" )
 
 	IF(MINGW_CROSS_COMPILE)
 		ADD_DEFINITIONS(-DHAVE_BOOST -DZLIB_WIN32_NODLL -DLIBXML_STATIC -DNONDLL -DCURL_STATICLIB -D_XBOX # _XBOX to link OpenAL statically

@@ -18,8 +18,12 @@
 
 #include "Version_generated.h"
 
+// LX_VERSION is generated from get_version_full.sh into Version_generated.h
+// (see CMakeOlxVersion.cmake). If that generation didn't run, fail the build
+// rather than baking in a bogus version — a versionless binary should never
+// ship.
 #ifndef		LX_VERSION
-#	define		LX_VERSION	"0.59_beta11"
+#	error	"LX_VERSION is not defined: Version_generated.h was not produced. The build must generate it from get_version_full.sh (see CMakeOlxVersion.cmake)."
 #endif
 
 #define		GAMENAME			"OpenLieroX"
@@ -31,6 +35,22 @@ const char* const fullGameName = GAMENAME "/" LX_VERSION;
 
 const char* GetGameName() {
 	return GAMENAME;
+}
+
+const std::string& GetGameVersionStringFull() {
+	static const std::string ver = LX_VERSION;
+	return ver;
+}
+
+const std::string& GetGameVersionString() {
+	static std::string ver;
+	if(ver.empty()) {
+		ver = LX_VERSION;
+		// Strip the "+git.HASH" provenance suffix; keep just "YYYYMMDD.N".
+		size_t p = ver.find('+');
+		if(p != std::string::npos) ver.erase(p);
+	}
+	return ver;
 }
 
 INLINE void setByString__optionalPostCheck(const Version* version, const std::string& versionStr) {

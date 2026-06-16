@@ -135,7 +135,7 @@ EOF
 # website's update step) read the exact version/commit a bundle came from
 # instead of eyeballing the release title, and script a versioned rollout
 # (name the target folder, record provenance) without guessing.
-OLX_VERSION="$("$OLX_ROOT/get_version.sh" 2>/dev/null || echo unknown)"
+OLX_VERSION="$("$OLX_ROOT/get_version.sh")"  # fails the build if undeterminable
 OLX_COMMIT="$(git -C "$OLX_ROOT" rev-parse HEAD 2>/dev/null || echo unknown)"
 OLX_COMMIT_SHORT="$(git -C "$OLX_ROOT" rev-parse --short HEAD 2>/dev/null || echo unknown)"
 OLX_COMMIT_DATE="$(git -C "$OLX_ROOT" show -s --format=%cI HEAD 2>/dev/null || echo unknown)"
