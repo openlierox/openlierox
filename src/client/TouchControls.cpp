@@ -11,9 +11,11 @@
  *        the right-edge action-button column) is an INVISIBLE virtual joystick.
  *        First finger landing there sets an anchor; dragging from the
  *        anchor presses Left/Right (movement) and Up/Down (aim).
- *        Both axes use the same generous threshold (~2x worm width):
- *        |dx| > gWalkSensitivity for Left/Right, |dy| > gAimSensitivity
- *        for Up/Down.
+ *        Horizontal axis use the same generous threshold (~2x worm width):
+ *        |dx| > gWalkSensitivity for Left/Right.
+ *        Aiming is proportional to how far you are moving your finger up/down,
+ *        it keeps the original LX aiming speed and acceleration but
+ *        stops the crosshair movement when aiming time exceeds |dy| * gAimSensitivity.
  *      - Right half hosts: Jump, Rope, Fire, plus Prev/Next-Weapon
  *        (one-shot taps that synthesise SelectWeapon + Left/Right).
  *
@@ -110,7 +112,7 @@ constexpr int kMaxButtons = 32;
 
 static int  gVJoyAreaRight    = 525;
 static int  gWalkSensitivity  = 40;
-static int  gAimSensitivity   = 40;
+static float gAimSensitivity   = 1.0f;
 static bool gShowButtonBorder = true;
 
 // Optional minimap-position override. When the active layout specifies
@@ -392,8 +394,10 @@ struct VJoy {
 	int anchorX, anchorY;
 	int curX, curY;
 	bool heldL, heldR, heldU, heldD;
+	// Positive = move crosshair down, negative = move crosshair up.
+	int aimTime;
 };
-static VJoy gVJoy = {false, 0, 0, 0, 0, 0, false, false, false, false};
+static VJoy gVJoy = {false, 0, 0, 0, 0, 0, false, false, false, false, 0};
 
 static LayoutMode gMode      = LM_PLAYING;
 static bool       gInited    = false;
@@ -530,8 +534,22 @@ static void vjoyUpdate(int lx, int ly) {
 	const int dy = ly - gVJoy.anchorY;
 	setVJoyDir(gVJoy.heldL, dx < -gWalkSensitivity, A::Left);
 	setVJoyDir(gVJoy.heldR, dx >  gWalkSensitivity, A::Right);
-	setVJoyDir(gVJoy.heldU, dy < -gAimSensitivity,  A::Up);
-	setVJoyDir(gVJoy.heldD, dy >  gAimSensitivity,  A::Down);
+	gVJoy.aimTime = dy * gAimSensitivity;
+	gVJoy.anchorY = ly;
+	if (gVJoy.aimTime == 0) {
+		setVJoyDir(gVJoy.heldU, false, A::Up);
+		setVJoyDir(gVJoy.heldD, false, A::Down);
+	} else if (gVJoy.aimTime > 0) {
+		setVJoyDir(gVJoy.heldU, false, A::Up);
+		setVJoyDir(gVJoy.heldD, true, A::Down);
+		gVJoy.aimTime -= tLX->fDeltaTime.milliseconds();
+		gVJoy.aimTime = MAX(0, gVJoy.aimTime);
+	} else {
+		setVJoyDir(gVJoy.heldU, true, A::Up);
+		setVJoyDir(gVJoy.heldD, false, A::Down);
+		gVJoy.aimTime += tLX->fDeltaTime.milliseconds();
+		gVJoy.aimTime = MIN(0, gVJoy.aimTime);
+	}
 }
 
 static void vjoyRelease() {
@@ -542,6 +560,7 @@ static void vjoyRelease() {
 	if(gVJoy.heldR) { TouchScreenInput::pushEvent(kTouchPlayer, A::Right, StateChange::Up); gVJoy.heldR = false; }
 	if(gVJoy.heldU) { TouchScreenInput::pushEvent(kTouchPlayer, A::Up,    StateChange::Up); gVJoy.heldU = false; }
 	if(gVJoy.heldD) { TouchScreenInput::pushEvent(kTouchPlayer, A::Down,  StateChange::Up); gVJoy.heldD = false; }
+	gVJoy.aimTime = 0;
 	gVJoy.active = false;
 }
 
@@ -576,7 +595,7 @@ static void renderVJoy(SDL_Surface* dst) {
 	if(!gVJoy.active) return;
 
 	const int ax = gVJoy.anchorX;
-	const int ay = gVJoy.anchorY;
+	const int ay = gVJoy.anchorY - gVJoy.aimTime / gAimSensitivity;
 	const int cx = gVJoy.curX;
 	const int cy = gVJoy.curY;
 
