@@ -112,7 +112,7 @@ constexpr int kMaxButtons = 32;
 
 static int  gVJoyAreaRight    = 525;
 static int  gWalkSensitivity  = 40;
-static float gAimSensitivity   = 1.0f;
+static float gAimSensitivity   = 30.0f;
 static bool gShowButtonBorder = true;
 
 // Optional minimap-position override. When the active layout specifies
@@ -134,7 +134,7 @@ static std::vector<Button> gWeaponSelectButtons;
 static void applyHardcodedDefaults() {
 	gVJoyAreaRight    = 525;
 	gWalkSensitivity  = 40;
-	gAimSensitivity   = 40;
+	gAimSensitivity   = 30.0f;
 	gShowButtonBorder = true;
 	gMinimapOverride  = false;
 	gMinimapX         = 0;
@@ -325,7 +325,7 @@ static bool loadLayoutFromYaml(const std::string& name) {
 			const YAML::Node& v = root["vjoy"];
 			if(v["area_right"])       vjoyAreaRight   = v["area_right"].as<int>();
 			if(v["walk_sensitivity"]) walkSensitivity = v["walk_sensitivity"].as<int>();
-			if(v["aim_sensitivity"])  aimSensitivity  = v["aim_sensitivity"].as<int>();
+			if(v["aim_sensitivity"])  aimSensitivity  = v["aim_sensitivity"].as<float>();
 		}
 		if(root["button-border"]) showButtonBorder = root["button-border"].as<bool>();
 		bool minimapOverride = false;

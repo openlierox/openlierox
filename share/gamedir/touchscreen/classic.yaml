@@ -44,22 +44,27 @@ button-border: false
 vjoy:
   area_right: 420
   walk_sensitivity: 40
-  aim_sensitivity: 40
+  aim_sensitivity: 30.0
 
 # Minimap position (top-left, logical 640x480) while the touch UI is
 # visible. Right-aligned (640 - 128 = 512 for the default 128-wide
 # minimap) and pushed up to y=70 so its bottom (y=166) clears the
 # enlarged top row at y=180 with a small breathing gap.
-minimap:
-  x: 512
-  y: 70
+# TODO: overriding minimap position causes graphical glitches during net play
+#minimap:
+#  x: 512
+#  y: 70
 
 # In-game (LM_PLAYING).
-# Right-hand action cluster. FIRE is the most-used action, so it gets
-# the full-width bottom row — easy to hit without aiming.
-#     PREV(107)   NEXT(108)        (y=180, h=100)
-#     JUMP(107)   ROPE(108)        (y=280, h=100)
-#     <--      FIRE (215)     -->  (y=380, h=100, full width)
+# Right-hand action cluster.
+# Every platformer game on Android has touchscreen layout like this -
+# joystick to the left, Fire and Jump buttons to the right,
+# with Jump button at the corner, all other buttons above them
+# (see: Swordigo, SuperTux, Dan the Man).
+#
+#     PREV(107)   NEXT(108)  (y=180, h=100)
+#             ROPE(108)      (y=280, h=200)
+#     FIRE (215)  JUMP(107)  (y=380, h=100)
 #
 # Button artwork is the original Keen theme from the commandergenius port
 # (project/themes/Keen in pelya/commandergenius), copied verbatim to
@@ -73,9 +78,9 @@ playing:
   - { x: 560, y:   5, w:  75, h:  40, action: menu,                       label: "MENU" }
   - { x: 425, y: 180, w: 107, h: 100, action: prev_weapon,                label: "<<",   image: prev_weapon.png }
   - { x: 532, y: 180, w: 108, h: 100, action: next_weapon,                label: ">>",   image: next_weapon.png }
-  - { x: 425, y: 280, w: 107, h: 100, action: hold, binding: jump,        label: "JUMP", image: jump.png    }
-  - { x: 532, y: 280, w: 108, h: 100, action: hold, binding: rope,        label: "ROPE", image: rope.png    }
-  - { x: 425, y: 380, w: 215, h: 100, action: hold, binding: shoot,       label: "FIRE", image: shoot.png   }
+  - { x: 425, y: 280, w: 215, h: 100, action: hold, binding: rope,        label: "ROPE", image: rope.png    }
+  - { x: 425, y: 380, w: 107, h: 100, action: hold, binding: shoot,       label: "FIRE", image: shoot.png   }
+  - { x: 532, y: 380, w: 108, h: 100, action: hold, binding: jump,        label: "JUMP", image: jump.png    }
 
 # Weapon picker (LM_WEAPON_SELECT).
 # Same picker UI as the right-aligned layout — D-pad on the lower-left,

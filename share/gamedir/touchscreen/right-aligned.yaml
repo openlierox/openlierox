@@ -23,20 +23,21 @@ button-border: true
 #   area_right         logical x past which the joystick does NOT engage
 #                      (flush against the action-button column on the right).
 #   walk_sensitivity   horizontal drag from the anchor before Left/Right fires.
-#   aim_sensitivity    vertical drag from the anchor before Up/Down fires.
+#   aim_sensitivity    vertical drag speed.
 # Sensitivities are about 2x worm width so wobble doesn't pace the worm
 # or creep the aim while standing still.
 vjoy:
   area_right: 525
   walk_sensitivity: 40
-  aim_sensitivity: 40
+  aim_sensitivity: 30.0
 
 # Minimap position (top-left, logical 640x480) while the touch UI is
 # visible. Default minimap is 128x96 — these coords put it flush
 # against the bottom, just left of the right-edge action column.
-minimap:
-  x: 393
-  y: 384
+# TODO: overriding minimap position causes graphical glitches during net play
+#minimap:
+#  x: 393
+#  y: 384
 
 # Actions:
 #   hold          — bound key is held while a finger is on the button.
