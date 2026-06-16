@@ -35,9 +35,9 @@ vjoy:
 # visible. Default minimap is 128x96 — these coords put it flush
 # against the bottom, just left of the right-edge action column.
 # TODO: overriding minimap position causes graphical glitches during net play
-#minimap:
-#  x: 393
-#  y: 384
+minimap:
+  x: 393
+  y: 384
 
 # Actions:
 #   hold          — bound key is held while a finger is on the button.

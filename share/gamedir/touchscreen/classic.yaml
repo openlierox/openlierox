@@ -51,9 +51,9 @@ vjoy:
 # minimap) and pushed up to y=70 so its bottom (y=166) clears the
 # enlarged top row at y=180 with a small breathing gap.
 # TODO: overriding minimap position causes graphical glitches during net play
-#minimap:
-#  x: 512
-#  y: 70
+minimap:
+  x: 512
+  y: 70
 
 # In-game (LM_PLAYING).
 # Right-hand action cluster.
