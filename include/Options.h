@@ -286,6 +286,7 @@ public:
 	bool	bAutoTyping;
 	bool	bAntiAliasing;
 	bool	bMouseAiming;
+	bool	bAlwaysCenterWorm;	// Keep our own worm centered on screen even at the map borders. Centering is always on while touchscreen controls are active (so the on-screen controls can't cover our worm); this option additionally forces it for non-touchscreen players.
 	int		iMouseSensity;
 	std::string sTouchscreenControls;	// Tri-state "auto"/"true"/"false". "auto" enables on Android, disables elsewhere.
 	std::string sTouchscreenLayout;	// Name of layout file under share/gamedir/touchscreen/<name>.yaml.

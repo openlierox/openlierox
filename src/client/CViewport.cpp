@@ -23,6 +23,7 @@
 #include "MathLib.h"
 #ifndef DEDICATED_ONLY
 #include "sound/sfx.h"
+#include "TouchControls.h"
 #endif
 
 
@@ -312,6 +313,26 @@ void CViewport::Process(CViewport *pcViewList, int MWidth, int MHeight, int iGam
 	}	// switch
 
 
+	// Keep our own worm centered on screen even at the map borders, which means
+	// skipping the clamping for the follow viewport (the area beyond the map edge
+	// is left as background). This is enabled either explicitly via the option, or
+	// automatically while touchscreen controls are active, so the on-screen
+	// controls can't end up covering our worm against a map edge.
+	bool centerScreen = tLXOptions->bAlwaysCenterWorm;
+#ifndef DEDICATED_ONLY
+	if( TouchControls::IsActive() )
+		centerScreen = true;
+#endif
+	const bool centerOwnWorm = centerScreen && nType == VW_FOLLOW && pcTargetWorm;
+
+	// Before the worm has spawned (e.g. during weapon selection) it has no real
+	// position yet (defaults to ~0,0), so centering on it would dump us in the
+	// off-map corner. Instead, center the view on the middle of the map.
+	if( centerOwnWorm && !pcTargetWorm->haveSpawnedOnce() ) {
+		WorldX = (MWidth - Width) / 2;
+		WorldY = (MHeight - Height) / 2;
+	}
+
 	// Shake the viewport a bit
 	if(bShaking) {
 		if(tLX->currentTime - fShakestart > 0.2f) {
@@ -321,11 +342,13 @@ void CViewport::Process(CViewport *pcViewList, int MWidth, int MHeight, int iGam
 		else {
 
             // Don't shake the action/freelook cam
-            if( nType != VW_ACTIONCAM && nType != VW_FREELOOK && 
+            if( nType != VW_ACTIONCAM && nType != VW_FREELOOK &&
             	( cClient->getGameLobby()[FT_ScreenShaking] ) ) {
 
-                // Clamp it to the edges, then shake. So we can still see shaking near edges
-                Clamp(MWidth, MHeight);
+                // Clamp it to the edges, then shake. So we can still see shaking near edges.
+                // Skip when centering our own worm, so the centering isn't broken at borders.
+                if( !centerOwnWorm )
+                    Clamp(MWidth, MHeight);
 
 			    // Shake
 			    WorldX += (int)(GetRandomNum() * (float)iShakeAmount);
@@ -334,8 +357,9 @@ void CViewport::Process(CViewport *pcViewList, int MWidth, int MHeight, int iGam
 		}
 	}
 
-	// Clamp it
-	Clamp(MWidth, MHeight);
+	// Clamp it (unless we are centering our own spawned worm).
+	if( !centerOwnWorm )
+		Clamp(MWidth, MHeight);
 
 #ifndef DEDICATED_ONLY
 	m_listener->pos = Vec((float)WorldX, (float)WorldY) + Vec((float)(Width/2), (float)(Height/2));

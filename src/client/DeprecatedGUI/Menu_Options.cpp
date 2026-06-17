@@ -146,6 +146,7 @@ enum {
 	og_ScreenShaking,
 	og_DamagePopups,
 	og_ColorizeDamageByWorm,
+	og_AlwaysCenterWorm,
 };
 
 enum {
@@ -543,6 +544,9 @@ bool Menu_OptionsInitialize()
 
 	cOpt_Game.Add( new CLabel("Colorize damage popups by worm",tLX->clNormalLabel), Static, 330, 240, 0,0);
 	cOpt_Game.Add( new CCheckbox(tLXOptions->bColorizeDamageByWorm),     og_ColorizeDamageByWorm, 550, 240, 17,17);
+
+	cOpt_Game.Add( new CLabel("Always center worm",tLX->clNormalLabel), Static, 330, 270, 0,0);
+	cOpt_Game.Add( new CCheckbox(tLXOptions->bAlwaysCenterWorm),     og_AlwaysCenterWorm, 550, 270, 17,17);
 
 /*
 	cOpt_Game.Add( new CLabel("Allow mouse control (Server)",tLX->clNormalLabel), Static, 330, 360, 0,0);
@@ -1087,6 +1091,11 @@ void Menu_OptionsFrame()
 				case og_ColorizeDamageByWorm:
 					if(ev->iEventMsg == CHK_CHANGED)
 						tLXOptions->bColorizeDamageByWorm = cOpt_Game.SendMessage(og_ColorizeDamageByWorm, CKM_GETCHECK, (uintptr_t)0, 0) != 0;
+					break;
+
+				case og_AlwaysCenterWorm:
+					if(ev->iEventMsg == CHK_CHANGED)
+						tLXOptions->bAlwaysCenterWorm = cOpt_Game.SendMessage(og_AlwaysCenterWorm, CKM_GETCHECK, (uintptr_t)0, 0) != 0;
 					break;
 			}
 		}

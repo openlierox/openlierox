@@ -558,16 +558,15 @@ void CClient::Draw(const SmartPointer<SDL_Surface>& bmpDest)
 			}
 		}
 
-		// Vertical separator between the two split-screen viewports. Drawn
-		// AFTER (on top of) the viewports so it reliably paints the gap and the
-		// viewports' edge columns every frame: those columns are not fully
-		// repainted by the viewport blit, so stale weapon-select pixels lingered
-		// there and flickered between the double buffers. Covers the gap plus
-		// 1px of each viewport edge.
+		// Vertical separator filling the gap between the two split-screen
+		// viewports. This strip lies outside both viewport rects, so the
+		// per-viewport black fill in DrawViewport_Game never reaches it, and
+		// effects that draw outside the viewport clip (e.g. blood splatter) can
+		// leave artifacts there. Repaint it every frame to keep the gap clean.
 		if(cViewports[0].getUsed() && cViewports[1].getUsed()) {
 			const int gapL = cViewports[0].GetLeft() + cViewports[0].GetVirtW();
 			const int gapR = cViewports[1].GetLeft();
-			DrawRectFill(bmpDest.get(), gapL - 1, 0, gapR + 1, 480, tLX->clViewportSplit);
+			DrawRectFill(bmpDest.get(), gapL, 0, gapR, 480, tLX->clViewportSplit);
 		}
 
 		int MiniMapX = tInterfaceSettings.MiniMapX;
@@ -935,7 +934,13 @@ void CClient::DrawViewport_Game(const SmartPointer<SDL_Surface>& bmpDest, CViewp
 	// Set the clipping
 	SDL_Rect rect = v->getRect();
 	ScopedSurfaceClip clip(bmpDest.get(), rect);
-	
+
+	// Clear the viewport to black first. The map is only blitted where it actually
+	// exists, so any area outside the map (centered camera at the borders, or a map
+	// smaller than the viewport) would otherwise show flickering stale framebuffer
+	// content. FillSurface respects the clip rect, so this fills just this viewport.
+	FillSurface(bmpDest.get(), Color(0,0,0));
+
 	v->gusRender(bmpDest);
 }
 
