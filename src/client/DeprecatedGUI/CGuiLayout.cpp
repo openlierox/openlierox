@@ -221,6 +221,17 @@ void CGuiLayout::Draw(SDL_Surface * bmpDest)
 }
 
 
+/////////////////
+// Shift every widget by (dx,dy). Used to center an in-game popup layout
+// (which is authored for a 640-wide canvas) on a wider screen.
+void CGuiLayout::moveWidgets(int dx, int dy)
+{
+	if(dx == 0 && dy == 0) return;
+	for( std::list<CWidget *>::iterator w = cWidgets.begin() ; w != cWidgets.end() ; w++)
+		(*w)->move(dx, dy);
+}
+
+
 //////////////////
 // Build the layout according to code specified in skin file
 bool CGuiLayout::Build()

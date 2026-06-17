@@ -1590,9 +1590,19 @@ void CClient::SetupViewports(CWorm *w1, CWorm *w2, int type1, int type2)
 		h = 480;
 	}
 	
+	// Non-widescreen games are constrained to the base menuWidth so that a
+	// wider screen gives no gameplay advantage (the narrower view is presented
+	// centered with black bars, see VideoPostProcessor::render). Widescreen
+	// games use the full screen width. Set the display width up front so the
+	// viewports are sized from it (the gameplay draw keeps it updated too).
+	VideoPostProcessor::get()->setDisplayScreenWidth(
+		game.useWideScreen() ? VideoPostProcessor::get()->screenWidth()
+		                     : VideoPostProcessor::menuWidth);
+	const int sw = VideoPostProcessor::get()->displayScreenWidth();
+
 	// One worm
 	if(w2 == NULL) {
-		cViewports[0].Setup(0, top, 640, h, type1);
+		cViewports[0].Setup(0, top, sw, h, type1);
 		if(w1)
 			cViewports[0].setSmooth( !OwnsWorm(w1->getID()) );
 		cViewports[0].setTarget(w1);
@@ -1601,13 +1611,16 @@ void CClient::SetupViewports(CWorm *w1, CWorm *w2, int type1, int type2)
 
 	// Two wormsize
 	else  {
-		cViewports[0].Setup(0, top, 318, h, type1);
+		// Split screen: two equal halves separated by a 4 px gap.
+		const int gap = 4;
+		const int half = (sw - gap) / 2;
+		cViewports[0].Setup(0, top, half, h, type1);
 		if(w1)
 			cViewports[0].setSmooth( !OwnsWorm(w1->getID()) );
 		cViewports[0].setTarget(w1);
 		cViewports[0].setOrigTarget(w1);
-		
-		cViewports[1].Setup(322, top, 318, h, type2);
+
+		cViewports[1].Setup(half + gap, top, half, h, type2);
 		if(w2)
 			cViewports[1].setSmooth( !OwnsWorm(w2->getID()) );
 		cViewports[1].setTarget(w2);

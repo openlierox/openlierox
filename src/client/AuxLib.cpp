@@ -426,6 +426,26 @@ bool VideoPostProcessor::initWindow() {
 	}
 #endif
 	
+	// Derive the screen width from the desktop's aspect ratio while keeping
+	// the height fixed at screenHeight() (480). 4:3 -> 640, 16:10 -> 768,
+	// 16:9 -> 854, etc. Rounded to an even number to keep buffers/textures happy.
+	{
+		SDL_DisplayMode dm;
+		int displayIdx = 0;
+		if(SDL_GetDesktopDisplayMode(displayIdx, &dm) == 0 && dm.w > 0 && dm.h > 0) {
+			double w = (double)screenHeight() * (double)dm.w / (double)dm.h;
+			int rounded = ((int)(w + 0.5) + 1) & ~1;
+			if(rounded < 320) rounded = 320;
+			m_screenWidth = rounded;
+			notes << "desktop mode: " << dm.w << "x" << dm.h
+				<< " -> using " << m_screenWidth << "x" << screenHeight() << endl;
+		} else {
+			m_screenWidth = 640;
+			warnings << "could not query desktop display mode (" << SDL_GetError()
+				<< "), falling back to " << m_screenWidth << "x" << screenHeight() << endl;
+		}
+	}
+
 setvideomode:
 	// Window title: short version string (see GetGameVersionString), not the
 	// integer-parsed asHumanString() which mangles the new format.
@@ -632,7 +652,20 @@ void VideoPostProcessor::render() {
 	if(!get()->m_renderer.get()) return;
 
 	SDL_RenderClear(get()->m_renderer.get());
-	SDL_RenderCopy(get()->m_renderer.get(), get()->m_videoTexture.get(), NULL, NULL);
+	const int dw = get()->displayScreenWidth();
+	const int centerOffset = get()->displayScreenOffsetX();
+	if(centerOffset > 0) {
+		// The frame's content (a menu, or a network game) is only dw wide and is
+		// drawn into the left dw columns of the (wider) video surface. Present
+		// just that region, centered, so it appears in the middle of the screen
+		// with black bars on the sides. The mouse is shifted by the same offset
+		// (see HandleMouseState) so clicks still line up.
+		SDL_Rect src = { 0, 0, dw, get()->screenHeight() };
+		SDL_Rect dst = { centerOffset, 0, dw, get()->screenHeight() };
+		SDL_RenderCopy(get()->m_renderer.get(), get()->m_videoTexture.get(), &src, &dst);
+	} else {
+		SDL_RenderCopy(get()->m_renderer.get(), get()->m_videoTexture.get(), NULL, NULL);
+	}
 	SDL_RenderPresent(get()->m_renderer.get());
 
 #ifdef __EMSCRIPTEN__

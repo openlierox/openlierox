@@ -121,6 +121,9 @@ public:
 
 	gui_event_t	*Process();
 	void		Draw(SDL_Surface * bmpDest);
+	// Shift every widget by (dx,dy). Used to center an in-game popup layout
+	// on a wider-than-640 screen (see VideoPostProcessor::popupCenterOffsetX).
+	void		moveWidgets(int dx, int dy);
 
 	void		Shutdown();
 
