@@ -82,17 +82,17 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Notes differ per release: the rolling one explains that artifacts
-          # accumulate; the archival one is a fixed snapshot of a single build.
+          # Notes differ per release: the rolling one is replaced every merge;
+          # the archival one is a fixed snapshot of a single build.
           NOTES_ROLLING="$(cat <<EOF
           Automated build of OpenLieroX **${VERSION}**.
 
           - Branch: \`${GITHUB_REF_NAME}\`
           - Commit: ${GITHUB_SHA}
 
-          This is a rolling "latest" release. New build artifacts are added on
-          every merge; previously published artifacts are kept. For a specific
-          build, see the per-version release tagged \`${VERSION}\`.
+          This is a rolling "latest" release that always reflects the newest
+          build: its artifacts are replaced on every merge. For a specific
+          older build, see the per-version release tagged \`${VERSION}\`.
           EOF
           )"
 
@@ -133,9 +133,14 @@ jobs:
 
           # Ensure a release exists for the given tag (creating it on the right
           # commit if missing, updating its title/notes if it already does),
-          # then add this build's artifacts to it. Existing assets whose names
-          # collide with the incoming ones are overwritten (--clobber); any
-          # others are kept.
+          # then upload this build's artifacts to it.
+          #
+          # $5 (clear) controls what happens to assets already attached to an
+          # existing release:
+          #   true  - the rolling release: wipe every existing asset first so it
+          #           only ever holds the current build.
+          #   false - the archival release: keep whatever is there; --clobber
+          #           still overwrites same-named assets on a re-run.
           #
           # --prerelease=false is explicit: a release flagged as a prerelease
           # cannot also be marked --latest (GitHub returns "Latest release
@@ -145,8 +150,18 @@ jobs:
           # so exactly one release (the rolling one) carries the badge and the
           # archival release never silently steals it.
           publish_release() {
-            local tag="$1" title="$2" notes="$3" latest="$4"
+            local tag="$1" title="$2" notes="$3" latest="$4" clear="$5"
             if gh release view "$tag" >/dev/null 2>&1; then
+              if [ "$clear" = "true" ]; then
+                # Remove all previously published assets before re-uploading so
+                # the rolling release reflects only the newest build.
+                gh release view "$tag" --json assets --jq '.assets[].name' \
+                  | while IFS= read -r asset; do
+                      [ -n "$asset" ] || continue
+                      echo "Removing stale asset: $asset"
+                      gh release delete-asset "$tag" "$asset" --yes
+                    done
+              fi
               gh release edit "$tag" \
                 --title "$title" \
                 --notes "$notes" \
@@ -164,15 +179,17 @@ jobs:
           }
 
           # Rolling "latest master" release: holds the GitHub "Latest" badge and
-          # accumulates artifacts across merges.
+          # is wiped clean each merge so it only carries the newest build.
           publish_release "$TAG" \
             "OpenLieroX ${VERSION_FULL} (latest master)" \
             "$NOTES_ROLLING" \
+            true \
             true
 
           # Archival per-version release: one immutable snapshot per build,
-          # tagged with the bare version, never marked latest.
+          # tagged with the bare version, never marked latest, never cleared.
           publish_release "$VERSION" \
             "OpenLieroX ${VERSION_FULL}" \
             "$NOTES_VERSION" \
+            false \
             false
