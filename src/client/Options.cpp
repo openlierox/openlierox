@@ -216,6 +216,7 @@ bool GameOptions::Init() {
 		( tLXOptions->sTheme, "Game.Theme", "" )
 		( tLXOptions->bAntiAliasing, "Game.Antialiasing", true )
 		( tLXOptions->bMouseAiming, "Game.MouseAiming", false ) // TODO: rename to mouse control?
+		( tLXOptions->bAlwaysCenterWorm, "Game.AlwaysCenterWorm", false )
 		( tLXOptions->iMouseSensity, "Game.MouseSensity", 200 )
 		( tLXOptions->sTouchscreenControls, "Game.TouchscreenControls", "auto" )
 		( tLXOptions->sTouchscreenLayout, "Game.TouchscreenLayout", "classic" )
