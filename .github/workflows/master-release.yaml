@@ -120,15 +120,23 @@ jobs:
           # Ensure the rolling "latest" release exists, then add this build's
           # artifacts to it. Old artifacts are kept; only assets whose names
           # collide with the incoming ones are overwritten (--clobber).
+          #
+          # --prerelease=false is explicit on both paths: a release flagged as
+          # a prerelease cannot also be marked --latest (GitHub returns
+          # "Latest release cannot be draft or prerelease."). The tag may have
+          # been left behind by the previous beta pipeline as a prerelease, so
+          # we always clear that flag while promoting it to latest.
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release edit "$TAG" \
               --title "OpenLieroX ${VERSION_FULL} (latest master)" \
               --notes "$NOTES" \
+              --prerelease=false \
               --latest
           else
             gh release create "$TAG" \
               --title "OpenLieroX ${VERSION_FULL} (latest master)" \
               --notes "$NOTES" \
+              --prerelease=false \
               --latest \
               --target "$GITHUB_SHA"
           fi
