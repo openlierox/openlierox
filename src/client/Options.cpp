@@ -220,6 +220,7 @@ bool GameOptions::Init() {
 		( tLXOptions->iMouseSensity, "Game.MouseSensity", 200 )
 		( tLXOptions->sTouchscreenControls, "Game.TouchscreenControls", "auto" )
 		( tLXOptions->sTouchscreenLayout, "Game.TouchscreenLayout", "classic" )
+		( tLXOptions->bTouchscreenDoubleShootToSwitchWeapon, "Game.TouchscreenDoubleShootToSwitchWeapon", false )
 		( tLXOptions->bAntilagMovementPrediction, "Game.AntilagMovementPrediction", true )
 		( tLXOptions->sLastSelectedPlayer, "Game.LastSelectedPlayer", "" )
 		( tLXOptions->sLastSelectedPlayer2, "Game.LastSelectedPlayer2", "" )
