@@ -415,6 +415,14 @@ void CClient::DrawBox(SDL_Surface * dst, int x, int y, int w)
 // Main drawing routines
 void CClient::Draw(const SmartPointer<SDL_Surface>& bmpDest)
 {
+	// Widescreen games use the full screen width; others are constrained to the
+	// base menuWidth (presented centered, with black bars) so that a wider
+	// screen gives no gameplay advantage. This also overrides the menuWidth set
+	// by Menu_Frame once we are in a widescreen game.
+	VideoPostProcessor::get()->setDisplayScreenWidth(
+		game.useWideScreen() ? VideoPostProcessor::get()->screenWidth()
+		                     : VideoPostProcessor::menuWidth);
+
 #ifdef DEBUG
 	struct DrawDebugStrPostHandler {
 		CClient& cl;
@@ -508,7 +516,7 @@ void CClient::Draw(const SmartPointer<SDL_Surface>& bmpDest)
 	if(cViewports[1].getUsed())
 		DrawRectFill(bmpDest,640/2-2,0,640/2+2, bgImage.get() ? (480-bgImage.get()->h) : (384), tLX->clViewportSplit);
 	*/
-	DrawRectFill(bmpDest.get(), 640/2-2, 0, 640/2+2, 480, tLX->clViewportSplit);
+	// (The split-screen separator is drawn after the viewports, below.)
 
 	// Top bar (do not draw for Gusanos)
 	/*
@@ -550,6 +558,18 @@ void CClient::Draw(const SmartPointer<SDL_Surface>& bmpDest)
 			}
 		}
 
+		// Vertical separator between the two split-screen viewports. Drawn
+		// AFTER (on top of) the viewports so it reliably paints the gap and the
+		// viewports' edge columns every frame: those columns are not fully
+		// repainted by the viewport blit, so stale weapon-select pixels lingered
+		// there and flickered between the double buffers. Covers the gap plus
+		// 1px of each viewport edge.
+		if(cViewports[0].getUsed() && cViewports[1].getUsed()) {
+			const int gapL = cViewports[0].GetLeft() + cViewports[0].GetVirtW();
+			const int gapR = cViewports[1].GetLeft();
+			DrawRectFill(bmpDest.get(), gapL - 1, 0, gapR + 1, 480, tLX->clViewportSplit);
+		}
+
 		int MiniMapX = tInterfaceSettings.MiniMapX;
 		int MiniMapY = tInterfaceSettings.MiniMapY;
 		//if(game.gameScript() && game.gameScript()->gusEngineUsed()) {
@@ -564,8 +584,14 @@ void CClient::Draw(const SmartPointer<SDL_Surface>& bmpDest)
 		if(TouchControls::IsActive()) {
 			int mx, my;
 			if(TouchControls::GetMinimapPosition(mx, my)) {
-				MiniMapX = mx;
-				MiniMapY = my;
+				// Negative coords are relative to the right/bottom screen edge
+				// (same convention as the touch buttons): anchor the minimap's
+				// far edge |coord| px from that edge, so it stays put on wider
+				// screens. Non-negative coords are the usual top-left origin.
+				const int sw = VideoPostProcessor::get()->displayScreenWidth();
+				const int sh = VideoPostProcessor::get()->screenHeight();
+				MiniMapX = (mx >= 0) ? mx : sw + mx - tInterfaceSettings.MiniMapW;
+				MiniMapY = (my >= 0) ? my : sh + my - tInterfaceSettings.MiniMapH;
 			} else {
 				constexpr int kTouchRightEdge = 525;
 				constexpr int kGap            = 4;
@@ -747,13 +773,29 @@ void CClient::Draw(const SmartPointer<SDL_Surface>& bmpDest)
 
 	// Go through and draw the first two worms select menus
 	if (game.state >= Game::S_Preparing && !bWaitingForMod) {
-		short i = 0;
+		// Darken the whole screen behind the weapon selection. Drawn once here
+		// (not per-viewport) so it always covers the full display width and
+		// does not stack alpha in split-screen.
+		bool anyWeaponSelect = false;
+		for_each_iterator(CWorm*, w, game.localWorms())
+			if(!w->get()->bWeaponsReady) anyWeaponSelect = true;
+		if(anyWeaponSelect)
+			DrawRectFill(bmpDest.get(), 0, 0,
+				VideoPostProcessor::get()->displayScreenWidth(),
+				VideoPostProcessor::get()->screenHeight(), Color(0,0,0,100));
+
 		for_each_iterator(CWorm*, w, game.localWorms()) {
-			++i;
+			if(w->get()->bWeaponsReady) continue;
+			// Render each worm's selection menu in its OWN viewport (the one
+			// targeting it), so in split-screen each player gets the menu
+			// centered in their half rather than a wrong/unused viewport.
 			CViewport* v = NULL;
-			if(i < NUM_VIEWPORTS) v = &cViewports[i];
-			if(!w->get()->bWeaponsReady)
-				w->get()->doWeaponSelectionFrame(bmpDest.get(), v);
+			for(int j = 0; j < NUM_VIEWPORTS; j++)
+				if(cViewports[j].getUsed() && cViewports[j].getTarget() == w->get()) {
+					v = &cViewports[j];
+					break;
+				}
+			w->get()->doWeaponSelectionFrame(bmpDest.get(), v);
 		}
 	}
 
@@ -1523,6 +1565,12 @@ void CClient::InitializeGameMenu()
 
 	AddColumns(Left);
 	AddColumns(Right);
+
+	// The game menu is authored for a 640-wide canvas. On a wider local game
+	// it would sit against the left edge, so shift the whole layout to center
+	// it (DrawGameMenu offsets its background bitmap by the same amount). The
+	// offset is 0 for network games, which are already presented centered.
+	cGameMenuLayout.moveWidgets(VideoPostProcessor::get()->popupCenterOffsetX(), 0);
 }
 
 
@@ -1535,11 +1583,12 @@ void CClient::DrawGameMenu(SDL_Surface * bmpDest)
 		return;
 	}
 	
-	// Background
+	// Background. Offset to match the centered layout (see InitializeGameMenu).
+	const int popupOff = VideoPostProcessor::get()->popupCenterOffsetX();
 	if (game.gameOver)  {
-		DrawImage(bmpDest, DeprecatedGUI::gfxGame.bmpGameover, 0, 0);
+		DrawImage(bmpDest, DeprecatedGUI::gfxGame.bmpGameover, popupOff, 0);
 	} else {
-		DrawImage(bmpDest, DeprecatedGUI::gfxGame.bmpScoreboard, 0, 0);
+		DrawImage(bmpDest, DeprecatedGUI::gfxGame.bmpScoreboard, popupOff, 0);
 	}
 
 	if (GetMouse()->Y >= DeprecatedGUI::gfxGame.bmpScoreboard.get()->h - GetMaxCursorHeight())

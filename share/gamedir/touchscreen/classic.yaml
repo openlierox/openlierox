@@ -46,13 +46,13 @@ vjoy:
   walk_sensitivity: 40
   aim_sensitivity: 30.0
 
-# Minimap position (top-left, logical 640x480) while the touch UI is
-# visible. Right-aligned (640 - 128 = 512 for the default 128-wide
-# minimap) and pushed up to y=70 so its bottom (y=166) clears the
-# enlarged top row at y=180 with a small breathing gap.
+# Minimap position while the touch UI is visible. Negative x anchors it to
+# the right screen edge (so it tracks the right-aligned action column on
+# wider screens); the default minimap is 128 wide. y=70 (top origin) pushes
+# it up so its bottom (y=166) clears the enlarged top row at y=180.
 # TODO: overriding minimap position causes graphical glitches during net play
 minimap:
-  x: 512
+  x: -5
   y: 70
 
 # In-game (LM_PLAYING).
@@ -75,12 +75,12 @@ minimap:
 # buttons use rotated selweap art — prev_weapon.png is selweap.png
 # rotated 90 degrees (clockwise), next_weapon.png is rotated 270.
 playing:
-  - { x: 560, y:   5, w:  75, h:  40, action: menu,                       label: "MENU" }
-  - { x: 425, y: 180, w: 107, h: 100, action: prev_weapon,                label: "<<",   image: prev_weapon.png }
-  - { x: 532, y: 180, w: 108, h: 100, action: next_weapon,                label: ">>",   image: next_weapon.png }
-  - { x: 425, y: 280, w: 215, h: 100, action: hold, binding: rope,        label: "ROPE", image: rope.png    }
-  - { x: 425, y: 380, w: 107, h: 100, action: hold, binding: shoot,       label: "FIRE", image: shoot.png   }
-  - { x: 532, y: 380, w: 108, h: 100, action: hold, binding: jump,        label: "JUMP", image: jump.png    }
+  - { x:   -5, y:   5, w:  75, h:  40, action: menu,                       label: "MENU" }
+  - { x: -113, y: 180, w: 107, h: 100, action: prev_weapon,                label: "<<",   image: prev_weapon.png }
+  - { x:   -5, y: 180, w: 108, h: 100, action: next_weapon,                label: ">>",   image: next_weapon.png }
+  - { x:   -5, y: 280, w: 215, h: 100, action: hold, binding: rope,        label: "ROPE", image: rope.png    }
+  - { x: -113, y: 380, w: 107, h: 100, action: hold, binding: shoot,       label: "FIRE", image: shoot.png   }
+  - { x:   -5, y: 380, w: 108, h: 100, action: hold, binding: jump,        label: "JUMP", image: jump.png    }
 
 # Weapon picker (LM_WEAPON_SELECT).
 # Same picker UI as the right-aligned layout — D-pad on the lower-left,
@@ -88,10 +88,10 @@ playing:
 # had a randomise shortcut; we adopt the modern UI here so all layouts
 # share the same picker.)
 weapon_select:
-  - { x: 560, y:   5, w:  75, h:  40, action: menu,                       label: "MENU"   }
-  - { x:  60, y: 240, w:  80, h:  70, action: hold, binding: up,          label: "^"      }
-  - { x:  60, y: 400, w:  80, h:  70, action: hold, binding: down,        label: "v"      }
-  - { x:   0, y: 320, w:  80, h:  70, action: hold, binding: left,        label: "<"      }
-  - { x: 140, y: 320, w:  80, h:  70, action: hold, binding: right,       label: ">"      }
-  - { x: 525, y: 240, w: 110, h:  95, action: randomize,                  label: "Random" }
-  - { x: 525, y: 345, w: 110, h:  95, action: done,                       label: "DONE"   }
+  - { x:  60, y: 240, w:  80, h: 70,  action: hold, binding: up,          label: "^"      }
+  - { x:  60, y: 400, w:  80, h: 70,  action: hold, binding: down,        label: "v"      }
+  - { x:   0, y: 320, w:  80, h: 70,  action: hold, binding: left,        label: "<"      }
+  - { x: 140, y: 320, w:  80, h: 70,  action: hold, binding: right,       label: ">"      }
+  - { x:  -5, y:   5, w:  75, h: 40,  action: menu,                       label: "MENU"   }
+  - { x:  -5, y: 240, w: 110, h: 95,  action: randomize,                  label: "Random" }
+  - { x:  -5, y: 345, w: 110, h: 95,  action: done,                       label: "DONE"   }

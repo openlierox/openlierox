@@ -264,7 +264,11 @@ void Menu_Frame() {
 #endif
 
 	if(game.state >= Game::S_Preparing) return; // could be already quitted
-	
+
+	// Menus are authored for menuWidth and presented centered on the screen.
+	// (Overwritten by the gameplay draw, see CClient::Draw.)
+	VideoPostProcessor::get()->setDisplayScreenWidth(VideoPostProcessor::menuWidth);
+
 	// Check if user pressed screenshot key
 	if (tLX->cTakeScreenshot.isDownOnce())  {
 		PushScreenshot("scrshots", "");
@@ -368,7 +372,9 @@ void Menu_RedrawMouse(bool total)
 // Draw a sub title
 void Menu_DrawSubTitle(SDL_Surface * bmpDest, int id)
 {
-	int x = VideoPostProcessor::videoSurface()->w/2;
+	// Center within the menu canvas (menuWidth), not the full screen: the
+	// whole menu is presented centered, so menu-local coordinates are used.
+	int x = VideoPostProcessor::menuWidth/2;
 	x -= tMenu->bmpSubTitles.get()->w/2;
 
 	DrawImageAdv(bmpDest,tMenu->bmpSubTitles, 0, id*70, x,30, tMenu->bmpSubTitles.get()->w, 65);
@@ -379,7 +385,9 @@ void Menu_DrawSubTitle(SDL_Surface * bmpDest, int id)
 // Draw a sub title advanced
 void Menu_DrawSubTitleAdv(SDL_Surface * bmpDest, int id, int y)
 {
-	int x = VideoPostProcessor::videoSurface()->w/2;
+	// Center within the menu canvas (menuWidth), not the full screen: the
+	// whole menu is presented centered, so menu-local coordinates are used.
+	int x = VideoPostProcessor::menuWidth/2;
 	x -= tMenu->bmpSubTitles.get()->w/2;
 
 	DrawImageAdv(bmpDest,tMenu->bmpSubTitles, 0, id*70, x,y, tMenu->bmpSubTitles.get()->w, 65);
@@ -546,7 +554,8 @@ MessageBoxReturnType Menu_MessageBox(const std::string& sTitle, const std::strin
 			longest_line = tw;
 	}
 	w = CLAMP(longest_line + 40, minw, maxw);
-	x = (VideoPostProcessor::get()->screenWidth() - w) / 2;
+	// Center within the menu canvas (menuWidth); the menu itself is centered.
+	x = (VideoPostProcessor::menuWidth - w) / 2;
 
 	// Handle multiline messages
 	lines = splitstring(sText, (size_t)-1, w - 2, tLX->cFont);

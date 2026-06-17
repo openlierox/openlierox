@@ -582,7 +582,7 @@ void Menu_Net_NETShowServer(const std::string& szAddress)
 
 	Menu_RedrawMouse(true);
 
-	int center = VideoPostProcessor::videoSurface()->w/2;
+	int center = VideoPostProcessor::menuWidth/2; // menu is presented centered
 	int y = VideoPostProcessor::videoSurface()->h/2 - INFO_H/2;
 	
     cDetails.Initialize();

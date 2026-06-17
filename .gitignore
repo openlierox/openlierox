@@ -2,6 +2,7 @@ build/msvc*/obj
 build/msvc*/Debug
 build/msvc*/Release
 build/Xcode/build
+build/cmake
 *.ncb
 *.suo
 *.vcproj.*.user
@@ -59,3 +60,4 @@ distrib
 build/android/deps
 build/android/output/
 *.claude
+CLAUDE.md

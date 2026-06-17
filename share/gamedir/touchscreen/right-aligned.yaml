@@ -31,12 +31,13 @@ vjoy:
   walk_sensitivity: 40
   aim_sensitivity: 30.0
 
-# Minimap position (top-left, logical 640x480) while the touch UI is
-# visible. Default minimap is 128x96 — these coords put it flush
-# against the bottom, just left of the right-edge action column.
+# Minimap position while the touch UI is visible. Default minimap is
+# 128x96. Negative x is relative to the right screen edge (so it stays
+# just left of the right-edge action column on wider screens); y is the
+# usual top origin, putting it flush against the bottom (height is 480).
 # TODO: overriding minimap position causes graphical glitches during net play
 minimap:
-  x: 393
+  x: -119
   y: 384
 
 # Actions:
@@ -54,20 +55,20 @@ minimap:
 #   ROPE at top, FIRE in the middle, JUMP at the bottom. PREV / NEXT
 #   weapon share a row in the gap between ROPE and FIRE.
 playing:
-  - { x: 560, y:   5, w:  75, h:  40, action: menu,                       label: "MENU" }
-  - { x: 525, y: 165, w:  55, h:  50, action: prev_weapon,                label: "<<"   }
-  - { x: 580, y: 165, w:  55, h:  50, action: next_weapon,                label: ">>"   }
-  - { x: 525, y:  50, w: 110, h: 110, action: hold, binding: rope,        label: "ROPE" }
-  - { x: 525, y: 220, w: 110, h: 180, action: hold, binding: shoot,       label: "FIRE" }
-  - { x: 525, y: 405, w: 110, h:  70, action: hold, binding: jump,        label: "JUMP" }
+  - { x:  -5, y:   5, w:  75, h:  40, action: menu,                       label: "MENU" }
+  - { x: -60, y: 165, w:  55, h:  50, action: prev_weapon,                label: "<<"   }
+  - { x:  -5, y: 165, w:  55, h:  50, action: next_weapon,                label: ">>"   }
+  - { x:  -5, y:  50, w: 110, h: 110, action: hold, binding: rope,        label: "ROPE" }
+  - { x:  -5, y: 220, w: 110, h: 180, action: hold, binding: shoot,       label: "FIRE" }
+  - { x:  -5, y: 405, w: 110, h:  70, action: hold, binding: jump,        label: "JUMP" }
 
 # Weapon picker (LM_WEAPON_SELECT).
 # D-pad on the lower-left + Random/Done on the right edge.
 weapon_select:
-  - { x: 560, y:   5, w:  75, h: 40,  action: menu,                       label: "MENU"   }
   - { x:  60, y: 240, w:  80, h: 70,  action: hold, binding: up,          label: "^"      }
   - { x:  60, y: 400, w:  80, h: 70,  action: hold, binding: down,        label: "v"      }
   - { x:   0, y: 320, w:  80, h: 70,  action: hold, binding: left,        label: "<"      }
   - { x: 140, y: 320, w:  80, h: 70,  action: hold, binding: right,       label: ">"      }
-  - { x: 525, y: 240, w: 110, h: 95,  action: randomize,                  label: "Random" }
-  - { x: 525, y: 345, w: 110, h: 95,  action: done,                       label: "DONE"   }
+  - { x:  -5, y:   5, w:  75, h: 40,  action: menu,                       label: "MENU"   }
+  - { x:  -5, y: 240, w: 110, h: 95,  action: randomize,                  label: "Random" }
+  - { x:  -5, y: 345, w: 110, h: 95,  action: done,                       label: "DONE"   }
