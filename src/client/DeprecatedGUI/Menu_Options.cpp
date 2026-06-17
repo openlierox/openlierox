@@ -119,7 +119,7 @@ enum {
 	os_UseIpToCountry,
 	os_HttpProxy,
 	os_ShowFPS,
-	os_KeepAspectRatio,
+	os_OpenGL,
 	os_ShowPing,
 	os_LogConvos,
 	os_ScreenshotFormat,
@@ -388,8 +388,8 @@ bool Menu_OptionsInitialize()
 	cOpt_System.Add( new CLabel("Fullscreen",tLX->clNormalLabel),       Static, 60, y, 0,0);
 	cOpt_System.Add( new CLabel("Colour depth",tLX->clNormalLabel),       Static, 175, y, 0,0);
 	cOpt_System.Add( new CCheckbox(tLXOptions->bFullscreen),os_Fullscreen, 140, y, 17,17);
-	cOpt_System.Add( new CLabel("Keep 4:3 aspect ratio",tLX->clNormalLabel),Static, 440, y, 0,0);
-	cOpt_System.Add( new CCheckbox(tLXOptions->bKeepAspectRatio),    os_KeepAspectRatio, 590, y, 17,17);
+	cOpt_System.Add( new CLabel("Use OpenGL Rendering",tLX->clNormalLabel),Static, 440, y, 0,0);
+	cOpt_System.Add( new CCheckbox(tLXOptions->bOpenGL),    os_OpenGL, 590, y, 17,17);
 
 	y += 20;
 	cOpt_System.Add( new CLabel("Audio",tLX->clHeading),              Static, 40, y, 0,0);
@@ -1110,8 +1110,8 @@ void Menu_OptionsFrame()
 		c = (CCheckbox *)cOpt_System.getWidget(os_Fullscreen);
 		bool fullscr = c->getValue();
 		// OpenGL accel value
-		c2 = (CCheckbox *)cOpt_System.getWidget(os_KeepAspectRatio);
-		bool aspectratio = c2->getValue () != 0;
+		c2 = (CCheckbox *)cOpt_System.getWidget(os_OpenGL);
+		bool opengl = c2->getValue () != 0;
 		// Color depth
 		int cdepth = ((CCombobox *)cOpt_System.getWidget(os_ColourDepth))->getSelectedIndex();
 		switch (cdepth)  {
@@ -1139,11 +1139,11 @@ void Menu_OptionsFrame()
 				case os_Apply:
 					if(ev->iEventMsg == BTN_CLICKED) {
 
-						bool restart = (tLXOptions->bKeepAspectRatio != aspectratio) || (tLXOptions->iColourDepth != cdepth);
+						bool restart = (tLXOptions->bOpenGL != opengl) || (tLXOptions->iColourDepth != cdepth);
 
-						// Set to fullscreen / aspect ratio / change colour depth
+						// Set to fullscreen / OpenGL / change colour depth
 						tLXOptions->bFullscreen = fullscr;
-						tLXOptions->bKeepAspectRatio = aspectratio;
+						tLXOptions->bOpenGL = opengl;
 						tLXOptions->iColourDepth = cdepth;
 						bool fail = false;
 
@@ -1277,7 +1277,7 @@ void Menu_OptionsFrame()
 		// FPS and fullscreen
 		t = (CTextbox *)cOpt_System.getWidget(os_MaxFPS);
 
-		if(cdepth != tLXOptions->iColourDepth || aspectratio != tLXOptions->bKeepAspectRatio || fullscr != tLXOptions->bFullscreen || atoi(t->getText()) != tLXOptions->nMaxFPS) {
+		if(cdepth != tLXOptions->iColourDepth || opengl != tLXOptions->bOpenGL || fullscr != tLXOptions->bFullscreen || atoi(t->getText()) != tLXOptions->nMaxFPS) {
 			cOpt_System.getWidget(os_Apply)->setEnabled(true);
 			cOpt_System.getWidget(os_Apply)->Draw( VideoPostProcessor::videoSurface().get() );
         } else {
