@@ -65,6 +65,11 @@ public:
 	bool isServer() { return m_isServer; }
 	bool isClient() { return !isServer(); }
 	bool isLocalGame() { return m_isLocalGame; }
+	// Whether this game should render in widescreen (the full screen width)
+	// rather than the fair 640-wide view. Single decision point: currently
+	// only local games, but this may later also cover network games where
+	// every player uses widescreen. See doc/dev/WIDESCREEN.md.
+	bool useWideScreen() { return isLocalGame(); }
 	bool isTeamPlay();
 	bool isGamePaused();
 	bool shouldDoPhysicsFrame();

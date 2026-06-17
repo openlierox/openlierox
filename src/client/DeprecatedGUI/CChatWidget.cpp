@@ -435,7 +435,9 @@ void CChatWidget::GlobalProcessAndDraw(SDL_Surface * bmpDest)
 {
 	if( ! globalChat )
 	{
-		int setupX = 30;
+		// Center the chat popup on a wider-than-640 local game (offset 0 for
+		// network games, which are already presented centered).
+		int setupX = 30 + VideoPostProcessor::get()->popupCenterOffsetX();
 		int setupY = 100;
 		int setupW = 580;
 		int setupH = 280;

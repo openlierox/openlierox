@@ -672,18 +672,30 @@ void CWormHumanInputHandler::doWeaponSelectionFrame(SDL_Surface * bmpDest, CView
 	
 	int l = 0;
 	int t = 0;
-	int centrex = 320; // TODO: hardcoded screen width here
-	
-    if( v ) {
-        if( v->getUsed() ) {
-            l = v->GetLeft();
-	        t = v->GetTop();
-            centrex = v->GetLeft() + v->GetVirtW()/2;
-        }
-		
-		DrawRectFill(bmpDest, l, t, l + v->GetVirtW(), t + v->GetVirtH(), Color(0,0,0,100));
+	// Center on the displayed view; a used viewport (split-screen) overrides
+	// this with its own center. The whole-screen dark overlay behind the
+	// selection is drawn once by the caller (CClient::Draw).
+	int centrex = VideoPostProcessor::get()->displayScreenWidth() / 2;
+
+    if( v && v->getUsed() ) {
+        l = v->GetLeft();
+        t = v->GetTop();
+        centrex = v->GetLeft() + v->GetVirtW()/2;
     }
 		
+	// Clip all weapon-selection drawing to this worm's viewport so the (long)
+	// "Key settings" text can't bleed past the viewport into the split-screen
+	// separator gap. Belt-and-braces with the separator that repaints the gap
+	// (see CClient::Draw). CFont and DrawImageAdv both honour dst->clip_rect.
+	SDL_Rect wsClipRect = bmpDest->clip_rect;
+	if( v && v->getUsed() ) {
+		wsClipRect.x = l;
+		wsClipRect.y = t;
+		wsClipRect.w = v->GetVirtW();
+		wsClipRect.h = v->GetVirtH();
+	}
+	ScopedSurfaceClip wsClip(bmpDest, wsClipRect);
+
 	tLX->cFont.DrawCentre(bmpDest, centrex, t+30, tLX->clWeaponSelectionTitle, "~ Weapons Selection ~");
 		
 	tLX->cFont.DrawCentre(bmpDest, centrex, t+48, tLX->clWeaponSelectionTitle, "(Use up/down and left/right for selection.)");

@@ -77,6 +77,15 @@ protected:
 	SmartPointer<SDL_Texture> m_videoTexture;
 	SmartPointer<SDL_Surface> m_videoSurface;
 	SmartPointer<SDL_Surface> m_videoBufferSurface;
+	int m_screenWidth = 640;
+	// The width the current frame's content is laid out for. Either the full
+	// screenWidth() (local games) or the base menuWidth / 640 (menus and
+	// network games, so a wider screen gives no gameplay advantage). When it is
+	// narrower than screenWidth() the content is drawn into the left columns
+	// and presented horizontally centered, with black bars on the sides.
+	// Set per-frame by the menu / gameplay draw. See render() and the mouse
+	// handling, and displayScreenWidth()/displayScreenOffsetX() below.
+	int m_displayScreenWidth = 640;
 	static VideoPostProcessor instance;
 	
 public:
@@ -97,8 +106,31 @@ public:
 	bool initWindow();
 	bool resetVideo(); // this is called from SetVideoMode
 	
-	int screenWidth() { return 640; }
-	int screenHeight() { return 480; }
+	int screenWidth() const { return m_screenWidth; }
+	int screenHeight() const { return 480; }
+
+	// The base view width: what menus are authored for, and the width network
+	// games are constrained to. The actual screen may be wider (computed from
+	// the desktop aspect ratio); such content stays this wide and is centered.
+	// Height always matches screenHeight().
+	static const int menuWidth = 640;
+
+	// The effective layout width for the current frame (see m_displayScreenWidth).
+	// All screen-width-dependent logic (viewport setup, centering, mouse) should
+	// use this instead of screenWidth() so local vs network games behave right.
+	void setDisplayScreenWidth(int w) { m_displayScreenWidth = w; }
+	int displayScreenWidth() const { return m_displayScreenWidth; }
+
+	// Horizontal offset that centers a displayScreenWidth()-wide view on the
+	// screen. Zero when the view already fills the screen (local game, or 4:3).
+	int displayScreenOffsetX() const { int o = (m_screenWidth - m_displayScreenWidth) / 2; return o > 0 ? o : 0; }
+
+	// Horizontal offset to center a menuWidth-wide popup (the in-game Esc menu,
+	// in-game options, ...) within the current view, so it overlays the
+	// unchanged game centered. Zero for a network game (the whole view is
+	// already presented centered); (screenWidth-menuWidth)/2 for a full-width
+	// local game.
+	int popupCenterOffsetX() const { int o = (m_displayScreenWidth - menuWidth) / 2; return o > 0 ? o : 0; }
 
 	static const SmartPointer<SDL_Surface>& videoSurface() { return get()->m_videoSurface; }
 	static const SmartPointer<SDL_Surface>& videoBufferSurface() { return get()->m_videoBufferSurface; }

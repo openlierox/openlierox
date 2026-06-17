@@ -127,6 +127,7 @@ public:
 
 	int				getX()							{ return iX; }
 	int				getY()							{ return iY; }
+	void			move(int dx, int dy)			{ iX += dx; iY += dy; }
 	int				getWidth()						{ return iWidth; }
 	int				getHeight()						{ return iHeight; }
 

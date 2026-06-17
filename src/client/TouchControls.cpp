@@ -453,12 +453,34 @@ static bool sinToAction(int sinIndex, TouchScreenInput::Action& outAction) {
 
 // --- Button state machine ----------------------------------------------
 
+// Resolve a button's top-left corner on a canvasW x canvasH canvas.
+// A non-negative coordinate is the usual left/top origin. A negative
+// coordinate anchors the button to the opposite edge: x<0 places the
+// button's right edge |x| px from the canvas' right edge, y<0 places its
+// bottom edge |y| px from the bottom. So e.g. x:-5 keeps a 5px gap on the
+// right regardless of how wide the screen is.
+// The canvas is the real screen resolution in-game (so wider screens use
+// the extra width) and a fixed 640x480 for the options-menu preview.
+static int resolveButtonX(const Button& b, int canvasW) {
+	return b.x >= 0 ? b.x : canvasW + b.x - b.w;
+}
+static int resolveButtonY(const Button& b, int canvasH) {
+	return b.y >= 0 ? b.y : canvasH + b.y - b.h;
+}
+
 static int hitTestButton(int lx, int ly) {
 	const auto& btns = currentButtons();
 	const int n = (int)btns.size();
+	// Buttons live in the displayed view (full width for local games, 640 for
+	// network games) which is then presented centered — see HandleFingerEvent
+	// for the matching input mapping.
+	const int cw = VideoPostProcessor::get()->displayScreenWidth();
+	const int ch = VideoPostProcessor::get()->screenHeight();
 	for(int i = 0; i < n; i++) {
-		if(lx >= btns[i].x && lx < btns[i].x + btns[i].w
-		&& ly >= btns[i].y && ly < btns[i].y + btns[i].h)
+		const int bx = resolveButtonX(btns[i], cw);
+		const int by = resolveButtonY(btns[i], ch);
+		if(lx >= bx && lx < bx + btns[i].w
+		&& ly >= by && ly < by + btns[i].h)
 			return i;
 	}
 	return -1;
@@ -641,6 +663,13 @@ static void renderVJoy(SDL_Surface* dst) {
 }
 
 static void renderButton(SDL_Surface* dst, const Button& b, bool pressed) {
+	// Resolve negative (right/bottom-anchored) coordinates against the displayed
+	// view width (full width for local games, 640 for network games and the
+	// preview), so right-anchored buttons land inside the presented region.
+	// Height is unchanged.
+	const int bx = resolveButtonX(b, VideoPostProcessor::get()->displayScreenWidth());
+	const int by = resolveButtonY(b, dst->h);
+
 	// Image-based button: blit the artwork at a fixed square size,
 	// centred in the rect; swap to the pressed-state image when the
 	// button is held (and a pressed variant was loaded). The icon
@@ -653,13 +682,13 @@ static void renderButton(SDL_Surface* dst, const Button& b, bool pressed) {
 			(pressed && b.imagePressed.get()) ? b.imagePressed : b.imageNormal;
 		constexpr int kMaxIconSize = 60;
 		const int iconSize = std::min({b.w, b.h, kMaxIconSize});
-		const int iconX = b.x + (b.w - iconSize) / 2;
-		const int iconY = b.y + (b.h - iconSize) / 2;
+		const int iconX = bx + (b.w - iconSize) / 2;
+		const int iconY = by + (b.h - iconSize) / 2;
 		DrawImageResampledAdv(dst, img, 0, 0, iconX, iconY,
 		                      img.get()->w, img.get()->h, iconSize, iconSize);
 		// Optional outline still respected so previews can show the rect.
 		if(gShowButtonBorder)
-			DrawRect(dst, b.x, b.y, b.x + b.w - 1, b.y + b.h - 1, Color(220, 220, 220));
+			DrawRect(dst, bx, by, bx + b.w - 1, by + b.h - 1, Color(220, 220, 220));
 		return;
 	}
 
@@ -667,15 +696,15 @@ static void renderButton(SDL_Surface* dst, const Button& b, bool pressed) {
 	Uint8 alpha  = pressed ? 180 : 90;
 	Color border = Color(220, 220, 220);
 
-	DrawRectFillA(dst, b.x, b.y, b.x + b.w, b.y + b.h, fill, alpha);
+	DrawRectFillA(dst, bx, by, bx + b.w, by + b.h, fill, alpha);
 	if(gShowButtonBorder)
-		DrawRect(dst, b.x, b.y, b.x + b.w - 1, b.y + b.h - 1, border);
+		DrawRect(dst, bx, by, bx + b.w - 1, by + b.h - 1, border);
 
 	if(tLX && !b.label.empty()) {
 		int tw = tLX->cFont.GetWidth(b.label);
 		int th = tLX->cFont.GetHeight();
-		int tx = b.x + (b.w - tw) / 2;
-		int ty = b.y + (b.h - th) / 2;
+		int tx = bx + (b.w - tw) / 2;
+		int ty = by + (b.h - th) / 2;
 		tLX->cFont.Draw(dst, tx, ty, pressed ? tLX->clBlack : tLX->clWhite, b.label);
 	}
 }
@@ -839,10 +868,13 @@ static SmartPointer<SDL_Surface> renderLayoutPreviewSurface(const std::string& l
 	DrawRectFill(dst, 0, 0, dst->w, dst->h, Color(30, 38, 48));
 	DrawRect(dst, 0, 0, gVJoyAreaRight - 1, dst->h - 1, Color(60, 80, 100));
 	if(gMinimapOverride) {
-		const int mmX = gMinimapX;
-		const int mmY = gMinimapY;
 		const int mmW = 128;
 		const int mmH = 96;
+		// Resolve negative (right/bottom-anchored) coords against the preview
+		// canvas, mirroring the in-game resolution in CClient::Draw so the
+		// preview matches gameplay.
+		const int mmX = (gMinimapX >= 0) ? gMinimapX : dst->w + gMinimapX - mmW;
+		const int mmY = (gMinimapY >= 0) ? gMinimapY : dst->h + gMinimapY - mmH;
 		DrawRectFillA(dst, mmX, mmY, mmX + mmW, mmY + mmH, Color(80, 180, 80), 160);
 		DrawRect    (dst, mmX, mmY, mmX + mmW - 1, mmY + mmH - 1, Color(180, 230, 180));
 		// OLX ships only one font size, so to make "MAP" legible after the
@@ -942,8 +974,13 @@ bool HandleFingerEvent(const SDL_TouchFingerEvent& ev) {
 
 	if(!gUIActive) return false;
 
-	const int lx = (int)(ev.x * 640.0f);
-	const int ly = (int)(ev.y * 480.0f);
+	// SDL finger coords are normalized (0..1) over the whole window. Map them to
+	// the render resolution, then shift by the centering offset so they land in
+	// the displayed view's space (for a network game the view is 640 wide and
+	// presented centered; the offset is 0 for a full-width local game).
+	const int lx = (int)(ev.x * (float)VideoPostProcessor::get()->screenWidth())
+	             - VideoPostProcessor::get()->displayScreenOffsetX();
+	const int ly = (int)(ev.y * (float)VideoPostProcessor::get()->screenHeight());
 
 	if(ev.type == SDL_FINGERDOWN) {
 		// In playing mode, the left half is the joystick.

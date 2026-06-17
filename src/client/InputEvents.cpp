@@ -375,10 +375,12 @@ static void synthFingerFromMouse(Uint32 fingerType, int x, int y) {
 	t.type     = fingerType;
 	t.touchId  = 0;
 	t.fingerId = 0; // single synthetic pointer; mouse can't multi-touch
-	// HandleFingerEvent maps normalised x/y back onto the 640x480 surface,
-	// which is the logical space SDL reports mouse coords in too.
-	t.x = (float)x / 640.0f;
-	t.y = (float)y / 480.0f;
+	// HandleFingerEvent maps normalised x/y back onto the logical render
+	// surface (screenWidth x screenHeight, which may be wider than 640),
+	// which is the logical space the incoming mouse coords are in too.
+	// Normalise by the same dimensions so the round-trip is exact.
+	t.x = (float)x / (float)VideoPostProcessor::get()->screenWidth();
+	t.y = (float)y / (float)VideoPostProcessor::get()->screenHeight();
 	t.pressure = 1.0f;
 	TouchControls::HandleFingerEvent(t);
 }
@@ -586,6 +588,11 @@ static void HandleMouseState() {
 		Mouse.Button = SDL_GetMouseState(NULL,NULL); // Doesn't call libX11 funcs, so it's safe to call not from video thread
 		Mouse.X = mouseX;
 		Mouse.Y = mouseY;
+
+		// When the frame is presented centered (menus, or network games on a
+		// wider screen), shift the mouse into that centered space so clicks line
+		// up with the drawn widgets.
+		Mouse.X -= VideoPostProcessor::get()->displayScreenOffsetX();
 		
 		Mouse.deltaX = Mouse.X-oldX;
 		Mouse.deltaY = Mouse.Y-oldY;
