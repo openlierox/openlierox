@@ -127,7 +127,7 @@ struct Color {
 		if(b != c.b) return b < c.b;
 		return a < c.a;
 	}
-	Uint8& operator[](int i) { switch(i) { case 0: return r; case 1: return g; case 2: return b; case 3: return a; default: assert(false); } return *((Uint8*)NULL); }
+	Uint8& operator[](int i) { switch(i) { case 0: return r; case 1: return g; case 2: return b; case 3: return a; default: assert(false); } return r; }
 	Uint8 operator[](int i) const { switch(i) { case 0: return r; case 1: return g; case 2: return b; case 3: return a; default: assert(false); } return 0; }
 };
 
