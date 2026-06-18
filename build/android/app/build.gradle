@@ -21,7 +21,7 @@ def architectures = project.hasProperty('architectures') ? project.architectures
 
 // versionCode = fixed base + number of commits on the current branch, so each
 // new commit automatically bumps the Play Store version code.
-def versionCodeBase = 10591008 // 0.59_beta10 Android revision 08
+def versionCodeBase = 10591026
 def gitCommitCount = { ->
     try {
         def proc = ['git', 'rev-list', '--count', 'HEAD'].execute(null, olxRoot)
