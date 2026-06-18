@@ -110,13 +110,12 @@ jobs:
           path: build/android/output/openlierox-*-android.apk
           if-no-files-found: error
 
-      - name: Publish to Play Store
-        uses: r0adkll/upload-google-play@v1
-        continue-on-error: true
+      # Hand the signed bundle off as an artifact so the separate
+      # "Publish to Google Play" workflow can pick it up on merge. The
+      # build itself runs on every PR, but publishing must not.
+      - name: Upload Android App Bundle
+        uses: actions/upload-artifact@v7
         with:
-          serviceAccountJsonPlainText: ${{secrets.SERVICE_ACCOUNT_JSON}}
-          packageName: openlierox.net
-          releaseFiles: build/android/output/openlierox-release.aab
-          tracks: beta
-          #changesNotSentForReview: true
-          status: completed
+          name: openlierox-aab
+          path: build/android/output/openlierox-release.aab
+          if-no-files-found: error

@@ -19,6 +19,13 @@ jobs:
     uses: ./.github/workflows/package-android.yml
     secrets: inherit
 
+  # Publish to the Play Store only on merge, after the Android build has
+  # produced and uploaded the signed bundle. PRs build but never publish.
+  publish-google-play:
+    needs: android
+    uses: ./.github/workflows/publish-to-google-play.yaml
+    secrets: inherit
+
   linux-bundle:
     uses: ./.github/workflows/package-linux-bundle.yml
     secrets: inherit

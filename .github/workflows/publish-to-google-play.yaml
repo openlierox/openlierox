@@ -1,0 +1,32 @@
+name: Publish to Google Play
+
+# Publishes the signed Android App Bundle to the Play Store beta track.
+# This only runs on merges to master (invoked by master-release.yaml via
+# workflow_call), never on pull requests, so PRs build the bundle but
+# never publish it. The bundle is produced by package-android.yml and
+# passed across as the "openlierox-aab" artifact within the same run.
+on:
+  workflow_call:
+
+jobs:
+  publish:
+    name: Publish to Google Play
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Download Android App Bundle
+        uses: actions/download-artifact@v7
+        with:
+          name: openlierox-aab
+          path: build/android/output
+
+      - name: Publish to Play Store
+        uses: r0adkll/upload-google-play@v1
+        continue-on-error: true
+        with:
+          serviceAccountJsonPlainText: ${{secrets.SERVICE_ACCOUNT_JSON}}
+          packageName: openlierox.net
+          releaseFiles: build/android/output/openlierox-release.aab
+          tracks: beta
+          #changesNotSentForReview: true
+          status: completed
