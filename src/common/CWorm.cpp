@@ -223,8 +223,6 @@ CWorm::CWorm() :
 	fLastAirJumpTime = 0;
 	sLastWeaponHitBy = "";
 
-	bTouchscreenWeaponCycle = false;
-
 	bGotTarget = false;
 
 	bTagIT = false;

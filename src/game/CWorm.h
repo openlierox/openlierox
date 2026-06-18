@@ -236,9 +236,8 @@ protected:
 	
 	TimeDiff	fServertime; // only for CServerConnection: when a wormupdate arrives, the servertime of client (>=beta8)
 	
-	AbsTime		fLastCarve;
-	AbsTime		fLastShoot;
-	bool		bTouchscreenWeaponCycle;
+    AbsTime		fLastCarve;
+	
 
 	Version		cClientVersion;
 
