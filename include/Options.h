@@ -289,7 +289,6 @@ public:
 	int		iMouseSensity;
 	std::string sTouchscreenControls;	// Tri-state "auto"/"true"/"false". "auto" enables on Android, disables elsewhere.
 	std::string sTouchscreenLayout;	// Name of layout file under share/gamedir/touchscreen/<name>.yaml.
-	bool	bTouchscreenDoubleShootToSwitchWeapon;	// Double-tap the touchscreen Shoot button to cycle weapons. Off by default.
 	bool	bAntilagMovementPrediction;
 	std::string	sLastSelectedPlayer;
 	std::string	sLastSelectedPlayer2;

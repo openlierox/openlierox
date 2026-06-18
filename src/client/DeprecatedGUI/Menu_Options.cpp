@@ -78,9 +78,6 @@ static SDL_Rect ResetBtnRect;
 // plus the per-tile hit-boxes filled in by Menu_OptionsDrawTouchTiles.
 static std::vector<TouchControls::LayoutInfo> gTouchLayoutInfos;
 static std::vector<SDL_Rect>                  gTouchLayoutTileRects;
-// Hit-box of the "Double shoot to switch weapon" checkbox shown below the
-// layout tiles on the Touchscreen sub-tab (filled in by Menu_OptionsDrawTouchOptions).
-static SDL_Rect gTouchDoubleShootRect = {0, 0, 0, 0};
 
 // The On / Off / Auto selector for Game.TouchscreenControls, shown on the top
 // row of the Touchscreen sub-tab (above the layout tiles). The labels map to
@@ -756,34 +753,6 @@ static void Menu_OptionsDrawTouchTiles(SDL_Surface* dest)
 }
 
 ///////////////////
-// Draw the "Double shoot to switch weapon" checkbox below the layout tiles on
-// the Touchscreen sub-tab. Drawn manually (like the rest of this tab) so it
-// can sit under the layout selection. Records its hit-box in
-// gTouchDoubleShootRect for click handling in Menu_OptionsFrame.
-static void Menu_OptionsDrawTouchOptions(SDL_Surface* dest)
-{
-	mouse_t* Mouse = GetMouse();
-	// Sit below the layout tiles (tiles end at ~393, plus their name labels).
-	const int y = 420;
-	const int box = 17;
-	const int x = kControlLabelX;
-
-	const bool on = tLXOptions->bTouchscreenDoubleShootToSwitchWeapon;
-
-	// Checkbox square.
-	DrawRect(dest, x, y, x + box, y + box, tLX->clNormalLabel);
-	if(on)
-		DrawRectFill(dest, x + 3, y + 3, x + box - 3, y + box - 3, tLX->clHeading);
-
-	const std::string label = "Double shoot to switch weapon";
-	const int labelX = x + box + 8;
-	tLX->cFont.Draw(dest, labelX, y + 2, tLX->clNormalLabel, label);
-
-	const int w = (labelX + tLX->cFont.GetWidth(label)) - x;
-	gTouchDoubleShootRect = SDL_Rect{(Sint16)x, (Sint16)y, (Uint16)w, (Uint16)box};
-}
-
-///////////////////
 // Draws the "Reset defaults" button (a bordered text button, so it can show
 // that exact label) and records its hit-box in ResetBtnRect.
 static void Menu_OptionsDrawResetButton(SDL_Surface* dest)
@@ -969,16 +938,6 @@ void Menu_OptionsFrame()
 						}
 						break;
 					}
-				}
-			}
-			// "Double shoot to switch weapon" toggle below the layout tiles.
-			Menu_OptionsDrawTouchOptions(VideoPostProcessor::videoSurface().get());
-			if(Mouse->Up) {
-				const SDL_Rect& r = gTouchDoubleShootRect;
-				if(Mouse->X >= r.x && Mouse->X <= r.x + r.w &&
-				   Mouse->Y >= r.y && Mouse->Y <= r.y + r.h) {
-					tLXOptions->bTouchscreenDoubleShootToSwitchWeapon = !tLXOptions->bTouchscreenDoubleShootToSwitchWeapon;
-					PlaySoundSample(sfxGeneral.smpClick);
 				}
 			}
 		} else {

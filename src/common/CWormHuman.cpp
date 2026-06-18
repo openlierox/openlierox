@@ -331,7 +331,7 @@ void CWormHumanInputHandler::getInput() {
 
 	if (ws->bShoot) {
 		const float comboTapTime = 0.3f;
-		if (TouchControls::IsActive() && allowCombo && tLXOptions->bTouchscreenDoubleShootToSwitchWeapon && !m_worm->bTouchscreenWeaponCycle) {
+		if (TouchControls::IsActive() && allowCombo && !m_worm->bTouchscreenWeaponCycle) {
 			if (m_worm->fLastShoot + comboTapTime > tLX->currentTime) {
 				// Cycle weapons by tapping Shoot button rapidly
 				m_worm->iCurrentWeapon++;
