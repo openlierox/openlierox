@@ -77,7 +77,7 @@ minimap:
 playing:
   - { x:   -5, y:   5, w:  75, h:  40, action: menu,                       label: "MENU" }
   - { x:   -5, y: 180, w: 108, h: 100, action: prev_weapon,                label: "<<",   image: prev_weapon.png }
-  - { x: -113, y: 180, w: 107, h: 100, action: next_weapon,                label: ">>",   image: next_weapon.png }
+  - { x: -113, y: 280, w: 107, h: 100, action: next_weapon,                label: ">>",   image: next_weapon.png }
   - { x:   -5, y: 280, w: 108, h: 100, action: hold, binding: rope,        label: "ROPE", image: rope.png    }
   - { x: -113, y: 380, w: 107, h: 100, action: hold, binding: shoot,       label: "FIRE", image: shoot.png   }
   - { x:   -5, y: 380, w: 108, h: 100, action: hold, binding: jump,        label: "JUMP", image: jump.png    }
