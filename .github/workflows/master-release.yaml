@@ -2,8 +2,8 @@ name: Latest master
 
 # Runs whenever a PR is merged (i.e. a push lands) on a release branch.
 # It builds every platform by reusing the existing package-* pipelines,
-# then publishes to a rolling "latest" release on GitHub, adding all the
-# freshly built artifacts to it without removing previously published ones.
+# then publishes a single GitHub release per build, tagged with the version
+# and flagged "Latest". Releases from previous builds are left untouched.
 on:
   push:
     branches:
@@ -67,50 +67,29 @@ jobs:
         id: meta
         run: |
           set -euo pipefail
-          # Short version (no hash) for the artifact filenames / notes;
-          # full version (with the +git.HASH provenance) for the release
-          # title, which should still identify the exact commit.
+          # The release is tagged with the short version (no hash); the full
+          # version (with the +git.HASH provenance) goes in the release title
+          # so it still identifies the exact commit.
           VERSION="$(./get_version.sh)"
           VERSION_FULL="$(./get_version_full.sh)"
-          # One rolling pre-release per release branch, refreshed each merge.
-          TAG="${GITHUB_REF_NAME}-beta-latest"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "version_full=${VERSION_FULL}" >> "$GITHUB_OUTPUT"
-          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
           echo "Artifacts to publish:"
           ls -la dist
 
       - name: Publish latest master release
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ steps.meta.outputs.tag }}
           VERSION: ${{ steps.meta.outputs.version }}
           VERSION_FULL: ${{ steps.meta.outputs.version_full }}
         run: |
           set -euo pipefail
 
-          # Notes differ per release: the rolling one is replaced every merge;
-          # the archival one is a fixed snapshot of a single build.
-          NOTES_ROLLING="$(cat <<EOF
+          NOTES="$(cat <<EOF
           Automated build of OpenLieroX **${VERSION}**.
 
           - Branch: \`${GITHUB_REF_NAME}\`
           - Commit: ${GITHUB_SHA}
-
-          This is a rolling "latest" release that always reflects the newest
-          build: its artifacts are replaced on every merge. For a specific
-          older build, see the per-version release tagged \`${VERSION}\`.
-          EOF
-          )"
-
-          NOTES_VERSION="$(cat <<EOF
-          Automated build of OpenLieroX **${VERSION}**.
-
-          - Branch: \`${GITHUB_REF_NAME}\`
-          - Commit: ${GITHUB_SHA}
-
-          Archival release for this exact version. The rolling
-          \`${TAG}\` release always points at the newest build.
           EOF
           )"
 
@@ -138,65 +117,18 @@ jobs:
           echo "Publishing assets:"
           printf '  %s\n' "${ASSETS[@]}"
 
-          # Ensure a release exists for the given tag (creating it on the right
-          # commit if missing, updating its title/notes if it already does),
-          # then upload this build's artifacts to it.
-          #
-          # $5 (clear) controls what happens to assets already attached to an
-          # existing release:
-          #   true  - the rolling release: wipe every existing asset first so it
-          #           only ever holds the current build.
-          #   false - the archival release: keep whatever is there; --clobber
-          #           still overwrites same-named assets on a re-run.
+          # One release per build, tagged with the bare version and flagged as
+          # GitHub's "Latest". The version is derived from the (always
+          # increasing) commit count, so the tag is unique to this build and a
+          # release can never already exist for it. Releases from previous
+          # builds are left untouched.
           #
           # --prerelease=false is explicit: a release flagged as a prerelease
           # cannot also be marked --latest (GitHub returns "Latest release
-          # cannot be draft or prerelease."), and the rolling tag may have been
-          # left behind by the previous beta pipeline as a prerelease, so we
-          # always clear that flag. --latest is passed an explicit true/false
-          # so exactly one release (the rolling one) carries the badge and the
-          # archival release never silently steals it.
-          publish_release() {
-            local tag="$1" title="$2" notes="$3" latest="$4" clear="$5"
-            if gh release view "$tag" >/dev/null 2>&1; then
-              if [ "$clear" = "true" ]; then
-                # Remove all previously published assets before re-uploading so
-                # the rolling release reflects only the newest build.
-                gh release view "$tag" --json assets --jq '.assets[].name' \
-                  | while IFS= read -r asset; do
-                      [ -n "$asset" ] || continue
-                      echo "Removing stale asset: $asset"
-                      gh release delete-asset "$tag" "$asset" --yes
-                    done
-              fi
-              gh release edit "$tag" \
-                --title "$title" \
-                --notes "$notes" \
-                --prerelease=false \
-                --latest="$latest"
-            else
-              gh release create "$tag" \
-                --title "$title" \
-                --notes "$notes" \
-                --prerelease=false \
-                --latest="$latest" \
-                --target "$GITHUB_SHA"
-            fi
-            gh release upload "$tag" "${ASSETS[@]}" --clobber
-          }
-
-          # Rolling "latest master" release: holds the GitHub "Latest" badge and
-          # is wiped clean each merge so it only carries the newest build.
-          publish_release "$TAG" \
-            "OpenLieroX ${VERSION_FULL} (latest master)" \
-            "$NOTES_ROLLING" \
-            true \
-            true
-
-          # Archival per-version release: one immutable snapshot per build,
-          # tagged with the bare version, never marked latest, never cleared.
-          publish_release "$VERSION" \
-            "OpenLieroX ${VERSION_FULL}" \
-            "$NOTES_VERSION" \
-            false \
-            false
+          # cannot be draft or prerelease.").
+          gh release create "$VERSION" "${ASSETS[@]}" \
+            --title "OpenLieroX ${VERSION_FULL}" \
+            --notes "$NOTES" \
+            --prerelease=false \
+            --latest \
+            --target "$GITHUB_SHA"
