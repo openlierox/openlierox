@@ -40,14 +40,14 @@ Taunts *taunts = NULL;
 
 const std::string DefaultCfgFilename = "cfg/options.cfg";
 
-const std::string    ply_keys[] = {"Up", "Down", "Left", "Right", "Shoot", "Jump", "SelectWeapon", "Rope", "Strafe", "Weapon1", "Weapon2", "Weapon3", "Weapon4", "Weapon5" };
+const std::string    ply_keys[] = {"Up", "Down", "Left", "Right", "Shoot", "Jump", "Rope", "Strafe", "SelectWeapon", "PreviousWeapon", "NextWeapon", "Weapon1", "Weapon2", "Weapon3", "Weapon4", "Weapon5" };
 const std::string    ply_def1[] =
 #ifdef __APPLE__
-	{"up", "down", "left", "right", "lalt", "lmeta", "space", "x", "c", "1", "2", "3", "4", "5" };
+	{"up", "down", "left", "right", "lalt", "lmeta", "x", "c", "space", "a", "s", "1", "2", "3", "4", "5" };
 #else
-	{"up", "down", "left", "right", "lctrl", "lalt", "lshift", "x", "z", "1", "2", "3", "4", "5" };
+	{"up", "down", "left", "right", "lctrl", "lalt", "x", "z", "lshift", "a", "s", "1", "2", "3", "4", "5" };
 #endif
-const std::string    ply_def2[] = {"kp 8",  "kp 5",    "kp 4",    "kp 6",     "kp +", "kp enter", "kp 0", "kp -", "kp .", "6", "7", "8", "9", "0" };
+const std::string    ply_def2[] = {"kp 8",  "kp 5",    "kp 4",    "kp 6",     "kp +", "kp enter", "kp -", "kp .", "kp 0", "kp 7", "kp 9", "6", "7", "8", "9", "0" };
 // Gamepad defaults, in the same order as ply_keys. These are bound as a
 // second alternative alongside the keyboard defaults above, so each control
 // works from either input out of the box. The pad index is added at
@@ -65,9 +65,11 @@ const std::string    ply_gamepad_def[] = {
 	"d_right",      // Right        - d-pad right (move right)
 	"triggerright", // Shoot        - right trigger
 	"button_south", // Jump         - A
-	"lshoulder",    // SelectWeapon - left shoulder
 	"button_north", // Rope         - Y
 	"button_east",  // Strafe       - B
+	"triggerleft",  // SelectWeapon - left trigger
+	"lshoulder",    // PrevWeapon   - left shoulder
+	"rshoulder",    // NextWeapon   - right shoulder
 	"",             // Weapon1      - keyboard only
 	"",             // Weapon2      - keyboard only
 	"",             // Weapon3      - keyboard only
@@ -291,6 +293,12 @@ bool GameOptions::Init() {
 		std::string def1 = ply_def1[i];
 		std::string def2 = ply_def2[i];
 		if( !ply_gamepad_def[i].empty() ) {
+			// Append the gamepad binding as the second (Gamepad) slot. The
+			// keyboard binding is slot 0 and the gamepad binding slot 1, so we
+			// always keep the ", " separator even when there is no keyboard
+			// default (e.g. player 2's Prev/Next weapon): that leaves slot 0
+			// empty and the pad binding in slot 1, matching the UI columns.
+			// CInput::Setup ignores the empty leading token.
 			def1 += ", j1_" + ply_gamepad_def[i];
 			def2 += ", j2_" + ply_gamepad_def[i];
 		}

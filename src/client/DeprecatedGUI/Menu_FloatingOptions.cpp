@@ -98,9 +98,11 @@ enum {
 	oc_Ply1_Right,
 	oc_Ply1_Shoot,
 	oc_Ply1_Jump,
-	oc_Ply1_Selweapon,
 	oc_Ply1_Rope,
 	oc_Ply1_Strafe,
+	oc_Ply1_Selweapon,
+	oc_Ply1_PrevWeapon,
+	oc_Ply1_NextWeapon,
 
 	oc_Ply2_Up,
 	oc_Ply2_Down,
@@ -108,9 +110,11 @@ enum {
 	oc_Ply2_Right,
 	oc_Ply2_Shoot,
 	oc_Ply2_Jump,
-	oc_Ply2_Selweapon,
 	oc_Ply2_Rope,
 	oc_Ply2_Strafe,
+	oc_Ply2_Selweapon,
+	oc_Ply2_PrevWeapon,
+	oc_Ply2_NextWeapon,
 
 	oc_Gen_Chat,
     oc_Gen_Score,
@@ -131,9 +135,11 @@ std::string sFloatingOpt_InputNames[] = {
 	"Right",
 	"Shoot",
 	"Jump",
-	"Select Weapon",
 	"Ninja Rope",
-	"Strafe"
+	"Strafe",
+	"Select Weapon",
+	"Previous Weapon",
+	"Next Weapon"
 };
 
 static const int sFloatingOpt_InputNames__size = sizeof(sFloatingOpt_InputNames) / sizeof(std::string);
@@ -183,8 +189,10 @@ bool Menu_FloatingOptionsInitialize()
 	cFloatingOpt_Controls.Add( new CLabel("Player 2",tLX->clSubHeading),      Static, 268, 170, 0,0);
 	cFloatingOpt_Controls.Add( new CLabel("General Controls", tLX->clHeading),Static, 390, 150, 0,0);
 
-	int y = 190;
-	for(i=0;i< sFloatingOpt_InputNames__size ;i++,y+=25) {
+	// Row pitch tightened to 22px so the two extra rows (Previous/Next weapon)
+	// still fit within the dialog.
+	int y = 188;
+	for(i=0;i< sFloatingOpt_InputNames__size ;i++,y+=22) {
 		cFloatingOpt_Controls.Add( new CLabel(sFloatingOpt_InputNames[i],tLX->clNormalLabel), Static, 40, y, 0,0);
 
 		cFloatingOpt_Controls.Add( new CInputbox(SIN_UP+i, tLXOptions->sPlayerControls[0][SIN_UP+i], tMenu->bmpInputbox, sFloatingOpt_InputNames[i]),
@@ -440,7 +448,7 @@ void Menu_FloatingOptionsFrame()
 				if(ev->iEventMsg == INB_MOUSEUP) {
 
 					int ply = 0;
-					if(ev->iControlID >= oc_Ply2_Up && ev->iControlID <= oc_Ply2_Strafe)
+					if(ev->iControlID >= oc_Ply2_Up && ev->iControlID <= oc_Ply2_NextWeapon)
 						ply = 1;
 					if(ev->iControlID >= oc_Gen_Chat)
 						ply = -1;
