@@ -40,7 +40,7 @@ protected:
 	// Input
 	CInput		cUp, cDown, cLeft, cRight,
 	cShoot, cJump, cSelWeapon, cInpRope,
-	cStrafe, cWeapons[5];
+	cStrafe, cPrevWeapon, cNextWeapon, cWeapons[5];
 
 	// for oldschool rope handling
 	bool		bRopeDown;
@@ -62,6 +62,8 @@ public:
 	CInput &	getInputWeapon()				{ return cSelWeapon; };
 	CInput &	getInputRope()					{ return cInpRope; };
 	CInput &	getInputStrafe()				{ return cStrafe; };
+	CInput &	getInputPrevWeapon()			{ return cPrevWeapon; };
+	CInput &	getInputNextWeapon()			{ return cNextWeapon; };
 	
 	bool	canType();
 	

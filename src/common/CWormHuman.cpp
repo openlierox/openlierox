@@ -353,17 +353,14 @@ void CWormHumanInputHandler::getInput() {
 			// TODO: was is the intention of this var? if weapon change, then it's wrong
 			// if cSelWeapon.isDown(), then we don't need it
 
-			// we don't want keyrepeats here, so only count the first down-event
+			// we don't want keyrepeats here, so only count the first down-event.
+			// SelectWeapon is a hold-modifier on both keyboard and gamepad:
+			// while it is held, left/right (or the d-pad) cycles the weapon.
+			// Pressing it alone must NOT change the weapon — dedicated
+			// Previous/Next weapon controls exist for direct cycling.
 			int change = (rightOnce ? 1 : 0) - (leftOnce ? 1 : 0);
 			m_worm->iCurrentWeapon += change;
 			MOD(m_worm->iCurrentWeapon, m_worm->getWeaponSlotsCount());
-
-			// Joystick: if the button is pressed, change the weapon (it is annoying to move the axis for weapon changing)
-			if (change == 0 && cSelWeapon.isJoystickDownOnce())  {
-				m_worm->iCurrentWeapon++;
-				MOD(m_worm->iCurrentWeapon, m_worm->getWeaponSlotsCount());
-				change = 1;
-			}
 
 			// Show the weapon name above the worm for a moment when it
 			// actually cycled — same hint the SIN_WEAPON1..5 quick-keys give.
@@ -386,10 +383,14 @@ void CWormHumanInputHandler::getInput() {
 			}
 		}
 
-		// Touch dedicated Prev/Next-weapon buttons — cycle directly
-		// without requiring SelectWeapon to be held.
-		if(tPrevWeapTap || tNextWeapTap) {
-			int change = (tNextWeapTap ? 1 : 0) - (tPrevWeapTap ? 1 : 0);
+		// Dedicated Prev/Next-weapon controls — touch buttons or the keyboard
+		// keys bound to SIN_PREVWEAPON/SIN_NEXTWEAPON — cycle directly without
+		// requiring SelectWeapon to be held. No key-repeat, so we only react to
+		// the first down-event.
+		const bool prevWeap = cPrevWeapon.isDownOnce() || tPrevWeapTap;
+		const bool nextWeap = cNextWeapon.isDownOnce() || tNextWeapTap;
+		if(prevWeap || nextWeap) {
+			int change = (nextWeap ? 1 : 0) - (prevWeap ? 1 : 0);
 			if(change != 0) {
 				m_worm->iCurrentWeapon += change;
 				MOD(m_worm->iCurrentWeapon, m_worm->getWeaponSlotsCount());
@@ -494,6 +495,8 @@ void CWormHumanInputHandler::getInput() {
 	cSelWeapon.reset();
 	cInpRope.reset();
 	cStrafe.reset();
+	cPrevWeapon.reset();
+	cNextWeapon.reset();
 	for( size_t i = 0; i < sizeof(cWeapons) / sizeof(cWeapons[0]) ; i++  )
 		cWeapons[i].reset();
 }
@@ -513,6 +516,8 @@ void CWormHumanInputHandler::clearInput() {
 	cSelWeapon.reset();
 	cInpRope.reset();
 	cStrafe.reset();
+	cPrevWeapon.reset();
+	cNextWeapon.reset();
 	for( size_t i = 0; i < sizeof(cWeapons) / sizeof(cWeapons[0]) ; i++  )
 		cWeapons[i].reset();
 }
@@ -560,6 +565,8 @@ void CWormHumanInputHandler::setupInputs(const PlyControls& Inputs, int localPla
 	cInpRope.Setup(	Inputs[SIN_ROPE] );
 
 	cStrafe.Setup( Inputs[SIN_STRAFE] );
+	cPrevWeapon.Setup( Inputs[SIN_PREVWEAPON] );
+	cNextWeapon.Setup( Inputs[SIN_NEXTWEAPON] );
 
 	for( size_t i = 0; i < sizeof(cWeapons) / sizeof(cWeapons[0]) ; i++  )
 		cWeapons[i].Setup(Inputs[SIN_WEAPON1 + i]);
@@ -576,6 +583,8 @@ void CWormHumanInputHandler::initInputSystem() {
 	cSelWeapon.setResetEachFrame( false );
 	cInpRope.setResetEachFrame( false );
 	cStrafe.setResetEachFrame( false );
+	cPrevWeapon.setResetEachFrame( false );
+	cNextWeapon.setResetEachFrame( false );
 	for( size_t i = 0; i < sizeof(cWeapons) / sizeof(cWeapons[0]) ; i++  )
 		cWeapons[i].setResetEachFrame( false );
 }
@@ -590,6 +599,8 @@ void CWormHumanInputHandler::stopInputSystem() {
 	cSelWeapon.setResetEachFrame( true );
 	cInpRope.setResetEachFrame( true );
 	cStrafe.setResetEachFrame( true );
+	cPrevWeapon.setResetEachFrame( true );
+	cNextWeapon.setResetEachFrame( true );
 	for( size_t i = 0; i < sizeof(cWeapons) / sizeof(cWeapons[0]) ; i++  )
 		cWeapons[i].setResetEachFrame( true );
 }
@@ -1119,6 +1130,8 @@ void CWormHumanInputHandler::OlxInputToGusEvents()
 	cSelWeapon.reset();
 	cInpRope.reset();
 	cStrafe.reset();
+	cPrevWeapon.reset();
+	cNextWeapon.reset();
 	for( size_t i = 0; i < sizeof(cWeapons) / sizeof(cWeapons[0]) ; i++  )
 		cWeapons[i].reset();
 #endif // #ifndef DEDICATED_ONLY

@@ -155,9 +155,11 @@ enum {
 	oc_Ply1_Right,
 	oc_Ply1_Shoot,
 	oc_Ply1_Jump,
-	oc_Ply1_Selweapon,
 	oc_Ply1_Rope,
 	oc_Ply1_Strafe,
+	oc_Ply1_Selweapon,
+	oc_Ply1_PrevWeapon,
+	oc_Ply1_NextWeapon,
 
 	oc_Ply2_Up,
 	oc_Ply2_Down,
@@ -165,9 +167,11 @@ enum {
 	oc_Ply2_Right,
 	oc_Ply2_Shoot,
 	oc_Ply2_Jump,
-	oc_Ply2_Selweapon,
 	oc_Ply2_Rope,
 	oc_Ply2_Strafe,
+	oc_Ply2_Selweapon,
+	oc_Ply2_PrevWeapon,
+	oc_Ply2_NextWeapon,
 
 	oc_Gen_Chat,
     oc_Gen_Score,
@@ -190,9 +194,11 @@ std::string InputNames[] = {
 	"Right",
 	"Shoot",
 	"Jump",
-	"Select Weapon",
 	"Ninja Rope",
-	"Strafe"
+	"Strafe",
+	"Select Weapon",
+	"Previous Weapon",
+	"Next Weapon"
 };
 
 // General controls shown on the "General" sub-tab: display label, index into
@@ -255,7 +261,11 @@ static std::string Menu_ControlSetSlot(const std::string& full, int slot, const 
 // "j1_button_south" fit. The box widens via a 3-slice in CInputbox::Draw.
 // Column positions account for the wider boxes (box1 300-399, box2 420-519).
 static const int kControlBoxW = 99;
-static const int kControlSlotX[kControlSlots] = { 300, 420 };
+// Boxes start close to the labels (col 0 at 270, just right of the longest
+// label "Switch Video Mode"), and the second column sits 1px past the first
+// box's edge (270+99+1) so the horizontal gap between the two boxes matches
+// the 1px vertical gap between rows — symmetric spacing.
+static const int kControlSlotX[kControlSlots] = { 270, 370 };
 static const int kControlLabelX = 140;
 
 // Adds the "Keyboard" / "Gamepad" column headers to a controls layout,
@@ -343,10 +353,16 @@ bool Menu_OptionsInitialize()
 	// shows one input box per binding slot (Keyboard, Gamepad) so the slots can
 	// be edited independently.
 	{
-		int y = 205;
-		Menu_AddControlHeaders(cOpt_Controls,  y - 20);
-		Menu_AddControlHeaders(cOpt_Controls2, y - 20);
-		for(i=0;i<9;i++,y+=26) {
+		// 11 controls now (movement/combat plus Previous/Next weapon). The row
+		// pitch is tightened to 22px so the two extra rows still fit above the
+		// Back button without overflowing the page box.
+		int y = 198;
+		Menu_AddControlHeaders(cOpt_Controls,  y - 18);
+		Menu_AddControlHeaders(cOpt_Controls2, y - 18);
+		// 18px pitch: the input-box graphic is a fixed 17px tall (see
+		// CInputbox::Draw), so this packs the rows with just a 1px gap between
+		// boxes — about as tight as it goes while keeping a row of clear pixels.
+		for(i=0;i<11;i++,y+=18) {
 			Menu_AddControlRow(cOpt_Controls,  InputNames[i], SIN_UP+i,
 			                   tLXOptions->sPlayerControls[0][SIN_UP+i], oc_Ply1_Up+i, y);
 			Menu_AddControlRow(cOpt_Controls2, InputNames[i], SIN_UP+i,
@@ -358,7 +374,7 @@ bool Menu_OptionsInitialize()
 	{
 		int y = 200;
 		Menu_AddControlHeaders(cOpt_ControlsGen, y - 18);
-		for(int g=0; g<kNumGeneralControls; g++, y+=22) {
+		for(int g=0; g<kNumGeneralControls; g++, y+=18) {
 			Menu_AddControlRow(cOpt_ControlsGen, GeneralControlsList[g].label, GeneralControlsList[g].sin,
 			                   tLXOptions->sGeneralControls[GeneralControlsList[g].sin], GeneralControlsList[g].id, y);
 		}
@@ -807,7 +823,7 @@ static void Menu_ResetControlsTab(int tab)
 		Menu_ResetControlSection(ply == 0 ? "GameOptions.Ply1Controls." : "GameOptions.Ply2Controls.");
 		CGuiLayout& layout = (ply == 0) ? cOpt_Controls : cOpt_Controls2;
 		const int baseId = (ply == 0) ? oc_Ply1_Up : oc_Ply2_Up;
-		for(int i = 0; i < 9; i++)
+		for(int i = 0; i < 11; i++)
 			Menu_RefreshControlRow(layout, baseId + i, tLXOptions->sPlayerControls[ply][SIN_UP + i]);
 	}
 	tLX->setupInputs();
