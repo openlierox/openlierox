@@ -40,6 +40,10 @@ libopenlierox_pch_dephelp.a
 *-build
 /build-*
 
+# Downloaded at build time by CMakeOlxCommon.cmake (SDL gamepad mapping DB)
+/share/gamedir/gamecontrollerdb.txt
+/share/gamedir/gamecontrollerdb.txt.tmp
+
 # this one is automatically created by CMake
 gamedecompiler.xcodeproj
 
