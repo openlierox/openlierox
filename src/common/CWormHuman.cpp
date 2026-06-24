@@ -61,6 +61,21 @@ static bool isFirstLocalHumanWorm(const CWorm* worm) {
 	return false;
 }
 
+// Index of this worm among the local *human* worms (0 = first human player,
+// 1 = second, ...), or -1 if it isn't a local human worm. This doubles as the
+// gamepad slot the player uses: human player N is driven by gamepad N, so every
+// local human gets twin-stick controls on their own controller.
+static int localHumanWormIndex(const CWorm* worm) {
+	int idx = 0;
+	for_each_iterator(CWorm*, w, game.localWorms()) {
+		if(dynamic_cast<CWormHumanInputHandler*>(w->get()->inputHandler())) {
+			if(w->get() == worm) return idx;
+			idx++;
+		}
+	}
+	return -1;
+}
+
 ///////////////////
 // Get the input from a human worm
 void CWormHumanInputHandler::getInput() {
@@ -162,23 +177,49 @@ void CWormHumanInputHandler::getInput() {
 			notes("dt: %f\n", dt); */
 	}
 
-	// angle section
+	// ---- Twin-stick controls (any local human player on their pad) ----
+	// Left stick walks, right stick aims. Walking never turns the worm
+	// (strafing is effectively always on) — the right stick alone decides the
+	// facing side and the exact aim angle. Each local human player uses the
+	// gamepad with the same index (player N -> pad N). Always active for a
+	// local human with a connected pad: the analog sticks are reserved for
+	// this and are not separately bindable.
+	const int twinPad = localHumanWormIndex(m_worm);
+	const bool twinStick = (twinPad >= 0) && isPadPresent(twinPad);
+	const int twinDeadzone = getPadStickDeadzone();
+
+	// Twin-stick aim source, resolved before the angle section so the keyboard
+	// aim path can be shared. The right stick is the primary aim stick; if it's
+	// idle the left stick drives the aim (so a single-stick player aims where
+	// they walk), and when both are pushed the right stick wins.
+	bool stickAiming = false;
+	int aimAx = 0, aimAy = 0; // chosen stick (SDL: up/left negative, down/right positive)
+	if(twinStick) {
+		const int rx = getPadRightStickX(twinPad);
+		const int ry = getPadRightStickY(twinPad);
+		const int lx = getPadLeftStickX(twinPad);
+		const int ly = getPadLeftStickY(twinPad);
+		const bool rightAiming = (rx*rx + ry*ry > twinDeadzone*twinDeadzone);
+		const bool leftAiming  = (lx*lx + ly*ly > twinDeadzone*twinDeadzone);
+		if(rightAiming || leftAiming) {
+			stickAiming = true;
+			aimAx = rightAiming ? rx : lx;
+			aimAy = rightAiming ? ry : ly;
+			// Horizontal sign picks the facing side instantly (keyboard players
+			// also turn instantly by walking).
+			m_worm->setFaceDirectionSide((aimAx >= 0) ? DIR_RIGHT : DIR_LEFT);
+		}
+	}
+	// Reset the aim cursor each frame; the stick limit-aim path below turns it on
+	// when active (an instantaneous marker showing where the stick points while
+	// the worm's actual aim rotates toward it at keyboard speed).
+	m_worm->bAimCursorActive = false;
+
+	// angle section: keyboard / mouse / d-pad aiming. Runs unconditionally and
+	// unchanged from before this PR — the d-pad up/down keeps aiming through the
+	// normal key-mapping system exactly as it always did. The stick aim is
+	// layered on after this block.
 	{
-		static const float joystickCoeff = 150.0f/65536.0f;
-		static const float joystickShift = 15; // 15 degrees
-
-		// Joystick up
-		if (cDown.isJoystickThrottle())  {
-			m_worm->fAngleSpeed = 0;
-			m_worm->fAngle = CLAMP((float)cUp.getJoystickValue() * joystickCoeff - joystickShift, -90.0f, 60.0f);
-		}
-
-		// Joystick down
-		if (cDown.isJoystickThrottle())  {
-			m_worm->fAngleSpeed = 0;
-			m_worm->fAngle = CLAMP((float)cUp.getJoystickValue() * joystickCoeff - joystickShift, -90.0f, 60.0f);
-		}
-
 		float aimMaxSpeed = MAX((float)fabs(tLXOptions->fAimMaxSpeed), 20.0f); // Note: 100 was LX56 max aimspeed
 		float aimAccel = MAX((float)fabs(tLXOptions->fAimAcceleration), 100.0f); // HINT: 500 is the LX56 value here (rev 1)
 		float aimFriction = CLAMP(tLXOptions->fAimFriction, 0.0f, 1.0f); // we didn't had that in LX56; it behaves more natural
@@ -188,14 +229,14 @@ void CWormHumanInputHandler::getInput() {
 			aimAccel = 500;
 			aimLikeLX56 = true;
 		}
-		
-		if((cUp.isDown() || tUp) && !cUp.isJoystickThrottle()) { // Up
+
+		if(cUp.isDown() || tUp) { // Up
 			m_worm->fAngleSpeed -= aimAccel * dt.seconds();
 			if(!aimLikeLX56) CLAMP_DIRECT(m_worm->fAngleSpeed, -aimMaxSpeed, aimMaxSpeed);
-		} else if((cDown.isDown() || tDown) && !cDown.isJoystickThrottle()) { // Down
+		} else if(cDown.isDown() || tDown) { // Down
 			m_worm->fAngleSpeed += aimAccel * dt.seconds();
 			if(!aimLikeLX56) CLAMP_DIRECT(m_worm->fAngleSpeed, -aimMaxSpeed, aimMaxSpeed);
-		} else {			
+		} else {
 			if(!mouseControl) {
 				// HINT: this is the original order and code (before mouse patch - rev 1007)
 				CLAMP_DIRECT(m_worm->fAngleSpeed, -aimMaxSpeed, aimMaxSpeed);
@@ -222,7 +263,39 @@ void CWormHumanInputHandler::getInput() {
 		m_worm->fAngle += m_worm->fAngleSpeed * dt.seconds();
 		if(CLAMP_DIRECT(m_worm->fAngle.write(), -90.0f, cClient->getGameLobby()[FT_FullAimAngle] ? 90.0f : 60.0f) != 0)
 			m_worm->fAngleSpeed = 0;
+	}
 
+	// Additionally, the analog sticks aim (joystick add-on). The facing side was
+	// already set above. The stick direction gives an absolute target angle: the
+	// angle above/below horizontal (atan2 against |aimAx| measures it from
+	// horizontal; the left/right sign is carried by the facing side; SDL Y is
+	// negative-up, matching the engine's positive-down convention).
+	if(stickAiming) {
+		const float maxAngle = cClient->getGameLobby()[FT_FullAimAngle] ? 90.0f : 60.0f;
+		float ang = atan2f((float)aimAy, fabsf((float)aimAx)) * (180.0f / (float)PI);
+		const float targetAngle = CLAMP(ang, -90.0f, maxAngle);
+
+		// Rotate the actual aim toward the stick target, but no faster than a
+		// keyboard player can (fAimMaxSpeed, or 100°/s under FT_ForceLX56Aim),
+		// capped per frame, so a gamepad player can't aim faster than a keyboard
+		// player. The worm thus "eventually ends" at the stick angle. A separate
+		// instantaneous cursor (drawn in CWorm::draw) shows the target direction
+		// right away, so the player still gets direct feedback of where they're
+		// aiming while the worm catches up.
+		float aimMaxSpeed = MAX((float)fabs(tLXOptions->fAimMaxSpeed), 20.0f);
+		if(cClient->getGameLobby()[FT_ForceLX56Aim] || cClient->getServerVersion() < OLXRcVersion(0,58,3))
+			aimMaxSpeed = 100; // LX56 keyboard aim max speed
+		const float maxStep = aimMaxSpeed * dt.seconds();
+		float diff = targetAngle - m_worm->getAngle();
+		CLAMP_DIRECT(diff, -maxStep, maxStep);
+		m_worm->fAngle = m_worm->getAngle() + diff;
+		m_worm->fAngleSpeed = 0;
+
+		// Feed the instantaneous cursor: store the target angle (fAngle
+		// convention; the facing side carries the left/right sign) and flag it
+		// on for this frame.
+		m_worm->fAimCursorAngle = targetAngle;
+		m_worm->bAimCursorActive = true;
 	} // end angle section
 
 	const CVec ninjaShootDir = m_worm->getFaceDirection();
@@ -386,13 +459,21 @@ void CWormHumanInputHandler::getInput() {
 	}
 
 
+	// Keyboard / d-pad movement. Runs unconditionally. With no aim stick active
+	// it is unchanged from before this PR — the d-pad left/right walks *and
+	// turns* the worm through the normal key-mapping system exactly as it always
+	// did. While a stick is aiming (stickAiming), the aim stick owns the facing
+	// side, so walking here only moves and never turns: the worm strafes and
+	// keeps aiming where the stick points (the right stick thus overrides the
+	// facing from keyboard/d-pad walking, not just from the left stick). The
+	// left stick walk add-on below also only moves, never turns.
 	if(!(cSelWeapon.isDown() || tSelWeap)) {
 		if(cLeft.isDown() || tLeft) {
 			ws->bMove = true;
 			m_worm->lastMoveTime = tLX->currentTime;
 
 			if(!(cRight.isDown() || tRight)) {
-				if(!cClient->isHostAllowingStrafing() || !(cStrafe.isDown() || tStrafe)) m_worm->iFaceDirectionSide = DIR_LEFT;
+				if(!stickAiming && (!cClient->isHostAllowingStrafing() || !(cStrafe.isDown() || tStrafe))) m_worm->iFaceDirectionSide = DIR_LEFT;
 				m_worm->iMoveDirectionSide = DIR_LEFT;
 			}
 
@@ -407,7 +488,7 @@ void CWormHumanInputHandler::getInput() {
 			m_worm->lastMoveTime = tLX->currentTime;
 
 			if(!(cLeft.isDown() || tLeft)) {
-				if(!cClient->isHostAllowingStrafing() || !(cStrafe.isDown() || tStrafe)) m_worm->iFaceDirectionSide = DIR_RIGHT;
+				if(!stickAiming && (!cClient->isHostAllowingStrafing() || !(cStrafe.isDown() || tStrafe))) m_worm->iFaceDirectionSide = DIR_RIGHT;
 				m_worm->iMoveDirectionSide = DIR_RIGHT;
 			}
 
@@ -421,6 +502,30 @@ void CWormHumanInputHandler::getInput() {
 		if(!cClient->isHostAllowingStrafing() && cStrafe.isDownOnce())
 			// TODO: perhaps in chat?
 			hints << "strafing is not allowed on this server." << endl;
+	}
+
+	// Additionally, the left stick walks (joystick add-on). Strafe: it sets the
+	// movement direction but never the facing side, so the worm keeps aiming
+	// where the sticks point regardless of which way it walks. Walking always
+	// digs. When the stick is idle this does nothing, leaving the keyboard/d-pad
+	// movement above untouched.
+	if(twinStick) {
+		const float carveDelay = 0.2f; // same throttle as the mouse/touch carve below
+		const int lx = getPadLeftStickX(twinPad);
+		if(abs(lx) > twinDeadzone) {
+			ws->bMove = true;
+			m_worm->lastMoveTime = tLX->currentTime;
+			m_worm->iMoveDirectionSide = (lx < 0) ? DIR_LEFT : DIR_RIGHT;
+
+			// Walking always digs: pulse carve in the walk direction (throttled)
+			// so the worm tunnels straight through dirt instead of stopping at
+			// a wall. bCarve is reset to false each frame, so the throttle makes
+			// it pulse, which the gus DIG action triggers on each rising edge.
+			if(tLX->currentTime - m_worm->fLastCarve >= carveDelay) {
+				ws->bCarve = true;
+				m_worm->fLastCarve = tLX->currentTime;
+			}
+		}
 	}
 
 
@@ -518,6 +623,8 @@ WormType* PRF_HUMAN = &PRF_HUMAN_instance;
 CWormHumanInputHandler::CWormHumanInputHandler(CWorm* w) : CWormInputHandler(w) {
 	bRopeDown = bRopeDownOnce = false;
 	m_localPlayerSlot = -1;
+	weaponSelStickHeld = false;
+	weaponSelStickRepeated = false;
 	gusInit();
 	
 	game.onNewPlayer( this );
@@ -826,21 +933,45 @@ void CWormHumanInputHandler::doWeaponSelectionFrame(SDL_Surface * bmpDest, CView
 	
 	if(!bChat_Typing) {
 		// move selection up or down
-		if (cDown.isJoystickThrottle() || cUp.isJoystickThrottle())  {
-			m_worm->iCurrentWeapon = (cUp.getJoystickValue() + 32768) * (m_worm->tWeapons.size() + 2) / 65536; // We have 7 rows and 65536 throttle states
-			
-		} else {
-			int change = cDown.wasDown() - cUp.wasDown();
-			if(touchForThisWorm) {
-				// tapCount() returns (and consumes) every queued tap, so a
-				// burst of taps during a slow frame still moves N rows.
-				change += TouchScreenInput::tapCount(1, TouchScreenInput::Action::Down);
-				change -= TouchScreenInput::tapCount(1, TouchScreenInput::Action::Up);
-			}
-			m_worm->iCurrentWeapon += change;
-			m_worm->iCurrentWeapon %= (int)m_worm->tWeapons.size() + 2;
-			if(m_worm->iCurrentWeapon < 0) m_worm->iCurrentWeapon += (int)m_worm->tWeapons.size() + 2;
+		int change = cDown.wasDown() - cUp.wasDown();
+		if(touchForThisWorm) {
+			// tapCount() returns (and consumes) every queued tap, so a
+			// burst of taps during a slow frame still moves N rows.
+			change += TouchScreenInput::tapCount(1, TouchScreenInput::Action::Down);
+			change -= TouchScreenInput::tapCount(1, TouchScreenInput::Action::Up);
 		}
+
+		// Gamepad left stick navigates up/down too. The sticks aren't bindable
+		// (the in-game twin-stick path owns them), so read the pad directly via
+		// the same helpers and slot mapping (player N -> pad N). Push up/down to
+		// move one row, then it auto-repeats while held, mimicking key-repeat.
+		const int padSlot = localHumanWormIndex(m_worm);
+		if(padSlot >= 0 && isPadPresent(padSlot)) {
+			const int ly = getPadLeftStickY(padSlot); // SDL: up negative, down positive
+			const int dz = getPadStickDeadzone();
+			const int dir = (ly < -dz) ? -1 : (ly > dz) ? 1 : 0;
+			if(dir == 0) {
+				weaponSelStickHeld = false;
+			} else if(!weaponSelStickHeld) {
+				// rising edge: move one row right away
+				change += dir;
+				weaponSelStickHeld = true;
+				weaponSelStickRepeated = false;
+				fLastWeaponSelStickMove = tLX->currentTime;
+			} else {
+				// held: wait longer before the first repeat, then repeat faster
+				const float delay = weaponSelStickRepeated ? 0.12f : 0.4f;
+				if(tLX->currentTime - fLastWeaponSelStickMove >= delay) {
+					change += dir;
+					weaponSelStickRepeated = true;
+					fLastWeaponSelStickMove = tLX->currentTime;
+				}
+			}
+		}
+
+		m_worm->iCurrentWeapon += change;
+		m_worm->iCurrentWeapon %= (int)m_worm->tWeapons.size() + 2;
+		if(m_worm->iCurrentWeapon < 0) m_worm->iCurrentWeapon += (int)m_worm->tWeapons.size() + 2;
 	}
 
 	stopInputSystem(); // if not done yet... otherwise it will also not hurt. it will shut down the regular ingame input system

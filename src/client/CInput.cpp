@@ -191,6 +191,14 @@ bool isPlayer1KeyBinding(SDL_Keycode sym) {
 
 	
 	
+// Analog stick deadzone, expressed as a percentage of full stick deflection
+// (SDL analog axes range -32768..32767). Kept as a percentage so it's easy to
+// expose in a configuration UI later; the raw axis threshold used by the input
+// code is derived from it. Defined here (outside the dedicated/non-dedicated
+// split) so both the real readers and the dedicated stubs share one value.
+static const int JOY_DEADZONE_PERCENT = 60;
+static const int JOY_DEADZONE = (32767 * JOY_DEADZONE_PERCENT) / 100; // 60% -> 19660
+
 #ifdef DEDICATED_ONLY
 
 void updateAxisStates() {}
@@ -200,27 +208,35 @@ void CInput::OnControllerAdded(int) {}
 void CInput::OnControllerRemoved(int) {}
 int getControllerPlayerSlot(SDL_JoystickID) { return -1; }
 
+// Twin-stick control helpers — no joystick support in dedicated builds.
+bool isPadPresent(int) { return false; }
+int getPadLeftStickX(int) { return 0; }
+int getPadLeftStickY(int) { return 0; }
+int getPadRightStickX(int) { return 0; }
+int getPadRightStickY(int) { return 0; }
+int getPadStickDeadzone() { return JOY_DEADZONE; } // unused without joystick support
+
 #else
 
 #define HAVE_JOYSTICK
 
-// Analog stick deadzone (axes range -32768..32767)
-static const int JOY_DEADZONE = 8000;
+// JOY_DEADZONE is defined above (shared with the dedicated stubs).
 // Trigger threshold: triggers range 0..32767; fire at 75% travel
 static const int JOY_TRIGGER_THRESHOLD = 24576;
 
 // Binding table — maps the per-pad suffix to JOY_* flag and SDL constant.
 // Config strings use the form "j<N>_<suffix>" where N is 1-based pad index
-// (e.g. "j1_button_south", "j5_lefty_up"). Pad count is unbounded; the N is
+// (e.g. "j1_button_south", "j2_triggerright"). Pad count is unbounded; the N is
 // parsed at Setup() time and the suffix is matched against this table.
 // Text names use SDL's naming: SDL_GameControllerGetStringForButton/Axis
 // For axes:    sdl_index = SDL_GameControllerAxis
 // For buttons: sdl_index = SDL_GameControllerButton
+//
+// The analog sticks are deliberately NOT in this table: both sticks are
+// reserved for twin-stick controls (left stick walks, right stick aims; see
+// CWormHumanInputHandler::getInput), which read them directly rather than
+// through a binding. Only buttons, the d-pad and the triggers are bindable.
 joystick_t Joysticks[] = {
-	{ "lefty_up",      JOY_UP,             SDL_CONTROLLER_AXIS_LEFTY},
-	{ "lefty_down",    JOY_DOWN,           SDL_CONTROLLER_AXIS_LEFTY},
-	{ "leftx_left",    JOY_LEFT,           SDL_CONTROLLER_AXIS_LEFTX},
-	{ "leftx_right",   JOY_RIGHT,          SDL_CONTROLLER_AXIS_LEFTX},
 	{ "button_south",  JOY_BUTTON,         SDL_CONTROLLER_BUTTON_A},
 	{ "button_east",   JOY_BUTTON,         SDL_CONTROLLER_BUTTON_B},
 	{ "button_west",   JOY_BUTTON,         SDL_CONTROLLER_BUTTON_X},
@@ -232,10 +248,6 @@ joystick_t Joysticks[] = {
 	{ "rightstick",    JOY_BUTTON,         SDL_CONTROLLER_BUTTON_RIGHTSTICK},
 	{ "lshoulder",     JOY_BUTTON,         SDL_CONTROLLER_BUTTON_LEFTSHOULDER},
 	{ "rshoulder",     JOY_BUTTON,         SDL_CONTROLLER_BUTTON_RIGHTSHOULDER},
-	{ "rightx_left",   JOY_TURN_LEFT,      SDL_CONTROLLER_AXIS_RIGHTX},
-	{ "rightx_right",  JOY_TURN_RIGHT,     SDL_CONTROLLER_AXIS_RIGHTX},
-	{ "righty_up",     JOY_THROTTLE_LEFT,  SDL_CONTROLLER_AXIS_RIGHTY},
-	{ "righty_down",   JOY_THROTTLE_RIGHT, SDL_CONTROLLER_AXIS_RIGHTY},
 	{ "d_up",          JOY_HAT,            SDL_CONTROLLER_BUTTON_DPAD_UP},
 	{ "d_down",        JOY_HAT,            SDL_CONTROLLER_BUTTON_DPAD_DOWN},
 	{ "d_left",        JOY_HAT,            SDL_CONTROLLER_BUTTON_DPAD_LEFT},
@@ -327,6 +339,19 @@ static bool checkControllerState(int flag, int sdl_index, int idx)
 	}
 	return false;
 }
+
+// --- Twin-stick control helpers (raw analog values, -32768..32767) ---
+bool isPadPresent(int padIndex) { return getController(padIndex) != NULL; }
+static int rawAxis(int padIndex, SDL_GameControllerAxis axis) {
+	SDL_GameController* gc = getController(padIndex);
+	if(!gc) return 0;
+	return SDL_GameControllerGetAxis(gc, axis);
+}
+int getPadLeftStickX(int padIndex)  { return rawAxis(padIndex, SDL_CONTROLLER_AXIS_LEFTX); }
+int getPadLeftStickY(int padIndex)  { return rawAxis(padIndex, SDL_CONTROLLER_AXIS_LEFTY); }
+int getPadRightStickX(int padIndex) { return rawAxis(padIndex, SDL_CONTROLLER_AXIS_RIGHTX); }
+int getPadRightStickY(int padIndex) { return rawAxis(padIndex, SDL_CONTROLLER_AXIS_RIGHTY); }
+int getPadStickDeadzone() { return JOY_DEADZONE; }
 
 static void initController(int i, bool isTemp) {
 	if(i < 0) return;

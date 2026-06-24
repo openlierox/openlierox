@@ -248,6 +248,14 @@ protected:
 	ATTR(CWorm, float,	fAngle, 26, {serverside = false; serverCanUpdate = false;})
     float       fAngleSpeed;
     float		fMoveSpeedX;
+
+	// Gamepad twin-stick aim cursor (local, render-only). The worm's aim rotates
+	// toward the stick angle at keyboard speed; this is the instantaneous target
+	// the stick points at, drawn as a separate cursor so the player sees their
+	// intended aim right away. Same convention as fAngle (the facing side carries
+	// the left/right sign). Not networked.
+	float		fAimCursorAngle;
+	bool		bAimCursorActive;
 	
 	ATTR(CWorm,	float,	fSpeedFactor, 30, { defaultValue = 1.0f; })
 	ATTR(CWorm, bool,	bCanUseNinja, 31, { defaultValue = true; })
@@ -694,6 +702,7 @@ public:
 	//right ( it will wrap the value so that its always inside the worm's weapons size )
 	int getWeaponIndexOffset( int offset );
 	Angle getPointingAngle();
+	Angle getDiggingAngle(); // walk-direction dig angle (twin-stick: walking into a wall digs)
 	void setDir(int d); // Only use this if you are going to sync it over netplay with an event
 	int getDir()
 	{

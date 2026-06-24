@@ -112,6 +112,13 @@ private:
 	bool jumping;
 	bool walkingLeft;
 	bool walkingRight;
+
+	// Gamepad left-stick navigation in the weapon-selection menu (the analog
+	// sticks aren't bindable, so the menu reads the pad directly). Tracks the
+	// stick so one push moves one row, with keyboard-style auto-repeat while held.
+	AbsTime	fLastWeaponSelStickMove;
+	bool	weaponSelStickHeld;
+	bool	weaponSelStickRepeated;
 };
 
 #endif  //  __CWORMHUMAN_H__

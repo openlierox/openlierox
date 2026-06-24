@@ -210,6 +210,8 @@ CWorm::CWorm() :
 	iFaceDirectionSide = DIR_RIGHT;
 	fAngle = 0.f;
 	fAngleSpeed = 0.f;
+	fAimCursorAngle = 0.f;
+	bAimCursorActive = false;
 	fMoveSpeedX = 0.f;
 	fFrame = 0;
 	bDrawMuzzle = false;
@@ -953,6 +955,25 @@ static INLINE bool _isWormVisible(CWorm* w, CViewport* v) {
 	return w->isVisible(v);
 }
 
+// Draw a crosshair sprite at the given aim angle (fAngle convention; the facing
+// side carries the left/right sign) at the crosshair distance from the worm.
+// spriteX selects the frame (0 = normal, 6 = green/target).
+static void drawAimCrosshair(SDL_Surface* bmpDest, const VectorD2<int>& wormPos, float angle, int faceSide, int spriteX) {
+	int a = (int)angle;
+	if(faceSide == DIR_LEFT)
+		a = 180 - a;
+
+	CVec forw;
+	GetVecsFromAngle((float)a, &forw, NULL);
+	forw *= tLXOptions->fCrosshairDistance;
+
+	VectorD2<int> cp = wormPos;
+	cp.x += (int)forw.x;
+	cp.y += (int)forw.y;
+
+	DrawImageAdv(bmpDest, DeprecatedGUI::gfxGame.bmpCrosshair, spriteX, 0, cp.x - 2, cp.y - 2, 6, 6);
+}
+
 Color CWorm::renderColorAt(/* relative game coordinates */ int x, int y) const {
 	if(!bAlive)
 		return Color(0,0,0,SDL_ALPHA_TRANSPARENT);
@@ -1158,6 +1179,25 @@ void CWorm::Draw(SDL_Surface * bmpDest, CViewport *v)
 		}
 
 		DrawImageAdv(bmpDest, DeprecatedGUI::gfxGame.bmpCrosshair, x, 0, cp.x - 2, cp.y - 2, 6, 6);
+	}
+
+	//
+	// Draw the gamepad aim cursors
+	//
+	// The worm's actual aim rotates toward the stick at keyboard speed, so it
+	// lags the stick. Two cursors are drawn (regardless of engine — the gamepad
+	// feature runs on the gus engine, which skips the classic crosshair above):
+	//  1. a green helper cursor at the direction the stick currently points
+	//     (fAimCursorAngle), giving instant feedback of the intended aim, and
+	//  2. on top of it, a normal cursor at the worm's *actual* current aim
+	//     (fAngle), so the player can see the real aim catching up to the helper.
+	// The worm aim cursor is drawn last so it stays visible above the helper.
+	if(bAimCursorActive && drawExtras && bLocal) {
+		// 1. Joystick aim helper cursor (green) at the stick's target direction,
+		//    then 2. the worm's actual aim (normal) on top, so the worm aim cursor
+		//    stays visible above the helper as the real aim catches up.
+		drawAimCrosshair(bmpDest, p, fAimCursorAngle, iFaceDirectionSide, 6);
+		drawAimCrosshair(bmpDest, p, fAngle, iFaceDirectionSide, 0);
 	}
 
 	//

@@ -438,7 +438,21 @@ Vec CWorm::getRenderPos()
 
 Angle CWorm::getPointingAngle()
 {
-	return (iMoveDirectionSide == DIR_RIGHT) ? getAimAngle() : (Angle(360.0) - getAimAngle());
+	// Aim/pointing follows the *facing* side, not the movement side. They are
+	// identical in normal play (walking turns the worm), but the twin-stick
+	// controls decouple them: the right stick sets the facing/aim while the left
+	// stick walks (strafe). Using the facing side keeps the aim line, firecone
+	// and shots pointing where the player is actually aiming.
+	return (iFaceDirectionSide == DIR_RIGHT) ? getAimAngle() : (Angle(360.0) - getAimAngle());
+}
+
+Angle CWorm::getDiggingAngle()
+{
+	// Digging goes straight along the *movement* (walk) direction, so walking
+	// into a wall always tunnels through it regardless of where the worm is
+	// aiming. 90deg == horizontal-right, 270deg == horizontal-left in this
+	// angle convention (see getAimAngle: horizontal aim -> 90deg).
+	return (iMoveDirectionSide == DIR_RIGHT) ? Angle(90.0) : Angle(270.0);
 }
 
 int CWorm::getWeaponIndexOffset( int offset )
@@ -586,14 +600,14 @@ void CWorm::dig()
 {
 	if( weOwnThis() || !m_node ) {
 		if ( getAlive() ) {
-			dig( pos(), getPointingAngle() );
-		
+			dig( pos(), getDiggingAngle() );
+
 			// NetWorm code
 			if( weOwnThis() && m_node ) {
 				BitStream *data = new BitStream;
 				addEvent(data, Dig);
 				game.gameMap()->vectorEncoding.encode<Vec>(*data, pos());
-				data->addInt(int(getPointingAngle()), Angle::prec);
+				data->addInt(int(getDiggingAngle()), Angle::prec);
 				m_node->sendEvent(eNet_ReliableOrdered, Net_REPRULE_AUTH_2_ALL, data);
 			}
 		}

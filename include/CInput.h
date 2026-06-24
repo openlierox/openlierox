@@ -167,6 +167,19 @@ bool isPlayer1KeyBinding(SDL_Keycode sym);
 // given controller instance ID drives, or -1 if not registered.
 int  getControllerPlayerSlot(SDL_JoystickID instanceID);
 
+// Twin-stick controls: raw analog stick values for the given 0-based gamepad
+// slot, range -32768..32767 (0 if pad absent). Read directly so the twin-stick
+// aim/move logic doesn't depend on any configurable key bindings; the analog
+// sticks are reserved for twin-stick control and are not separately bindable.
+bool isPadPresent(int padIndex);
+int  getPadLeftStickX(int padIndex);
+int  getPadLeftStickY(int padIndex);
+int  getPadRightStickX(int padIndex);
+int  getPadRightStickY(int padIndex);
+// Deadzone in raw axis units below which a stick is treated as centered.
+// Shared with the classic binding code so there's a single source of truth.
+int  getPadStickDeadzone();
+
 
 
 
