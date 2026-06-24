@@ -52,17 +52,19 @@ const std::string    ply_def2[] = {"kp 8",  "kp 5",    "kp 4",    "kp 6",     "k
 // second alternative alongside the keyboard defaults above, so each control
 // works from either input out of the box. The pad index is added at
 // registration time (j1 for player 1, j2 for player 2).
-// Movement and aiming are on the d-pad (digital); weapons are intentionally
-// left keyboard-only (you cycle them on the pad with SelectWeapon). Empty
-// string means "no gamepad binding for this control". Note we deliberately
-// avoid the right-stick-Y "throttle" axes here: those switch the worm to
-// analog aiming, which would override the keyboard's digital aiming when both
-// are bound to one control.
+// The analog sticks are NOT bound here: during play, walking and aiming come
+// from the twin-stick controls (left stick walks, right stick aims), which
+// read the sticks directly and are always active for a local human with a pad,
+// superseding these Up/Down/Left/Right bindings. The d-pad entries are kept
+// because they still drive non-gameplay input such as the weapon-select
+// screen. The Weapon1-5 quick-select slots are left keyboard-only (on the pad
+// you cycle weapons with Previous/Next Weapon on the shoulders). Empty string
+// means "no gamepad binding".
 const std::string    ply_gamepad_def[] = {
-	"d_up",         // Up           - d-pad up (aim up)
-	"d_down",       // Down         - d-pad down (aim down)
-	"d_left",       // Left         - d-pad left (move left)
-	"d_right",      // Right        - d-pad right (move right)
+	"d_up",         // Up           - d-pad up (weapon-select scroll up)
+	"d_down",       // Down         - d-pad down (weapon-select scroll down)
+	"d_left",       // Left         - d-pad left
+	"d_right",      // Right        - d-pad right
 	"triggerright", // Shoot        - right trigger
 	"button_south", // Jump         - A
 	"button_north", // Rope         - Y
