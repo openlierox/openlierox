@@ -136,6 +136,22 @@ bool InitializeAuxLib()
 		if(SDL_InitSubSystem(SDL_INIT_GAMECONTROLLER) != 0) {
 			warnings << "WARNING: couldn't init gamecontroller/joystick subystem: " << SDL_GetError() << endl;
 			bJoystickSupport = false;
+		} else {
+			// Subsystem is up - load the bundled SDL game controller mapping
+			// database. It is downloaded from
+			// https://github.com/mdqinc/SDL_GameControllerDB at build time and
+			// shipped in the gamedir, augmenting SDL's built-in mappings so
+			// that many more gamepads are recognised out of the box.
+			const std::string gcdbPath = GetFullFileName("gamecontrollerdb.txt");
+			if(gcdbPath.empty()) {
+				notes << "no bundled gamecontrollerdb.txt found - using SDL's built-in mappings only" << endl;
+			} else {
+				const int added = SDL_GameControllerAddMappingsFromFile(gcdbPath.c_str());
+				if(added < 0)
+					warnings << "WARNING: couldn't load gamecontroller mappings from " << gcdbPath << ": " << SDL_GetError() << endl;
+				else
+					notes << "loaded " << added << " gamecontroller mappings from " << gcdbPath << endl;
+			}
 		}
 	}
 
