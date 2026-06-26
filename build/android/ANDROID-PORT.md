@@ -231,6 +231,15 @@ On launch the activity:
    `assets/gamedir/` tree into `getFilesDir()/OpenLieroX/` and writes
    the new version marker.
 
+`gamedir.version` is `"<olx-version> data:<sha1>"`, where the sha1 is a content
+hash of the fully-staged `gamedir` tree (computed in `build-android.sh`). It is
+deliberately **not** just the git version: editing bundled data without bumping
+the git version (e.g. uncommitted changes, or rebuilding the same commit) would
+otherwise leave the marker unchanged, so the device would keep serving a stale
+copy and the new data would never be extracted. Hashing the staged tree means
+*any* change to bundled data changes the marker and forces a re-extract, while
+identical data is left untouched. 
+
 The native build sees `getFilesDir() == /data/data/net.openlierox/files`,
 which is what `SYSTEM_DATA_DIR` resolves to.
 

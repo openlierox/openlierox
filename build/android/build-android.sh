@@ -113,9 +113,29 @@ if [ "$SKIP_DATA" -eq 0 ]; then
         exit 1
     fi
     cp "$ANDROID_DIR/deps/cacert.pem" "$ANDROID_DIR/output/assets/gamedir/cacert.pem"
-    # Drop a marker so the runtime can check that the data was extracted.
-    # get_version.sh fails the build if the version can't be determined.
-    "$OLX_ROOT/get_version.sh" > "$ANDROID_DIR/output/assets/gamedir.version"
+    # Drop a version marker the runtime compares against to decide whether to
+    # re-extract the bundled data (see OpenLieroXActivity.extractGamedirIfNeeded).
+    #
+    # This must change whenever the *bundled data* changes, otherwise the device
+    # keeps using a stale copy from a previous install. The git version alone is
+    # not enough: editing data without committing (or rebuilding the same commit)
+    # leaves the version string unchanged, so the new data never gets extracted.
+    #
+    # So base the marker on a content hash of the fully-staged gamedir (the git
+    # version is kept in the string too, for readable logs). Any change to any
+    # bundled file -> different hash -> the runtime re-extracts.
+    olx_version="$("$OLX_ROOT/get_version.sh")"   # fails the build if undeterminable
+    data_hash="$(cd "$ANDROID_DIR/output/assets" \
+        && find gamedir -type f -print0 \
+        | LC_ALL=C sort -z \
+        | xargs -0 sha1sum \
+        | sha1sum | cut -c1-40)"
+    if [ -z "$data_hash" ]; then
+        echo "ERROR: failed to hash staged gamedir for the version marker." >&2
+        exit 1
+    fi
+    printf '%s data:%s\n' "$olx_version" "$data_hash" \
+        > "$ANDROID_DIR/output/assets/gamedir.version"
 fi
 
 # ---------- gradle build ---------------------------------------------------
