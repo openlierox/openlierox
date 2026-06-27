@@ -146,6 +146,9 @@ bool InitializeAuxLib()
 			if(gcdbPath.empty()) {
 				notes << "no bundled gamecontrollerdb.txt found - using SDL's built-in mappings only" << endl;
 			} else {
+				// Log the resolved path up front so it is visible (e.g. over ADB
+				// logcat on Android) even if the load below fails or hangs.
+				notes << "gamecontrollerdb: loading mappings from " << gcdbPath << endl;
 				const int added = SDL_GameControllerAddMappingsFromFile(gcdbPath.c_str());
 				if(added < 0)
 					warnings << "WARNING: couldn't load gamecontroller mappings from " << gcdbPath << ": " << SDL_GetError() << endl;
