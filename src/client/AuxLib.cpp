@@ -67,6 +67,7 @@
 #include "DeprecatedGUI/Menu.h"
 #include "GfxPrimitives.h"
 #include "FindFile.h"
+#include "GamepadDiagnostics.h"
 #include "InputEvents.h"
 #include "StringUtils.h"
 #include "sound/SoundsBase.h"
@@ -142,16 +143,30 @@ bool InitializeAuxLib()
 			// https://github.com/mdqinc/SDL_GameControllerDB at build time and
 			// shipped in the gamedir, augmenting SDL's built-in mappings so
 			// that many more gamepads are recognised out of the box.
+			GamepadDbStatus dbStatus;
+			dbStatus.attempted = true;
 			const std::string gcdbPath = GetFullFileName("gamecontrollerdb.txt");
 			if(gcdbPath.empty()) {
 				notes << "no bundled gamecontrollerdb.txt found - using SDL's built-in mappings only" << endl;
+				dbStatus.fileFound = false;
 			} else {
+				dbStatus.fileFound = true;
+				dbStatus.path = gcdbPath;
+				// Checksum the file before handing it to SDL so the diagnostics
+				// page can confirm exactly which database is bundled.
+				dbStatus.checksum = ComputeFileCrc32(gcdbPath, &dbStatus.fileSize);
+
 				const int added = SDL_GameControllerAddMappingsFromFile(gcdbPath.c_str());
-				if(added < 0)
+				dbStatus.mappingsAdded = added;
+				dbStatus.loaded = (added >= 0);
+				if(added < 0) {
+					dbStatus.error = SDL_GetError();
 					warnings << "WARNING: couldn't load gamecontroller mappings from " << gcdbPath << ": " << SDL_GetError() << endl;
+				}
 				else
 					notes << "loaded " << added << " gamecontroller mappings from " << gcdbPath << endl;
 			}
+			SetGamepadDbStatus(dbStatus);
 		}
 	}
 

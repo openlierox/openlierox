@@ -34,6 +34,7 @@
 #include "IpToCountryDB.h"
 #include "ConversationLogger.h"
 #include "TouchControls.h"
+#include "GamepadDiagnostics.h"
 
 
 namespace DeprecatedGUI {
@@ -44,6 +45,7 @@ CGuiLayout	cOpt_Controls;        // Player 1 controls   (sub-tab 0)
 CGuiLayout	cOpt_Controls2;       // Player 2 controls   (sub-tab 1)
 CGuiLayout	cOpt_ControlsGen;     // General controls    (sub-tab 2)
 CGuiLayout	cOpt_ControlsTouch;   // Touch-screen layout (sub-tab 3, only shown on touch devices)
+CGuiLayout	cOpt_ControlsGamepad; // Gamepad diagnostics (sub-tab 4, info only)
 CGuiLayout	cOpt_System;
 CGuiLayout	cOpt_Game;
 
@@ -56,10 +58,11 @@ enum {
 	ct_Player2,
 	ct_General,
 	ct_Touchscreen,
+	ct_Gamepad,
 	ct__Count
 };
 int ControlsSubTab = ct_Player1;
-static const char* ControlsTabNames[ct__Count] = { "Player 1", "Player 2", "General", "Touchscreen" };
+static const char* ControlsTabNames[ct__Count] = { "Player 1", "Player 2", "General", "Touchscreen", "Gamepad diagnostics" };
 
 // True if the given tab should appear in the tab bar. All control tabs,
 // including Touchscreen, are always available — the touch layout can be
@@ -342,6 +345,9 @@ bool Menu_OptionsInitialize()
 	cOpt_ControlsTouch.Shutdown();
 	cOpt_ControlsTouch.Initialize();
 
+	cOpt_ControlsGamepad.Shutdown();
+	cOpt_ControlsGamepad.Initialize();
+
 	cOpt_Game.Shutdown();
 	cOpt_Game.Initialize();
 
@@ -615,6 +621,90 @@ void Menu_OptionsUpdateUpload(float speed)
 
 
 ///////////////////
+// Draw the "Gamepad diagnostics" sub-tab. This is an info-only page: it
+// reports whether the bundled SDL game controller mapping database loaded,
+// its checksum, and the controllers SDL currently recognises. No widgets,
+// just text drawn straight onto the menu (like the touch tiles).
+static void Menu_OptionsDrawGamepadDiagnostics(SDL_Surface* dest)
+{
+	// Restore the page background below the sub-tab bar each frame so that a
+	// changed controller list (hot-plug) doesn't leave stale text behind.
+	DrawImageAdv(dest, tMenu->bmpBuffer, 20,170, 20,170, 620,295);
+
+	const int x = kControlLabelX;
+	const int lineH = tLX->cFont.GetHeight() + 2;
+	int y = 175;
+
+	// Colours for ok / warning states.
+	const Color colOk   = Color(80, 220, 80);
+	const Color colBad  = tLX->clError;
+	const Color colHead = tLX->clHeading;
+	const Color colNorm = tLX->clNormalLabel;
+	const Color colDim  = tLX->clDisabled;
+
+	// --- Section 1: mapping database status --------------------------------
+	tLX->cFont.Draw(dest, x, y, colHead, "SDL controller mapping database"); y += lineH;
+
+	const GamepadDbStatus& db = GetGamepadDbStatus();
+	if(!bJoystickSupport) {
+		tLX->cFont.Draw(dest, x, y, colBad, "Joystick/gamepad support is disabled."); y += lineH;
+	}
+	else if(!db.attempted) {
+		tLX->cFont.Draw(dest, x, y, colDim, "Database load was not attempted."); y += lineH;
+	}
+	else if(!db.fileFound) {
+		tLX->cFont.Draw(dest, x, y, colBad, "Status: bundled gamecontrollerdb.txt NOT found"); y += lineH;
+		tLX->cFont.Draw(dest, x, y, colDim, "Using SDL's built-in mappings only."); y += lineH;
+	}
+	else if(!db.loaded) {
+		tLX->cFont.Draw(dest, x, y, colBad, "Status: FAILED to load"); y += lineH;
+		tLX->cFont.Draw(dest, x, y, colDim, "Path: " + db.path); y += lineH;
+		if(!db.error.empty()) {
+			tLX->cFont.Draw(dest, x, y, colBad, "Error: " + db.error); y += lineH;
+		}
+	}
+	else {
+		tLX->cFont.Draw(dest, x, y, colOk, "Status: loaded OK"); y += lineH;
+		tLX->cFont.Draw(dest, x, y, colNorm, "Mappings added: " + itoa(db.mappingsAdded)); y += lineH;
+		tLX->cFont.Draw(dest, x, y, colDim, "Path: " + db.path); y += lineH;
+	}
+
+	// Checksum + size (shown whenever we have a file).
+	if(db.fileFound) {
+		const std::string sum = db.checksum.empty() ? std::string("(unavailable)") : ("CRC32 " + db.checksum);
+		tLX->cFont.Draw(dest, x, y, colNorm, "Checksum: " + sum); y += lineH;
+		tLX->cFont.Draw(dest, x, y, colDim, "File size: " + itoa((int)db.fileSize) + " bytes"); y += lineH;
+	}
+
+	y += lineH / 2;
+
+	// --- Section 2: detected controllers -----------------------------------
+	const std::vector<GamepadControllerInfo> pads = GetDetectedControllers();
+	tLX->cFont.Draw(dest, x, y, colHead, "Detected controllers: " + itoa((int)pads.size())); y += lineH;
+
+	if(pads.empty()) {
+		tLX->cFont.Draw(dest, x, y, colDim, bJoystickSupport ? "No controllers connected." : "(support disabled)"); y += lineH;
+	}
+	else {
+		// Keep within the page box (bottom is ~440); leave room for the footer.
+		const int maxY = 410;
+		for(size_t i = 0; i < pads.size(); ++i) {
+			if(y > maxY) {
+				tLX->cFont.Draw(dest, x, y, colDim, "... " + itoa((int)(pads.size() - i)) + " more"); y += lineH;
+				break;
+			}
+			const GamepadControllerInfo& p = pads[i];
+			const Color nameCol = p.isGameController ? colOk : colBad;
+			tLX->cFont.Draw(dest, x, y, nameCol,
+				itoa(p.deviceIndex) + ": " + p.name +
+				(p.isGameController ? "  [mapped]" : "  [no mapping]"));
+			y += lineH;
+			tLX->cFont.Draw(dest, x + 16, y, colDim, "GUID " + p.guid); y += lineH;
+		}
+	}
+}
+
+///////////////////
 // Returns the gui layout for the currently selected Controls sub-tab
 static CGuiLayout& Menu_OptionsControlsLayout()
 {
@@ -622,6 +712,7 @@ static CGuiLayout& Menu_OptionsControlsLayout()
 		case ct_Player2:     return cOpt_Controls2;
 		case ct_General:     return cOpt_ControlsGen;
 		case ct_Touchscreen: return cOpt_ControlsTouch;
+		case ct_Gamepad:     return cOpt_ControlsGamepad;
 		default:             return cOpt_Controls;
 	}
 }
@@ -956,6 +1047,10 @@ void Menu_OptionsFrame()
 					}
 				}
 			}
+		} else if(ControlsSubTab == ct_Gamepad) {
+			// Info-only diagnostics page. No "Reset defaults" here — there's
+			// nothing to reset; we just report the mapping db + detected pads.
+			Menu_OptionsDrawGamepadDiagnostics(VideoPostProcessor::videoSurface().get());
 		} else {
 			// "Reset defaults" button (manual, so it can show that exact label)
 			Menu_OptionsDrawResetButton(VideoPostProcessor::videoSurface().get());
@@ -1415,6 +1510,7 @@ void Menu_OptionsShutdown()
 	cOpt_Controls2.Shutdown();
 	cOpt_ControlsGen.Shutdown();
 	cOpt_ControlsTouch.Shutdown();
+	cOpt_ControlsGamepad.Shutdown();
 	cOpt_System.Shutdown();
 	cOpt_Game.Shutdown();
 }
