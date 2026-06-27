@@ -606,21 +606,24 @@ void CWormHumanInputHandler::initWeaponSelection() {
 	}
 	
 	// Load previous settings from profile. Randomize the loadout only as a fallback
-	// when the profile has no stored weapons from a previous game.
 	bool anyStored = false;
 	for(size_t i=0;i<m_worm->tWeapons.size();i++)
 		if(!m_worm->tProfile->getWeaponSlot((int)i).empty()) anyStored = true;
 
-	if(!anyStored)
-		m_worm->GetRandomWeapons();
-	else
-	for(size_t i=0;i<m_worm->tWeapons.size();i++) {
-		m_worm->weaponSlots.write()[i].WeaponId = (int)game.gameScript()->FindWeaponId( m_worm->tProfile->getWeaponSlot((int)i) );
+	if(anyStored) {
+		notes << "Loading stored weapons from profile" << endl;
+		for(size_t i=0;i<m_worm->tWeapons.size();i++) {
+			m_worm->weaponSlots.write()[i].WeaponId = (int)game.gameScript()->FindWeaponId( m_worm->tProfile->getWeaponSlot((int)i) );
 
-        // If this weapon is not enabled in the restrictions, find another weapon that is enabled
-		if( !m_worm->tWeapons[i].weapon() || !game.weaponRestrictions()->isEnabled( m_worm->tWeapons[i].weapon()->Name ) ) {
-			m_worm->weaponSlots.write()[i].WeaponId = game.gameScript()->FindWeaponId( game.weaponRestrictions()->findEnabledWeapon( game.gameScript()->GetWeaponList() ) );
-        }
+			// If this weapon is not enabled in the restrictions, find another weapon that is enabled
+			if( !m_worm->tWeapons[i].weapon() || !game.weaponRestrictions()->isEnabled( m_worm->tWeapons[i].weapon()->Name ) ) {
+				m_worm->weaponSlots.write()[i].WeaponId = game.gameScript()->FindWeaponId( game.weaponRestrictions()->findEnabledWeapon( game.gameScript()->GetWeaponList() ) );
+			}
+		}
+	}
+	else {
+		notes << "No stored weapon choice found. Randomizing weapons" << endl;
+		m_worm->GetRandomWeapons();
 	}
 
 	
