@@ -136,20 +136,20 @@ INCLUDE_DIRECTORIES(BEFORE ${OLX_VERSION_INCLUDE_DIR})
 # augmenting SDL's built-in mappings so far more gamepads work out of the box.
 #
 # By default we download the latest database at configure time. A snapshot is
-# also checked into the repo (share/gamecontrollerdb.txt) so that local/offline
-# builds always have a working file: if the download is disabled or fails, we
-# fall back to that committed copy.
+# also checked into the repo (share/gamedir/gamecontrollerdb.txt) so that
+# local/offline builds always have a working file: if the download is disabled
+# or fails, we keep that committed copy in place.
 OPTION(OLX_DOWNLOAD_GAMECONTROLLERDB "Download latest SDL gamecontrollerdb.txt at configure time (falls back to the committed copy on failure)" ON)
 SET(OLX_GAMECONTROLLERDB_URL
 	"https://raw.githubusercontent.com/mdqinc/SDL_GameControllerDB/master/gamecontrollerdb.txt"
 	CACHE STRING "URL to fetch the SDL game controller mapping database from")
+# The committed snapshot lives at this path and is also where a fresh download
+# is written, so an up-to-date copy is always available to the running game.
 SET(OLX_GAMECONTROLLERDB_DEST "${OLXROOTDIR}/share/gamedir/gamecontrollerdb.txt")
-SET(OLX_GAMECONTROLLERDB_LOCAL "${OLXROOTDIR}/share/gamecontrollerdb.txt")
-SET(OLX_GCDB_BUNDLED FALSE)
 IF(OLX_DOWNLOAD_GAMECONTROLLERDB)
 	MESSAGE(STATUS "Downloading SDL gamecontrollerdb from ${OLX_GAMECONTROLLERDB_URL}")
 	# Download to a temp file first so a failed/partial transfer never clobbers
-	# the destination.
+	# the committed copy at the destination.
 	file(DOWNLOAD
 		"${OLX_GAMECONTROLLERDB_URL}"
 		"${OLX_GAMECONTROLLERDB_DEST}.tmp"
@@ -161,22 +161,17 @@ IF(OLX_DOWNLOAD_GAMECONTROLLERDB)
 	list(GET OLX_GCDB_DL_STATUS 1 OLX_GCDB_DL_MSG)
 	IF(OLX_GCDB_DL_CODE EQUAL 0)
 		file(RENAME "${OLX_GAMECONTROLLERDB_DEST}.tmp" "${OLX_GAMECONTROLLERDB_DEST}")
-		MESSAGE(STATUS "Bundled latest gamecontrollerdb.txt -> ${OLX_GAMECONTROLLERDB_DEST}")
-		SET(OLX_GCDB_BUNDLED TRUE)
+		MESSAGE(STATUS "Updated gamecontrollerdb.txt -> ${OLX_GAMECONTROLLERDB_DEST}")
 	ELSE()
 		file(REMOVE "${OLX_GAMECONTROLLERDB_DEST}.tmp")
-		MESSAGE(WARNING "Could not download gamecontrollerdb.txt (${OLX_GCDB_DL_MSG}); falling back to committed copy")
+		MESSAGE(WARNING "Could not download gamecontrollerdb.txt (${OLX_GCDB_DL_MSG}); using committed copy")
 	ENDIF()
 ENDIF(OLX_DOWNLOAD_GAMECONTROLLERDB)
-# Download disabled or failed: use the committed local snapshot.
-IF(NOT OLX_GCDB_BUNDLED)
-	IF(EXISTS "${OLX_GAMECONTROLLERDB_LOCAL}")
-		configure_file("${OLX_GAMECONTROLLERDB_LOCAL}" "${OLX_GAMECONTROLLERDB_DEST}" COPYONLY)
-		MESSAGE(STATUS "Bundled committed gamecontrollerdb.txt -> ${OLX_GAMECONTROLLERDB_DEST}")
-	ELSE()
-		MESSAGE(WARNING "No gamecontrollerdb.txt available (download off/failed and ${OLX_GAMECONTROLLERDB_LOCAL} missing); falling back to SDL's built-in mappings")
-	ENDIF()
-ENDIF(NOT OLX_GCDB_BUNDLED)
+# Whether or not the download ran, the committed snapshot at the destination is
+# the fallback. Warn only if it somehow isn't present.
+IF(NOT EXISTS "${OLX_GAMECONTROLLERDB_DEST}")
+	MESSAGE(WARNING "No gamecontrollerdb.txt available (download off/failed and ${OLX_GAMECONTROLLERDB_DEST} missing); falling back to SDL's built-in mappings")
+ENDIF()
 
 # main includes
 INCLUDE_DIRECTORIES(${OLXROOTDIR}/optional-includes/generated)

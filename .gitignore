@@ -40,8 +40,9 @@ libopenlierox_pch_dephelp.a
 *-build
 /build-*
 
-# Downloaded at build time by CMakeOlxCommon.cmake (SDL gamepad mapping DB)
-/share/gamedir/gamecontrollerdb.txt
+# Temp file used while downloading the SDL gamepad mapping DB at build time
+# (CMakeOlxCommon.cmake). The committed copy share/gamedir/gamecontrollerdb.txt
+# is tracked.
 /share/gamedir/gamecontrollerdb.txt.tmp
 
 # this one is automatically created by CMake
