@@ -142,8 +142,18 @@ bool InitializeAuxLib()
 			// https://github.com/mdqinc/SDL_GameControllerDB at build time and
 			// shipped in the gamedir, augmenting SDL's built-in mappings so
 			// that many more gamepads are recognised out of the box.
-			const std::string gcdbPath = GetFullFileName("gamecontrollerdb.txt");
-			if(gcdbPath.empty()) {
+			//
+			// Resolve it through OLX's searchpaths and hand the real path to
+			// SDL. The catch: GetFullFileName returns a path constructed from
+			// the last search root even when the file is missing, so a
+			// non-empty result is not proof the file exists. GetExactFileName's
+			// return value is the reliable existence check (it stats the file)
+			// and also gives us the case-exact path. Only when that confirms
+			// the file do we let SDL open it - on every platform the gamedir is
+			// a normal readable path (on Android it is app-internal storage),
+			// so SDL_GameControllerAddMappingsFromFile can read it directly.
+			std::string gcdbPath;
+			if(!GetExactFileName(GetFullFileName("gamecontrollerdb.txt"), gcdbPath)) {
 				notes << "no bundled gamecontrollerdb.txt found - using SDL's built-in mappings only" << endl;
 			} else {
 				const int added = SDL_GameControllerAddMappingsFromFile(gcdbPath.c_str());
