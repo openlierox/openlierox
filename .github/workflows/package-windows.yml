@@ -62,13 +62,13 @@ jobs:
         run: |
           set -euo pipefail
           cd distrib
-          dir="$(basename openlierox-*-win64)"
+          dir="$(basename openlierox-*-windows-64bit)"
           zip -r -q "${dir}.zip" "$dir"
           echo "name=${dir}.zip" >> "$GITHUB_OUTPUT"
 
-      - name: Upload openlierox-win64
+      - name: Upload openlierox-windows-64bit
         uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.bundle.outputs.name }}
-          path: distrib/openlierox-*-win64.zip
+          path: distrib/openlierox-*-windows-64bit.zip
           if-no-files-found: error
