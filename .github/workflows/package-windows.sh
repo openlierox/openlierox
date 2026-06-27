@@ -5,7 +5,7 @@
 # Inputs (env):
 #   BUILD_DIR - cmake build directory (default: build-cmake)
 #
-# Output: distrib/openlierox-<version>-windows-64bit/ folder.
+# Output: distrib/openlierox-<version>-windows/ folder.
 
 set -euo pipefail
 
@@ -21,7 +21,7 @@ fi
 
 REPO_ROOT="$(pwd)"
 
-PACKAGE_NAME="openlierox-$(./get_version.sh)-windows-64bit"
+PACKAGE_NAME="openlierox-$(./get_version.sh)-windows"
 PACKAGE_DIR="$REPO_ROOT/distrib/$PACKAGE_NAME"
 rm -rf "$PACKAGE_DIR"
 mkdir -p "$PACKAGE_DIR"
