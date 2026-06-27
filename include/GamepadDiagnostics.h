@@ -60,6 +60,9 @@ const GamepadDbStatus& GetGamepadDbStatus();
 // Returns an empty string if the file can't be read.
 std::string ComputeFileCrc32(const std::string& path, size_t* outSize = NULL);
 
+// Compute a CRC32 checksum (lower-case hex) of an in-memory buffer.
+std::string ComputeBufferCrc32(const void* data, size_t len);
+
 // Enumerate the controllers SDL currently sees. This is a live query, so it
 // reflects hot-plugged pads each time it is called.
 std::vector<GamepadControllerInfo> GetDetectedControllers();

@@ -63,6 +63,20 @@ std::string ComputeFileCrc32(const std::string& path, size_t* outSize)
 }
 
 
+std::string ComputeBufferCrc32(const void* data, size_t len)
+{
+	if(!data || len == 0)
+		return "";
+
+	boost::crc_32_type crc;
+	crc.process_bytes(data, len);
+
+	std::ostringstream ss;
+	ss << std::hex << std::setw(8) << std::setfill('0') << crc.checksum();
+	return ss.str();
+}
+
+
 std::vector<GamepadControllerInfo> GetDetectedControllers()
 {
 	std::vector<GamepadControllerInfo> result;

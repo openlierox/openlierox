@@ -143,28 +143,41 @@ bool InitializeAuxLib()
 			// https://github.com/mdqinc/SDL_GameControllerDB at build time and
 			// shipped in the gamedir, augmenting SDL's built-in mappings so
 			// that many more gamepads are recognised out of the box.
+			//
+			// Read the file through OLX's own game-file resolution (the same
+			// path every other gamedir resource uses) and feed the bytes to
+			// SDL from memory, rather than handing a path to
+			// SDL_GameControllerAddMappingsFromFile. On Android the gamedir
+			// lives in app-internal storage; GetFullFileName returns a path
+			// constructed from the last search root (external storage) when the
+			// lookup misses, and SDL's own file opener then can't read it
+			// ("Invalid RWops"). Reading the bytes ourselves resolves the file
+			// from the gamedir exactly like fonts and other data, on every
+			// platform.
 			GamepadDbStatus dbStatus;
 			dbStatus.attempted = true;
-			const std::string gcdbPath = GetFullFileName("gamecontrollerdb.txt");
-			if(gcdbPath.empty()) {
+			dbStatus.path = GetFullFileName("gamecontrollerdb.txt"); // informational
+			const std::string gcdbData = GetFileContents("gamecontrollerdb.txt");
+			if(gcdbData.empty()) {
 				notes << "no bundled gamecontrollerdb.txt found - using SDL's built-in mappings only" << endl;
 				dbStatus.fileFound = false;
 			} else {
 				dbStatus.fileFound = true;
-				dbStatus.path = gcdbPath;
-				// Checksum the file before handing it to SDL so the diagnostics
-				// page can confirm exactly which database is bundled.
-				dbStatus.checksum = ComputeFileCrc32(gcdbPath, &dbStatus.fileSize);
+				dbStatus.fileSize = gcdbData.size();
+				// Checksum the exact bytes we hand to SDL so the diagnostics
+				// page can confirm which database is bundled.
+				dbStatus.checksum = ComputeBufferCrc32(gcdbData.data(), gcdbData.size());
 
-				const int added = SDL_GameControllerAddMappingsFromFile(gcdbPath.c_str());
+				SDL_RWops* rw = SDL_RWFromConstMem(gcdbData.data(), (int)gcdbData.size());
+				const int added = rw ? SDL_GameControllerAddMappingsFromRW(rw, 1 /*freesrc: SDL closes the RWops*/) : -1;
 				dbStatus.mappingsAdded = added;
 				dbStatus.loaded = (added >= 0);
 				if(added < 0) {
 					dbStatus.error = SDL_GetError();
-					warnings << "WARNING: couldn't load gamecontroller mappings from " << gcdbPath << ": " << SDL_GetError() << endl;
+					warnings << "WARNING: couldn't load gamecontroller mappings from bundled gamecontrollerdb.txt: " << SDL_GetError() << endl;
 				}
 				else
-					notes << "loaded " << added << " gamecontroller mappings from " << gcdbPath << endl;
+					notes << "loaded " << added << " gamecontroller mappings from bundled gamecontrollerdb.txt" << endl;
 			}
 			SetGamepadDbStatus(dbStatus);
 		}
