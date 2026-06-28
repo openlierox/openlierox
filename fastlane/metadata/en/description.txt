@@ -1,0 +1,13 @@
+OpenLieroX is an open-source real-time Worms-like game. It's like 2D Quake with worms and ninja ropes - an excessive, fast-paced multiplayer shooter where worms battle with a huge arsenal of weapons.
+
+Features:
+- Fast-paced real-time action
+- Destructible terrain
+- Huge variety of weapons and tools
+- Ninja rope for swinging and climbing
+- Single-player and multiplayer modes
+- Online multiplayer support
+- Cross-platform (Linux, Windows, macOS)
+- Open source (zlib license)
+
+Based on Jason Boettcher's Liero Xtreme, OpenLieroX is completely free and open source.
