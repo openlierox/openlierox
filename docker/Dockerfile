@@ -14,6 +14,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
         cmake \
+        git \
         libsdl2-dev \
         libsdl2-image-dev \
         libsdl2-mixer-dev \
@@ -40,10 +41,13 @@ COPY . .
 # OLX_DOWNLOAD_...=OFF     -> use the committed gamecontrollerdb.txt instead of
 #                            fetching it at configure time (no network needed,
 #                            and irrelevant for a dedicated server anyway).
-# Leaves one core free during the build (floors at 1).
+# The in-binary version is derived from the git history (CMakeOlxVersion.cmake
+# -> get_version_full.sh), which is why git and the copied .git dir are needed.
+# The make step leaves one core free during the build (floors at 1).
 RUN cmake -DDEDICATED_ONLY=Yes -DHAWKNL_BUILTIN=Yes -DOLX_DOWNLOAD_GAMECONTROLLERDB=OFF -DDEBUG=No . \
-    && jobs="$(nproc)" && [ "$jobs" -gt 1 ] && jobs="$((jobs - 1))" || jobs=1 \
-    && make -j"$jobs"
+    && n="$(nproc)" \
+    && { [ "$n" -gt 1 ] && n="$((n - 1))" || true; } \
+    && make -j"$n"
 
 # ---------- runtime stage ----------
 FROM debian:bullseye-slim
@@ -51,6 +55,7 @@ FROM debian:bullseye-slim
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
         python2.7 \
+        libbinutils \
         libsdl2-2.0-0 \
         libsdl2-image-2.0-0 \
         libsdl2-mixer-2.0-0 \
