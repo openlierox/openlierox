@@ -1,0 +1,12 @@
+# 0.58 embeds its version from the committed VERSION file (no git needed at
+# build time), so .git can be excluded from the build context.
+.git
+
+# Exclude build artifacts so a build done on the host can't leak into / poison
+# the in-container build.
+build-output/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+bin/
+*.o
