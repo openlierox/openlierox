@@ -1,0 +1,10 @@
+# Keep .git — the build derives the OLX version from the git history
+# (CMakeOlxVersion.cmake -> get_version_full.sh -> functions.sh).
+#
+# Exclude in-source CMake build artifacts so a build done on the host can't
+# leak into / poison the in-container build (the Dockerfile runs `cmake .`).
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+bin/
+*.o

@@ -5,6 +5,11 @@ This directory contains everything needed to run a headless OpenLieroX
 this source tree and runs the game in `-dedicated` mode with the Python
 automation scripts that cycle games, rotate maps/mods, and handle voting.
 
+> For the full guide — prebuilt image, native build, LAN vs online networking,
+> publishing, and troubleshooting — see [`doc/DEDICATED_SERVER.md`](../doc/DEDICATED_SERVER.md).
+> A ready-to-run image is published at
+> [`klirktag/openlierox-server`](https://hub.docker.com/r/klirktag/openlierox-server).
+
 ## Why Debian 11 (bullseye)?
 
 The dedicated-server control scripts (`share/gamedir/scripts/dedicated_control*`)
