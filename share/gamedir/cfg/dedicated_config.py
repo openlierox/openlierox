@@ -14,7 +14,7 @@ MIN_PLAYERS = 1
 MAX_TEAMS = 2 # Only blue and red teams
 TOO_FEW_PLAYERS_MESSAGE = "Waiting for %i players." % (MIN_PLAYERS)
 WAIT_BEFORE_SPAMMING_TOO_FEW_PLAYERS_MESSAGE = 30 # Seconds to wait before another "Game will start with %i players" message
-FILL_WITH_BOTS_TO = 0 # Fill server with bots if noone playing, set to 2 to get 1 bot with a single human player
+FILL_WITH_BOTS_TO = 2 # Fill server with bots if noone playing, set to 2 to get 1 bot with a single human player
 
 WAIT_AFTER_GAME = 30 # Seconds to wait in lobby after round finished
 WAIT_BEFORE_GAME = 5 # Seconds to wait in lobby before next round, will give some message

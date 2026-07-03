@@ -34,4 +34,4 @@ setvar( "GameOptions.GameInfo.FillWithBotsTo", cfg.FILL_WITH_BOTS_TO )
 setvar( "GameOptions.GameInfo.Bonuses", "0" )
 setvar( "GameOptions.GameInfo.IndestructibleBonuses", "0" )
 
-io.kickBots()
+#io.kickBots()
