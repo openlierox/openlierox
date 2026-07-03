@@ -101,6 +101,13 @@ jobs:
           shopt -s nullglob
           ASSETS=()
           for entry in dist/*; do
+            # The Android App Bundle (.aab) is a Google Play upload format,
+            # not a user-installable artifact (the .apk covers that). It is
+            # built only to hand off to the Play Store publish workflow, so
+            # keep it out of the public GitHub release.
+            case "$entry" in
+              *.aab) continue ;;
+            esac
             if [ -d "$entry" ]; then
               ( cd dist && zip -r -q "$(basename "$entry").zip" "$(basename "$entry")" )
               ASSETS+=("${entry}.zip")
