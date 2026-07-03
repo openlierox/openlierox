@@ -25,6 +25,7 @@
 #include "MathLib.h"
 #include "EndianSwap.h"
 #include "Version.h"
+#include "NetProtocolVersion.h"
 #include "CServer.h"
 #include "AuxLib.h"
 #include "Networking.h"
@@ -170,7 +171,20 @@ void CServerConnection::Shutdown()
 
 void CServerConnection::setClientVersion(const Version& v)
 {
-	cClientVersion = v;
+	// Network-protocol compatibility (paired with the version advertised in
+	// CServer_Parse.cpp). With the 0.59.10 sync protocol, a client that joins a
+	// game already in progress never learns the mod: it is delivered only via
+	// lobby updates, which a client ignores while not in the lobby, so the late
+	// joiner is rejected and kicked ("selected weapons too long"). The older
+	// protocol sends the mod inside PrepareGame, so mid-game joins work — this
+	// is exactly why an unmodified master client can join a 0.58 server.
+	// We cap every client to our advertised network-protocol version (see
+	// NetProtocolVersion.h) so the whole connection uses the old, join-capable
+	// protocol in both directions.
+	if( v > GetServerNetProtocolVersion() )
+		cClientVersion = GetServerNetProtocolVersion();
+	else
+		cClientVersion = v;
 }
 
 void CServerConnection::resetNetEngine() {

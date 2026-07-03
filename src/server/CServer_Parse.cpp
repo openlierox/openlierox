@@ -31,6 +31,7 @@
 #include "DedicatedControl.h"
 #include "AuxLib.h"
 #include "Version.h"
+#include "NetProtocolVersion.h"
 #include "Timer.h"
 #include "NotifyUser.h"
 #include "XMLutils.h"
@@ -1114,7 +1115,9 @@ void GameServer::ParseGetChallenge(const SmartPointer<NetworkSocket>& tSocket, C
 	bs.writeString("lx::challenge");
 	bs.writeInt(tChallenges[i].iNum, 4);
 	if( client_version != "" )
-		bs.writeString(GetFullGameName());
+		// Advertise the network-protocol version (not our real software
+		// version) so clients use the mid-game-join-capable protocol.
+		bs.writeString(GetServerNetProtocolName());
 	bs.Send(tSocket.get());
 }
 
@@ -1588,7 +1591,8 @@ void GameServer::ParseConnect(const SmartPointer<NetworkSocket>& net_socket, CBy
 		// we are sending the version string already in the challenge
 		bytestr.writeInt(-1, 4);
 		bytestr.writeString("lx::version");
-		bytestr.writeString(GetFullGameName());
+		// Advertise the network-protocol version (see NetProtocolVersion.h).
+		bytestr.writeString(GetServerNetProtocolName());
 		bytestr.Send(net_socket.get());
 	}
 	
