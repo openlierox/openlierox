@@ -558,23 +558,93 @@ void CClient::Draw(const SmartPointer<SDL_Surface>& bmpDest)
 			}
 		}
 
-		// Vertical separator filling the gap between the two split-screen
-		// viewports. This strip lies outside both viewport rects, so the
-		// per-viewport black fill in DrawViewport_Game never reaches it, and
-		// effects that draw outside the viewport clip (e.g. blood splatter) can
-		// leave artifacts there. Repaint it every frame to keep the gap clean.
-		if(cViewports[0].getUsed() && cViewports[1].getUsed()) {
-			const int gapL = cViewports[0].GetLeft() + cViewports[0].GetVirtW();
-			const int gapR = cViewports[1].GetLeft();
-			DrawRectFill(bmpDest.get(), gapL, 0, gapR, 480, tLX->clViewportSplit);
+		// Separators filling the gaps between split-screen viewports. These
+		// seams lie outside every viewport rect, so the per-viewport black fill
+		// in DrawViewport_Game never reaches them, and effects that draw outside
+		// the viewport clip (e.g. blood splatter) can leave artifacts there.
+		// Repaint them every frame to keep the seams clean. The seams match the
+		// grid layouts in splitScreenViewportRect():
+		//   2 players -> one vertical seam
+		//   3 players -> 2x2 grid seams; the empty 4th quarter is filled and
+		//                shows the radar map (drawn below)
+		//   4 players -> full-width horizontal seam + a vertical seam per row
+		int usedViewports = 0;
+		for(int i = 0; i < NUM_VIEWPORTS; i++)
+			if(cViewports[i].getUsed()) usedViewports++;
+		{
+			// Vertical seam between the two top-row viewports (2+ players).
+			if(usedViewports >= 2 && cViewports[0].getUsed() && cViewports[1].getUsed()) {
+				const int gapL = cViewports[0].GetLeft() + cViewports[0].GetVirtW();
+				const int gapR = cViewports[1].GetLeft();
+				const int gapT = cViewports[0].GetTop();
+				const int gapB = cViewports[0].GetTop() + cViewports[0].GetVirtH();
+				DrawRectFill(bmpDest.get(), gapL, gapT, gapR, gapB, tLX->clViewportSplit);
+			}
+			// Full-width horizontal seam between the top and bottom rows (3+).
+			if(usedViewports >= 3 && cViewports[2].getUsed()) {
+				const int rowL = cViewports[0].GetLeft();
+				const int rowR = cViewports[1].GetLeft() + cViewports[1].GetVirtW();
+				const int gapT = cViewports[0].GetTop() + cViewports[0].GetVirtH();
+				const int gapB = cViewports[2].GetTop();
+				DrawRectFill(bmpDest.get(), rowL, gapT, rowR, gapB, tLX->clViewportSplit);
+			}
+			// Vertical seam between the two bottom-row viewports (4 players).
+			if(usedViewports >= 4 && cViewports[2].getUsed() && cViewports[3].getUsed()) {
+				const int gapL = cViewports[2].GetLeft() + cViewports[2].GetVirtW();
+				const int gapR = cViewports[3].GetLeft();
+				const int gapT = cViewports[2].GetTop();
+				const int gapB = cViewports[2].GetTop() + cViewports[2].GetVirtH();
+				DrawRectFill(bmpDest.get(), gapL, gapT, gapR, gapB, tLX->clViewportSplit);
+			}
+			// 3 players: the bottom-right quarter has no viewport. Fill it (plus
+			// the seam next to the bottom-left viewport) with the split colour;
+			// the radar map is centered into it below.
+			if(usedViewports == 3 && cViewports[1].getUsed() && cViewports[2].getUsed()) {
+				const int qL = cViewports[2].GetLeft() + cViewports[2].GetVirtW(); // past the seam
+				const int qR = cViewports[1].GetLeft() + cViewports[1].GetVirtW();
+				const int qT = cViewports[2].GetTop();
+				const int qB = cViewports[2].GetTop() + cViewports[2].GetVirtH();
+				DrawRectFill(bmpDest.get(), qL, qT, qR, qB, tLX->clViewportSplit);
+			}
 		}
 
-		int MiniMapX = tInterfaceSettings.MiniMapX;
-		int MiniMapY = tInterfaceSettings.MiniMapY;
-		//if(game.gameScript() && game.gameScript()->gusEngineUsed()) {
-			MiniMapX = 640 - tInterfaceSettings.MiniMapW;
-			MiniMapY = 480 - tInterfaceSettings.MiniMapH;
-		//}
+		// Radar map default position: the top-right corner of the screen. This is
+		// what a single on-screen player gets, identically in local and network
+		// play. Use the actual display width (not a hardcoded 640) so it lands in
+		// the real corner on widescreen too. The split-screen layouts below
+		// relocate it so it costs each player an equal share of the screen.
+		const int displayW = VideoPostProcessor::get()->displayScreenWidth();
+		int MiniMapX = displayW - tInterfaceSettings.MiniMapW;
+		int MiniMapY = 0;
+
+		// 2-player split screen: put the radar map at the top, centered on the
+		// vertical seam between the two viewports, so it costs each player equally.
+		if(usedViewports == 2 && cViewports[0].getUsed() && cViewports[1].getUsed()) {
+			const int centerX = (cViewports[0].GetLeft() + cViewports[0].GetVirtW() + cViewports[1].GetLeft()) / 2;
+			MiniMapX = centerX - tInterfaceSettings.MiniMapW / 2;
+			MiniMapY = cViewports[0].GetTop();
+		}
+		// 3-player split screen: place the radar map in the empty 4th quarter
+		// (bottom-right), centered, instead of overlaying a player's viewport.
+		else if(usedViewports == 3 && cViewports[1].getUsed() && cViewports[2].getUsed()) {
+			const int qX = cViewports[1].GetLeft();
+			const int qY = cViewports[2].GetTop();
+			const int qW = cViewports[1].GetVirtW();
+			const int qH = cViewports[2].GetVirtH();
+			MiniMapX = qX + (qW - tInterfaceSettings.MiniMapW) / 2;
+			MiniMapY = qY + (qH - tInterfaceSettings.MiniMapH) / 2;
+		}
+		// 4-player split screen: center the radar map at the intersection of the
+		// four viewports so it overlaps each player's screen estate equally.
+		else if(usedViewports == 4 && cViewports[0].getUsed() && cViewports[1].getUsed()
+		        && cViewports[2].getUsed() && cViewports[3].getUsed()) {
+			// Middle of the vertical seam (between the two columns) and of the
+			// horizontal seam (between the two rows) = the screen's centre.
+			const int centerX = (cViewports[0].GetLeft() + cViewports[0].GetVirtW() + cViewports[1].GetLeft()) / 2;
+			const int centerY = (cViewports[0].GetTop() + cViewports[0].GetVirtH() + cViewports[2].GetTop()) / 2;
+			MiniMapX = centerX - tInterfaceSettings.MiniMapW / 2;
+			MiniMapY = centerY - tInterfaceSettings.MiniMapH / 2;
+		}
 
 		// When the on-screen touch controls are visible, the active
 		// layout can override the minimap position so it doesn't sit
@@ -1040,7 +1110,13 @@ void CClient::DrawViewport(const SmartPointer<SDL_Surface>& bmpDest, int viewpor
 
     CWorm *worm = v->getTarget();	
 	
-	// TODO: allow more viewports
+	// Local HUD position storage for the extra split-screen viewports (players
+	// 3+), which have no fixed interface-settings slot. Laid out relative to the
+	// viewport in the else branch so each extra player gets their own HUD row.
+	int exLivesX, exLivesY, exLivesW, exKillsX, exKillsY, exKillsW;
+	int exTeamX, exTeamY, exTeamW, exSpecMsgX, exSpecMsgY, exSpecMsgW;
+	int exHealthLabelX = 0, exHealthLabelY = 0, exWeaponLabelX = 0, exWeaponLabelY = 0;
+
 	if (viewport_index == 0)  {  // Viewport 1
 		HealthLabelX = &tInterfaceSettings.HealthLabel1X;	HealthLabelY = &tInterfaceSettings.HealthLabel1Y;
 		WeaponLabelX = &tInterfaceSettings.WeaponLabel1X;	WeaponLabelY = &tInterfaceSettings.WeaponLabel1Y;
@@ -1063,7 +1139,7 @@ void CClient::DrawViewport(const SmartPointer<SDL_Surface>& bmpDest, int viewpor
 
 		HealthBar = cHealthBar1;
 		WeaponBar = cWeaponBar1;
-	} else { // Viewport 2
+	} else if (viewport_index == 1) { // Viewport 2
 		HealthLabelX = &tInterfaceSettings.HealthLabel2X;	HealthLabelY = &tInterfaceSettings.HealthLabel2Y;
 		WeaponLabelX = &tInterfaceSettings.WeaponLabel2X;	WeaponLabelY = &tInterfaceSettings.WeaponLabel2Y;
 
@@ -1085,6 +1161,29 @@ void CClient::DrawViewport(const SmartPointer<SDL_Surface>& bmpDest, int viewpor
 
 		HealthBar = cHealthBar2;
 		WeaponBar = cWeaponBar2;
+	} else { // Viewport 3+ (players 3 and 4): HUD row at the top of their own
+		// viewport, mirroring the per-half offsets used for players 1/2 (Lives
+		// at +1, Kills at +80, Team/SpecMsg at +150 from the viewport's left
+		// edge). Positions go into locals so we never clobber the shared
+		// interface-settings slots of players 1/2 across frames.
+		const int bx = v->GetLeft();
+		const int by = v->GetTop();
+		exLivesX   = bx + 1;   exLivesY   = by + 1; exLivesW   = tInterfaceSettings.Lives1W;
+		exKillsX   = bx + 80;  exKillsY   = by + 1; exKillsW   = tInterfaceSettings.Kills1W;
+		exTeamX    = bx + 150; exTeamY    = by + 1; exTeamW    = tInterfaceSettings.Team1W;
+		exSpecMsgX = bx + 150; exSpecMsgY = by + 1; exSpecMsgW = tInterfaceSettings.SpecMsg1W;
+		exHealthLabelX = exWeaponLabelX = bx + 5;
+		exHealthLabelY = exWeaponLabelY = by + 1;
+
+		HealthLabelX = &exHealthLabelX; HealthLabelY = &exHealthLabelY;
+		WeaponLabelX = &exWeaponLabelX; WeaponLabelY = &exWeaponLabelY;
+		LivesX = &exLivesX; LivesY = &exLivesY; LivesW = &exLivesW;
+		KillsX = &exKillsX; KillsY = &exKillsY; KillsW = &exKillsW;
+		TeamX  = &exTeamX;  TeamY  = &exTeamY;  TeamW  = &exTeamW;
+		SpecMsgX = &exSpecMsgX; SpecMsgY = &exSpecMsgY; SpecMsgW = &exSpecMsgW;
+
+		HealthBar = cHealthBar1;
+		WeaponBar = cWeaponBar1;
 	}
 
 	// The following is only drawn for viewports with a worm target

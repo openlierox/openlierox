@@ -412,6 +412,9 @@ public:
 	void		Simulation();
 	void		SetupViewports();
 	void		SetupViewports(CWorm *w1, CWorm *w2, int type1, int type2);
+	// Split-screen layout for 1..MAX_LOCAL_PLAYERS local players, one viewport
+	// each (full screen, left/right halves, or a 2x2-style grid).
+	void		SetupViewports(const std::vector<CWorm*>& worms, int type);
 	void		SendCarve(CVec pos);
 	void		PlayerShoot(CWorm *w);
 	void		ShootSpecial(CWorm *w);

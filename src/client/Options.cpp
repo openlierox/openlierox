@@ -17,6 +17,7 @@
 
 
 #include "LieroX.h"
+#include "Consts.h" // for MAX_LOCAL_PLAYERS
 #include "Debug.h"
 #include "FindFile.h"
 #include "StringUtils.h"
@@ -294,6 +295,11 @@ bool GameOptions::Init() {
 		// gamepad default (empty suffix, e.g. weapon select) stay keyboard-only.
 		std::string def1 = ply_def1[i];
 		std::string def2 = ply_def2[i];
+		// Players 3 and 4 are gamepad-only: a keyboard has neither the keys nor
+		// the ergonomics for four players, so they get no keyboard defaults and
+		// only their gamepad binding (pad 3 / pad 4). Their controls are not
+		// exposed in the options UI; the pad bindings mirror players 1 and 2.
+		std::string def3, def4;
 		if( !ply_gamepad_def[i].empty() ) {
 			// Append the gamepad binding as the second (Gamepad) slot. The
 			// keyboard binding is slot 0 and the gamepad binding slot 1, so we
@@ -303,9 +309,15 @@ bool GameOptions::Init() {
 			// CInput::Setup ignores the empty leading token.
 			def1 += ", j1_" + ply_gamepad_def[i];
 			def2 += ", j2_" + ply_gamepad_def[i];
+			// Players 3/4 have no keyboard slot, so the pad binding is the only
+			// (slot 0) token.
+			def3 = "j3_" + ply_gamepad_def[i];
+			def4 = "j4_" + ply_gamepad_def[i];
 		}
 		CScriptableVars::RegisterVars("GameOptions.Ply1Controls") ( tLXOptions->sPlayerControls[0][i], ply_keys[i], def1 );
 		CScriptableVars::RegisterVars("GameOptions.Ply2Controls") ( tLXOptions->sPlayerControls[1][i], ply_keys[i], def2 );
+		CScriptableVars::RegisterVars("GameOptions.Ply3Controls") ( tLXOptions->sPlayerControls[2][i], ply_keys[i], def3 );
+		CScriptableVars::RegisterVars("GameOptions.Ply4Controls") ( tLXOptions->sPlayerControls[3][i], ply_keys[i], def4 );
 	}
 	for( uint i = 0; i < sizeof(gen_keys) / sizeof(gen_keys[0]) ; i ++ )
 	{
@@ -832,8 +844,11 @@ GameOptions::GameOptions() : customSettings("custom user settings") {
 	iVerbosity = 0;
 	cfgFilename = DefaultCfgFilename;
 	
-	// TODO: don't hardcode the size here
-	sPlayerControls.resize(2);	// Don't change array size or we'll get segfault when vector memory allocation changes
+	// One control set per local split-screen player. Sized once, here, before
+	// the controls are registered as scriptable vars (RegisterVars stores
+	// pointers into these elements); resizing later would move the elements and
+	// dangle those pointers, so this must not change after construction.
+	sPlayerControls.resize(MAX_LOCAL_PLAYERS);
 
 	// The only place where we call this constructor is in GameOptions::Init().
 	// We init all the other variables there.

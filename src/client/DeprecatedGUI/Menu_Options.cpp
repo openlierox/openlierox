@@ -34,6 +34,7 @@
 #include "IpToCountryDB.h"
 #include "ConversationLogger.h"
 #include "TouchControls.h"
+#include "Consts.h" // for MAX_LOCAL_PLAYERS
 
 
 namespace DeprecatedGUI {
@@ -42,8 +43,10 @@ int OptionsMode = 0;
 CGuiLayout	cOptions;
 CGuiLayout	cOpt_Controls;        // Player 1 controls   (sub-tab 0)
 CGuiLayout	cOpt_Controls2;       // Player 2 controls   (sub-tab 1)
-CGuiLayout	cOpt_ControlsGen;     // General controls    (sub-tab 2)
-CGuiLayout	cOpt_ControlsTouch;   // Touch-screen layout (sub-tab 3, only shown on touch devices)
+CGuiLayout	cOpt_Controls3;       // Player 3 controls   (sub-tab 2, gamepad by default)
+CGuiLayout	cOpt_Controls4;       // Player 4 controls   (sub-tab 3, gamepad by default)
+CGuiLayout	cOpt_ControlsGen;     // General controls
+CGuiLayout	cOpt_ControlsTouch;   // Touch-screen layout (only shown on touch devices)
 CGuiLayout	cOpt_System;
 CGuiLayout	cOpt_Game;
 
@@ -54,18 +57,28 @@ CGuiLayout	cOpt_Game;
 enum {
 	ct_Player1 = 0,
 	ct_Player2,
+	ct_Player3,
+	ct_Player4,
 	ct_General,
 	ct_Touchscreen,
 	ct__Count
 };
 int ControlsSubTab = ct_Player1;
-static const char* ControlsTabNames[ct__Count] = { "Player 1", "Player 2", "General", "Touchscreen" };
+static const char* ControlsTabNames[ct__Count] = { "Player 1", "Player 2", "Player 3", "Player 4", "General", "Touchscreen" };
 
-// True if the given tab should appear in the tab bar. All control tabs,
-// including Touchscreen, are always available — the touch layout can be
-// inspected/picked anywhere, which is useful for debugging or authoring a
-// new layout even on a machine without a touch device.
-static bool IsControlsTabVisible(int /*t*/) {
+// The Controls screen has four per-player tab slots (Player 1-4); only those
+// that are actual local split-screen players (MAX_LOCAL_PLAYERS) are shown.
+static const int kMaxPlayerControlTabs = 4;
+static const int kNumPlayerControlTabs =
+	(MAX_LOCAL_PLAYERS < kMaxPlayerControlTabs) ? (int)MAX_LOCAL_PLAYERS : kMaxPlayerControlTabs;
+
+// True if the given tab should appear in the tab bar. Player tabs are only
+// shown up to the number of local players; General and Touchscreen are always
+// available (the touch layout can be inspected/picked anywhere, which is useful
+// for debugging or authoring a new layout even without a touch device).
+static bool IsControlsTabVisible(int t) {
+	if(t >= ct_Player1 && t <= ct_Player4)
+		return (t - ct_Player1) < kNumPlayerControlTabs;
 	return true;
 }
 // Tab header hit-boxes, filled in when drawn (see Menu_OptionsDrawControlsTabs).
@@ -174,6 +187,30 @@ enum {
 	oc_Ply2_PrevWeapon,
 	oc_Ply2_NextWeapon,
 
+	oc_Ply3_Up,
+	oc_Ply3_Down,
+	oc_Ply3_Left,
+	oc_Ply3_Right,
+	oc_Ply3_Shoot,
+	oc_Ply3_Jump,
+	oc_Ply3_Rope,
+	oc_Ply3_Strafe,
+	oc_Ply3_Selweapon,
+	oc_Ply3_PrevWeapon,
+	oc_Ply3_NextWeapon,
+
+	oc_Ply4_Up,
+	oc_Ply4_Down,
+	oc_Ply4_Left,
+	oc_Ply4_Right,
+	oc_Ply4_Shoot,
+	oc_Ply4_Jump,
+	oc_Ply4_Rope,
+	oc_Ply4_Strafe,
+	oc_Ply4_Selweapon,
+	oc_Ply4_PrevWeapon,
+	oc_Ply4_NextWeapon,
+
 	oc_Gen_Chat,
     oc_Gen_Score,
 	oc_Gen_Health,
@@ -186,6 +223,35 @@ enum {
 	oc_Gen_IrcChat,
 	oc_Gen_ConsoleToggle,
 };
+
+// Per-player Controls tab plumbing: map a 0-based local player index to its
+// gui layout, the base control id of its first row, and its config section.
+// (Players 3/4 are gamepad-only by default, but the tab still exposes both the
+// Keyboard and Gamepad binding slots so they can be rebound freely.)
+static CGuiLayout* PlayerControlsLayout(int ply) {
+	switch(ply) {
+		case 1: return &cOpt_Controls2;
+		case 2: return &cOpt_Controls3;
+		case 3: return &cOpt_Controls4;
+		default: return &cOpt_Controls;
+	}
+}
+static int PlayerControlsBaseId(int ply) {
+	switch(ply) {
+		case 1: return oc_Ply2_Up;
+		case 2: return oc_Ply3_Up;
+		case 3: return oc_Ply4_Up;
+		default: return oc_Ply1_Up;
+	}
+}
+static const char* PlayerControlsSection(int ply) {
+	switch(ply) {
+		case 1: return "GameOptions.Ply2Controls.";
+		case 2: return "GameOptions.Ply3Controls.";
+		case 3: return "GameOptions.Ply4Controls.";
+		default: return "GameOptions.Ply1Controls.";
+	}
+}
 
 
 std::string InputNames[] = {
@@ -330,11 +396,10 @@ bool Menu_OptionsInitialize()
 	cOpt_System.Shutdown();
 	cOpt_System.Initialize();
 
-	cOpt_Controls.Shutdown();
-	cOpt_Controls.Initialize();
-
-	cOpt_Controls2.Shutdown();
-	cOpt_Controls2.Initialize();
+	for(int ply = 0; ply < kMaxPlayerControlTabs; ply++) {
+		PlayerControlsLayout(ply)->Shutdown();
+		PlayerControlsLayout(ply)->Initialize();
+	}
 
 	cOpt_ControlsGen.Shutdown();
 	cOpt_ControlsGen.Initialize();
@@ -350,24 +415,22 @@ bool Menu_OptionsInitialize()
 	cOptions.Add( new CButton(BUT_BACK, tMenu->bmpButtons), op_Back, 25,440, 50,15);
 
 
-	// Controls — Player 1 / Player 2 each get their own sub-tab. Every control
-	// shows one input box per binding slot (Keyboard, Gamepad) so the slots can
-	// be edited independently.
+	// Controls — each local player (Player 1..MAX_LOCAL_PLAYERS) gets its own
+	// sub-tab. Every control shows one input box per binding slot (Keyboard,
+	// Gamepad) so the slots can be edited independently. Only one tab is shown at
+	// a time, so all players' rows share the same y positions.
 	{
-		// 11 controls now (movement/combat plus Previous/Next weapon). The row
-		// pitch is tightened to 22px so the two extra rows still fit above the
-		// Back button without overflowing the page box.
 		int y = 198;
-		Menu_AddControlHeaders(cOpt_Controls,  y - 18);
-		Menu_AddControlHeaders(cOpt_Controls2, y - 18);
+		for(int ply = 0; ply < kNumPlayerControlTabs; ply++)
+			Menu_AddControlHeaders(*PlayerControlsLayout(ply), y - 18);
 		// 18px pitch: the input-box graphic is a fixed 17px tall (see
 		// CInputbox::Draw), so this packs the rows with just a 1px gap between
 		// boxes — about as tight as it goes while keeping a row of clear pixels.
 		for(i=0;i<11;i++,y+=18) {
-			Menu_AddControlRow(cOpt_Controls,  InputNames[i], SIN_UP+i,
-			                   tLXOptions->sPlayerControls[0][SIN_UP+i], oc_Ply1_Up+i, y);
-			Menu_AddControlRow(cOpt_Controls2, InputNames[i], SIN_UP+i,
-			                   tLXOptions->sPlayerControls[1][SIN_UP+i], oc_Ply2_Up+i, y);
+			for(int ply = 0; ply < kNumPlayerControlTabs; ply++)
+				Menu_AddControlRow(*PlayerControlsLayout(ply), InputNames[i], SIN_UP+i,
+				                   tLXOptions->sPlayerControls[ply][SIN_UP+i],
+				                   PlayerControlsBaseId(ply)+i, y);
 		}
 	}
 
@@ -619,10 +682,10 @@ void Menu_OptionsUpdateUpload(float speed)
 static CGuiLayout& Menu_OptionsControlsLayout()
 {
 	switch(ControlsSubTab) {
-		case ct_Player2:     return cOpt_Controls2;
 		case ct_General:     return cOpt_ControlsGen;
 		case ct_Touchscreen: return cOpt_ControlsTouch;
-		default:             return cOpt_Controls;
+		// Player tabs ct_Player1..ct_Player4 map 1:1 to the player index.
+		default:             return *PlayerControlsLayout(ControlsSubTab);
 	}
 }
 
@@ -632,9 +695,11 @@ static CGuiLayout& Menu_OptionsControlsLayout()
 static void Menu_OptionsDrawControlsTabs(SDL_Surface* dest)
 {
 	const int tabY = 150;
-	const int gap = 35;
+	// Tighter spacing / earlier start so all six tabs (Player 1-4, General,
+	// Touchscreen) fit across the page box without overflowing.
+	const int gap = 26;
 	const int h = tLX->cFont.GetHeight();
-	int x = 60;
+	int x = 40;
 	for(int t = 0; t < ct__Count; t++) {
 		if(!IsControlsTabVisible(t)) {
 			ControlsTabRects[t].w = 0;  // marks the tab as not hit-testable
@@ -823,10 +888,11 @@ static void Menu_ResetControlsTab(int tab)
 			Menu_RefreshControlRow(cOpt_ControlsGen, GeneralControlsList[g].id,
 			                       tLXOptions->sGeneralControls[GeneralControlsList[g].sin]);
 	} else {
-		const int ply = (tab == ct_Player2) ? 1 : 0;
-		Menu_ResetControlSection(ply == 0 ? "GameOptions.Ply1Controls." : "GameOptions.Ply2Controls.");
-		CGuiLayout& layout = (ply == 0) ? cOpt_Controls : cOpt_Controls2;
-		const int baseId = (ply == 0) ? oc_Ply1_Up : oc_Ply2_Up;
+		// Player tabs ct_Player1..ct_Player4 map 1:1 to the player index.
+		const int ply = (tab >= ct_Player1 && tab <= ct_Player4) ? (tab - ct_Player1) : 0;
+		Menu_ResetControlSection(PlayerControlsSection(ply));
+		CGuiLayout& layout = *PlayerControlsLayout(ply);
+		const int baseId = PlayerControlsBaseId(ply);
 		for(int i = 0; i < 11; i++)
 			Menu_RefreshControlRow(layout, baseId + i, tLXOptions->sPlayerControls[ply][SIN_UP + i]);
 	}
@@ -973,8 +1039,10 @@ void Menu_OptionsFrame()
 
 				if(ev->iEventMsg == INB_MOUSEUP) {
 
-					// 0 = Player 1, 1 = Player 2, -1 = general controls
-					int ply = (ControlsSubTab == ct_General) ? -1 : ControlsSubTab;
+					// Player tabs (0..3) edit that player's controls; any other
+					// tab (General/Touchscreen) edits the general controls (-1).
+					int ply = (ControlsSubTab >= ct_Player1 && ControlsSubTab <= ct_Player4)
+					          ? ControlsSubTab : -1;
 
 					// Get an input
 					CInputbox *b = (CInputbox *)ev->cWidget;
@@ -1411,8 +1479,8 @@ void Menu_OptionsWaitInput(int ply, const std::string& name, CInputbox *b)
 void Menu_OptionsShutdown()
 {
 	cOptions.Shutdown();
-	cOpt_Controls.Shutdown();
-	cOpt_Controls2.Shutdown();
+	for(int ply = 0; ply < kMaxPlayerControlTabs; ply++)
+		PlayerControlsLayout(ply)->Shutdown();
 	cOpt_ControlsGen.Shutdown();
 	cOpt_ControlsTouch.Shutdown();
 	cOpt_System.Shutdown();

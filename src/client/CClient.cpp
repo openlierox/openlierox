@@ -1526,23 +1526,27 @@ void CClient::Disconnect()
 // Setup the viewports for the local players
 void CClient::SetupViewports() {
 	if(bDedicated) return;
-	
-	std::vector<CWorm*> humanWorms; humanWorms.reserve(2);
+
+	std::vector<CWorm*> humanWorms; humanWorms.reserve(MAX_LOCAL_PLAYERS);
 	for_each_iterator(CWorm*, w, game.localWorms())
 		if(w->get()->getType() == PRF_HUMAN)
 			humanWorms.push_back(w->get());
 
+	// One split-screen viewport per local human player, up to MAX_LOCAL_PLAYERS.
+	if((int)humanWorms.size() > MAX_LOCAL_PLAYERS)
+		humanWorms.resize(MAX_LOCAL_PLAYERS);
+
 	if(humanWorms.size() > 0)
-		SetupViewports(humanWorms[0], (humanWorms.size() > 1) ? humanWorms[1] : NULL, VW_FOLLOW, VW_FOLLOW);
+		SetupViewports(humanWorms, VW_FOLLOW);
 	else if(game.localWorms()->tryGet())
-		SetupViewports(game.localWorms()->tryGet(), NULL, VW_FOLLOW, VW_FOLLOW);
+		SetupViewports(std::vector<CWorm*>(1, game.localWorms()->tryGet()), VW_FOLLOW);
 	else {
 		for_each_iterator(CWorm*, w, game.worms()) {
-			SetupViewports(w->get(), NULL, VW_FOLLOW, VW_FOLLOW);
+			SetupViewports(std::vector<CWorm*>(1, w->get()), VW_FOLLOW);
 			return;
 		}
 		warnings << "CClient::SetupViewports: didn't found any worms" << endl;
-		SetupViewports(NULL, NULL, VW_ACTIONCAM, VW_FOLLOW);
+		SetupViewports(std::vector<CWorm*>(), VW_ACTIONCAM);
 	}
 }
 
@@ -1626,7 +1630,124 @@ void CClient::SetupViewports(CWorm *w1, CWorm *w2, int type1, int type2)
 		cViewports[1].setTarget(w2);
 		cViewports[1].setOrigTarget(w2);
 	}
-	
+
+	bShouldRepaintInfo = true;
+}
+
+
+///////////////////
+// Compute the screen rectangle for one split-screen viewport, given the total
+// number of local players sharing the screen. The play area is (0, top) with
+// size (sw x h); a `gap` px seam separates neighbouring viewports (it is filled
+// with the split colour when drawing, see CClient::Draw).
+//
+// Layouts (viewport index order shown):
+//   1 player : full screen
+//   2 players: left | right          (two equal columns)
+//   3 players: 2x2 grid, radar map   [0][1] / [2][R]   (R = radar, drawn by
+//              in the 4th quarter                        CClient::Draw)
+//   4 players: 2x2 grid              [0][1] / [2][3]
+//
+// For 3 players every viewport is a quarter, exactly like the 4-player grid, so
+// no player gets a larger (unfair) view; the vacant 4th quarter shows the radar.
+static void splitScreenViewportRect(int index, int count, int top, int sw, int h, int gap,
+									int& vx, int& vy, int& vw, int& vh)
+{
+	const int halfW = (sw - gap) / 2;
+	const int halfH = (h - gap) / 2;
+
+	switch(count) {
+		case 1:
+			vx = 0; vy = top; vw = sw; vh = h;
+			break;
+
+		case 2: // side by side
+			vx = (index == 0) ? 0 : (halfW + gap);
+			vy = top; vw = halfW; vh = h;
+			break;
+
+		default: { // 3 or 4: 2x2 grid (index always < NUM_VIEWPORTS here)
+			const int col = index % 2;
+			const int row = index / 2;
+			vx = col ? (halfW + gap) : 0;
+			vy = top + (row ? (halfH + gap) : 0);
+			vw = halfW; vh = halfH;
+			break;
+		}
+	}
+}
+
+
+///////////////////
+// Setup split-screen viewports for 1..MAX_LOCAL_PLAYERS local players.
+// worms[i] is followed by viewport i (a NULL entry / empty list yields a single
+// spectator viewport). All viewports use the same view `type`.
+void CClient::SetupViewports(const std::vector<CWorm*>& worms, int type)
+{
+	// Reset
+	for( int i=0; i<NUM_VIEWPORTS; i++ )  {
+		cViewports[i].shutdown();
+		cViewports[i].setTarget(NULL);
+	}
+
+	// Setup inputs: viewport i is driven by local player i's control set.
+	for( int i=0; i<NUM_VIEWPORTS && i < (int)tLXOptions->sPlayerControls.size(); i++ )
+		cViewports[i].setupInputs( tLXOptions->sPlayerControls[i] );
+
+	// Setup according to top and bottom interface bars
+	SmartPointer<SDL_Surface> topbar = NULL;
+	SmartPointer<SDL_Surface> bottombar = NULL;
+	if (game.isLocalGame())  {
+		bottombar = DeprecatedGUI::gfxGame.bmpGameLocalBackground;
+		topbar = DeprecatedGUI::gfxGame.bmpGameLocalTopBar;
+	} else {
+		bottombar = DeprecatedGUI::gfxGame.bmpGameNetBackground;
+		topbar = DeprecatedGUI::gfxGame.bmpGameNetTopBar;
+	}
+
+	int top = topbar.get() ? (topbar.get()->h) : (tLX->cFont.GetHeight() + 3); // Top bound of the viewports
+	if (!tLXOptions->bTopBarVisible)
+		top = 0;
+
+	int h = bottombar.get() ? (480 - bottombar.get()->h - top) : (382 - top); // Height of the viewports
+
+	//if( game.gameScript() && game.gameScript()->gusEngineUsed() )
+	{
+		top = 0; // Topbar is transparent
+		h = 480;
+	}
+
+	// See the note in the 2-arg overload: non-widescreen games are constrained
+	// to menuWidth (centered with black bars); widescreen uses the full width.
+	VideoPostProcessor::get()->setDisplayScreenWidth(
+		game.useWideScreen() ? VideoPostProcessor::get()->screenWidth()
+		                     : VideoPostProcessor::menuWidth);
+	const int sw = VideoPostProcessor::get()->displayScreenWidth();
+
+	int count = (int) worms.size();
+	if(count > NUM_VIEWPORTS) count = NUM_VIEWPORTS;
+
+	// No worm to follow: a single spectator/action-cam viewport over the screen.
+	if(count == 0) {
+		cViewports[0].Setup(0, top, sw, h, (type == VW_FOLLOW || type == VW_CYCLE) ? VW_ACTIONCAM : type);
+		cViewports[0].setTarget(NULL);
+		cViewports[0].setOrigTarget(NULL);
+		bShouldRepaintInfo = true;
+		return;
+	}
+
+	const int gap = 4;
+	for(int i = 0; i < count; i++) {
+		int vx, vy, vw, vh;
+		splitScreenViewportRect(i, count, top, sw, h, gap, vx, vy, vw, vh);
+		cViewports[i].Setup(vx, vy, vw, vh, type);
+		CWorm* w = worms[i];
+		if(w)
+			cViewports[i].setSmooth( !OwnsWorm(w->getID()) );
+		cViewports[i].setTarget(w);
+		cViewports[i].setOrigTarget(w);
+	}
+
 	bShouldRepaintInfo = true;
 }
 
@@ -2187,19 +2308,19 @@ void CClient::SetupGameInputs()
 			// TODO: Later, let the handler save a rev to his sPlayerControls. This would give
 			// more flexibility to the player and he can have multiple player control sets.
 			// Then, we would call a reloadInputs() here.
-			if(humanWormNum <= 1) {
+			if(humanWormNum < MAX_LOCAL_PLAYERS) {
 				handler->setupInputs( tLXOptions->sPlayerControls[humanWormNum], humanWormNum );
 				humanWormNum++;
 			}
 			else
-				warnings << "SetupGameInputs: we currently don't support more than 2 local human worms" << endl;
+				warnings << "SetupGameInputs: we currently don't support more than " << MAX_LOCAL_PLAYERS << " local human worms" << endl;
 		}
 	}
 
-	// TODO: allow more viewports here
-	cViewports[0].setupInputs( tLXOptions->sPlayerControls[0] );
-	cViewports[1].setupInputs( tLXOptions->sPlayerControls[1] );
-	
+	// Viewport i is driven by local player i's control set (freelook etc.).
+	for( int i=0; i<NUM_VIEWPORTS && i < (int)tLXOptions->sPlayerControls.size(); i++ )
+		cViewports[i].setupInputs( tLXOptions->sPlayerControls[i] );
+
 
 	// General key shortcuts
 	cChat_Input.Setup(tLXOptions->sGeneralControls[SIN_CHAT]);

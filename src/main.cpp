@@ -682,6 +682,11 @@ bool InitializeLieroX()
 	// Load the profiles
 	LoadProfiles();
 
+	// Ensure the default local (split-screen) player profiles exist, recreating
+	// any that are missing (e.g. a players.dat that predates players 3 and 4).
+	if(!bDedicated)
+		EnsureDefaultLocalPlayerProfiles();
+
 	if(bDedicated)
 		if(!DedicatedControl::Init()) {
 			errors << "couldn't init dedicated control" << endl;

@@ -64,6 +64,31 @@ static void AddDefaultPlayers() {
 	AddDefaultBotPlayers();
 }
 
+// The default set of local (split-screen) player profiles, matching the ones
+// bundled in cfg/players.dat.
+struct DefaultLocalProfile { const char* name; int r, g, b; };
+static const DefaultLocalProfile DefaultLocalProfiles[] = {
+	{ "OpenLieroXor",   0, 177,   0 }, // player 1 — green
+	{ "The Second",   255, 255, 255 }, // player 2 — white
+	{ "The Third",     20,  90, 255 }, // player 3 — strong blue
+	{ "The Fourth",   255, 220,   0 }, // player 4 — yellow
+};
+
+// Make sure each default local player profile exists, recreating any that are
+// missing (checked one by one, so a partially-present set is completed rather
+// than left alone). This runs on startup so users who deleted a profile — or
+// whose cfg/players.dat predates players 3 and 4 — still get ready-made worms
+// to assign to the local split-screen slots. Existing profiles are left as-is.
+void EnsureDefaultLocalPlayerProfiles() {
+	for(size_t i = 0; i < sizeof(DefaultLocalProfiles)/sizeof(DefaultLocalProfiles[0]); i++) {
+		const DefaultLocalProfile& d = DefaultLocalProfiles[i];
+		if(FindProfile(d.name).get())
+			continue; // this local player profile already exists — keep it
+		AddProfile(d.name, "default.png", "", "", d.r, d.g, d.b, PRF_HUMAN->toInt(), 0);
+		notes << "ProfileSystem: recreated missing local player profile '" << d.name << "'" << endl;
+	}
+}
+
 static void checkProfileSane(const SmartPointer<profile_t>& p) {
 	TrimSpaces(p->sName);
 	if(p->sName == "")

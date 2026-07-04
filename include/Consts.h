@@ -38,7 +38,12 @@ static constexpr int MAX_CLIENTS = 32;
 static constexpr int MAX_PLAYERS = 32;
 static constexpr int MAX_TEAMS = 4;
 static constexpr int MAX_CHATLINES = 8;
-static constexpr int NUM_VIEWPORTS = 3;
+// Maximum number of local (split-screen) human players sharing one screen.
+// Each local player gets their own viewport and their own gamepad (player N ->
+// pad N). Bump this if the split-screen layout is extended to more players.
+static constexpr int MAX_LOCAL_PLAYERS = 4;
+// One viewport per local split-screen player.
+static constexpr int NUM_VIEWPORTS = MAX_LOCAL_PLAYERS;
 static constexpr int GAMEOVER_WAIT = 3;
 
 

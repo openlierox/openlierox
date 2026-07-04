@@ -83,6 +83,10 @@ int		LoadProfiles();
 void	SaveProfiles();
 void	ShutdownProfiles();
 
+// Recreate any of the default local (split-screen) player profiles that are
+// missing. Call after LoadProfiles(). See ProfileSystem.cpp for details.
+void	EnsureDefaultLocalPlayerProfiles();
+
 int		AddProfile(const std::string& name, const std::string& skin, const std::string& username, const std::string& password,  int R, int G, int B, int type, int difficulty);
 int		AddProfile(const SmartPointer<profile_t>& prof);
 void	DeleteProfile(const SmartPointer<profile_t>& prof);

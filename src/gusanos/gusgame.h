@@ -5,6 +5,7 @@
 #include "object_grid.h"
 #include "FeatureList.h"
 #include "OlxVariable.h"
+#include "Consts.h" // for MAX_LOCAL_PLAYERS
 
 #ifndef DEDICATED_ONLY
 #include "gusanos/allegro.h"
@@ -103,7 +104,9 @@ struct ScreenMessage
 class GusGame
 {
 public:
-	static const size_t MAX_LOCAL_PLAYERS = 2;
+	// Shared with the rest of OLX via Consts.h so the split-screen player count
+	// and the gusanos local-input slots always match.
+	static const size_t MAX_LOCAL_PLAYERS = ::MAX_LOCAL_PLAYERS;
 	
 	
 		

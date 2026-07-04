@@ -21,6 +21,7 @@
 
 
 #include "LieroX.h"
+#include "Consts.h"  // for MAX_LOCAL_PLAYERS
 
 #include "AuxLib.h"  // for GetConfig()
 #include "Error.h"
@@ -277,8 +278,10 @@ static void ensureControllerSlot(int idx) {
 int getControllerPlayerSlot(SDL_JoystickID instanceID) {
 	SDL_GameController* gc = SDL_GameControllerFromInstanceID(instanceID);
 	if(!gc) return -1;
-	if(gc == controllers[0]) return 0;
-	if(gc == controllers[1]) return 1;
+	// Pad N drives local player N (0-based). Bounds-checked so this is safe with
+	// any number of connected pads (including fewer than MAX_LOCAL_PLAYERS).
+	for(size_t i = 0; i < controllers.size() && i < (size_t)MAX_LOCAL_PLAYERS; i++)
+		if(gc == controllers[i]) return (int)i;
 	return -1;
 }
 
