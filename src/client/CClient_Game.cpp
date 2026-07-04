@@ -502,10 +502,25 @@ void CClient::PlayerShoot(CWorm *w)
 	if(Slot->Reloading)
 		return;
 
-	if(Slot->LastFire>0)
+	if(!Slot->weapon())
 		return;
 
-	if(!Slot->weapon())
+	// Beam weapons get processed differently.
+	// Beam weapons have no rate of fire, they fire continuously until out of ammo,
+	// but we don't know when they are out of ammo, because the server won't tell us,
+	// so we'll draw it for some short time after each 'shoot' packet from the server.
+	// ProcessShot_Beam() sets LastFire when such a packet arrives; here we draw the
+	// beam every frame while it counts down. This must happen before the generic
+	// LastFire rate-of-fire gate below (otherwise DrawBeam would never be reached).
+	if(Slot->weapon()->Type == WPN_BEAM) {
+		if(Slot->LastFire > 0) {
+			DrawBeam(w);
+			Slot->LastFire -= tLX->fDeltaTime.seconds();
+		}
+		return;
+	}
+
+	if(Slot->LastFire>0)
 		return;
 
 	// Safe the ROF time (Rate of Fire). That's the pause time after each shot.
@@ -516,12 +531,6 @@ void CClient::PlayerShoot(CWorm *w)
 	// Special weapons get processed differently
 	if(Slot->weapon()->Type == WPN_SPECIAL) {
 		ShootSpecial(w);
-		return;
-	}
-
-	// Beam weapons get processed differently
-	if(Slot->weapon()->Type == WPN_BEAM) {
-		DrawBeam(w);
 		return;
 	}
 
@@ -916,11 +925,26 @@ void CClient::ProcessShot(shoot_t *shot, AbsTime fSpawnTime)
 // Process a shot - Beam
 void CClient::ProcessShot_Beam(shoot_t *shot)
 {
+	const weapon_t *wpn = game.gameScript()->GetWeapons() + shot->nWeapon;
+
 	if(shot->nWormID >= 0 && shot->nWormID < MAX_WORMS) {
 		CWorm *w = game.wormById(shot->nWormID, false);
 		if(!w) return;
+		// The selected weapon for a worm is sent in an unreliable packet, so it may
+		// differ from the weapon actually used for this shot. The shot data itself
+		// came in reliably, so use it to select the matching slot as current.
+		if(w->getCurWeapon()->weapon() != wpn) {
+			for(int i = 0; i < w->getWeaponSlotsCount(); i++) {
+				if(w->getWeapon(i)->weapon() == wpn) {
+					w->setCurrentWeapon(i);
+					break;
+				}
+			}
+		}
+		// Draw the beam for a short time after receiving the packet. PlayerShoot()
+		// draws it every frame while this counts down (see there).
+		w->writeCurWeapon()->LastFire = 0.3f;
 	}
-	const weapon_t *wpn = game.gameScript()->GetWeapons() + shot->nWeapon;
 
 	// Trace a line from the worm to length or until it hits something
 	CVec dir;
