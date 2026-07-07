@@ -2025,8 +2025,6 @@ void Cmd_privateMsg::exec(CmdLineIntf* caller, const std::vector<std::string>& p
 COMMAND(getWormList, "get worm list", "", 0, 0);
 void Cmd_getWormList::exec(CmdLineIntf* caller, const std::vector<std::string>& params)
 {
-	if(game.isClient() || !cServer || !cServer->isServerRunning()) { caller->writeMsg(name + " works only as server"); return; }
-	
 	for_each_iterator(CWorm*, w, game.worms())
 		caller->pushReturnArg(itoa(w->get()->getID()));
 }
