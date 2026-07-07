@@ -329,8 +329,9 @@ void GameStateUpdates::diffFromStateToCurrent(const GameState& s) {
 	}
 	foreach(o, game.gameStateUpdates->objDeletions) {
 		if(game.isClient()) continue; // see obj-creations
-		// Unlike a creation, the object is already gone here, so we must not
-		// require o->obj to resolve; the ObjRef alone tells clients it left.
+		// Unlike a creation, the object is already gone here,
+		// so we must not require o->obj to resolve;
+		// the ObjRef alone tells clients it left.
 		// Send it to any client that still has the object (#978).
 		if(s.haveObject(*o))
 			pushObjDeletion(*o);
