@@ -17,7 +17,6 @@
 #endif
 
 #include "Functors.h"
-#include "ThreadPool.h"
 
 template < typename _Type, typename _SpecificInitFunctor >
 class SmartPointer;
