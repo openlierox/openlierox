@@ -167,7 +167,8 @@ private:
 		
 		LatchReader(ML_CommanderKeen123* p) : parent(p), RawData(NULL) {}
 		~LatchReader() {
-			if(RawData) delete[] RawData; RawData = NULL;
+			if(RawData) delete[] RawData;
+			RawData = NULL;
 		}
 		
 		// initilizes the positions getbit will retrieve data from

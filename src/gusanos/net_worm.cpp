@@ -98,8 +98,10 @@ void CWorm::NetWorm_Init()
 
 void CWorm::NetWorm_Shutdown()
 {
-	if(m_node) delete m_node; m_node = NULL;
-	if(m_interceptor) delete m_interceptor; m_interceptor = NULL;
+	if(m_node) delete m_node;
+	m_node = NULL;
+	if(m_interceptor) delete m_interceptor;
+	m_interceptor = NULL;
 }
 
 void CWorm::addEvent(BitStream* data, CWorm::NetEvents event)

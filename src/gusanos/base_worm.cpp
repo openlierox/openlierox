@@ -798,6 +798,8 @@ void CWorm::finalize()
 	game.onRemoveWorm(this);
 	thisRef.obj.overwriteShared(NULL);
 
-	if(m_node) delete m_node; m_node = 0;
-	if(m_interceptor) delete m_interceptor; m_interceptor = 0;
+	if(m_node) delete m_node;
+	m_node = 0;
+	if(m_interceptor) delete m_interceptor;
+	m_interceptor = 0;
 }

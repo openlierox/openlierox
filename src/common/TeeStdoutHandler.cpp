@@ -44,7 +44,8 @@ static void teeOlxOutputToFileHandler(int c) {
 	static FILE* out = NULL;
 	
 	if(c == EOF) {
-		if(out) fclose(out); out = NULL;
+		if(out) fclose(out);
+		out = NULL;
 		return;
 	}
 	
@@ -55,7 +56,8 @@ static void teeOlxOutputToFileHandler(int c) {
 		buffer += c;
 	
 	if(ch == '\n' && currentOlxOutputFilename != teeOlxOutputFile) {
-		if(out) fclose(out); out = NULL;
+		if(out) fclose(out);
+		out = NULL;
 		currentOlxOutputFilename = teeOlxOutputFile;
 		if(currentOlxOutputFilename != "") {
 			out = fopen(currentOlxOutputFilename.c_str(), "a");

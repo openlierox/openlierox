@@ -251,7 +251,8 @@ struct BfdSession {
 	BfdSession() : abfd(NULL), syms(NULL) {}
 	~BfdSession() {
 		free(syms); syms = NULL;
-		if(abfd) bfd_close(abfd); abfd = NULL;
+		if(abfd) bfd_close(abfd);
+		abfd = NULL;
 	}
 };
 typedef std::map<std::string, boost::shared_ptr<BfdSession> > BfdSessionMap;
