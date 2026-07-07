@@ -88,3 +88,27 @@ def test_two_clients_in_lobby_see_each_other(network_game):
             "%s never received the other client's worm:\n%s"
             % (client.name, client.read_log())
         )
+
+
+def test_worm_removed_when_client_leaves(network_game, tmp_path):
+    """When a client leaves a running game, the others drop its worm (#978)."""
+    server = network_game.start_server(OLX_START_WHEN_WORMS=2)
+    assert server.wait_for("SERVER_LOBBY", timeout=30), server.read_log()
+
+    leave_signal = str(tmp_path / "c1_leave")
+    c1 = network_game.add_client("c1", env={"OLX_LEAVE_SIGNAL_FILE": leave_signal})
+    c2 = network_game.add_client("c2")
+
+    assert server.wait_for("SERVER_PLAYING", timeout=40), server.read_log()
+    assert c2.wait_for("CLIENT[c2] PLAYING", timeout=30), c2.read_log()
+
+    # Wait until c2 sees both worms (ids 0 and 1; which client got which is racy).
+    assert c2.wait_for("CLIENT[c2] state=Playing worms=0,1", timeout=20), (
+        "c2 never received both worms:\n" + c2.read_log()
+    )
+
+    # Tell c1 to leave; c2 must then drop c1's worm (whichever id it has).
+    open(leave_signal, "w").close()
+    assert c2.wait_for("CLIENT[c2] WORM_LEFT ", timeout=30), (
+        "c2 still lists c1's worm after c1 left:\n" + c2.read_log()
+    )

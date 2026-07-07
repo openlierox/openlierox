@@ -144,11 +144,14 @@ class NetworkGame:
         ).start()
         return self.server
 
-    def add_client(self, name):
+    def add_client(self, name, env=None):
+        client_env = {"OLX_CLIENT_NAME": name}
+        if env:
+            client_env.update(env)
         client = OlxInstance(
             self.binary, name, os.path.join(self.base_home, name),
             CLIENT_CONTROL, connect="127.0.0.1:" + self.PORT,
-            env={"OLX_CLIENT_NAME": name},
+            env=client_env,
         ).start()
         self.clients.append(client)
         return client
