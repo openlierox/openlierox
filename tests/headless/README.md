@@ -36,4 +36,3 @@ and each instance gets an isolated `HOME`.
 - The control scripts are `exec`'d directly,
   so they must stay executable with a `#!/usr/bin/env python3` shebang,
   and the checkout path must have no spaces.
-- The shipped `dedicated_control` is Python 2 and no longer runs; hence our own.
