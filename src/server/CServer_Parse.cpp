@@ -1654,7 +1654,18 @@ void GameServer::ParseConnect(const SmartPointer<NetworkSocket>& net_socket, CBy
 			newcl->getUdpFileDownloader()->allowFileRequest(false);
 		}
 		newcl->setGameReady(false);
-		
+
+		// A client joining a game in progress must already know the game state
+		// (above all the mod) when it parses PrepareGame,
+		// or it rejects the game ("invalid mod name (none)") and gets kicked (#973).
+		// Since 0.59.10 the settings and worms reach the client only through the
+		// attribute sync, which SendGameStateUpdates() would otherwise send only
+		// on a later server frame, i.e. too late.
+		// A lobby joiner accumulates this over the lobby frames;
+		// push the full snapshot to a mid-game joiner now, before PrepareGame.
+		notes << "connect during game: " << newcl->debugName() << ", sending game state then PrepareGame" << endl;
+		SendGameStateUpdates(newcl);
+
 		if(newcl->getClientVersion() <= OLXBetaVersion(0,57,8))
 			// HINT: this is necessary because of beta8 which doesn't update all its state variables from preparegame
 			newcl->getNetEngine()->SendUpdateLobbyGame();

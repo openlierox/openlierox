@@ -231,6 +231,10 @@ public:
 	void		SendEmptyWeaponsOnRespawn( CWorm * Worm );
 	bool		SendUpdate();
 	void		SendGameStateUpdates();
+	// Send the pending attribute-state delta to one client (>=0.59.10) now.
+	// Returns whether anything was sent.
+	// Also used to give a mid-game joiner its full snapshot before PrepareGame.
+	bool		SendGameStateUpdates(CServerConnection* cl);
 	void		SendWeapons(CServerConnection* cl = NULL, CWorm* w = NULL); // if NULL, send globally, else only to that client
 	void		SendWormTagged(CWorm *w);
 	void		SendTeamScoreUpdate();

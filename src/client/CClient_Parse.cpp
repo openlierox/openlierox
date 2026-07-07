@@ -782,9 +782,6 @@ bool CClientNetEngine::ParsePrepareGame(CBytestream *bs)
 	}
 	if(game.isClient() && client->getServerVersion() < OLXBetaVersion(0,59,10))
 		client->getGameLobby().overwrite[FT_Map] = infoForLevel(GetBaseFilename(sMapFilename));
-	else if(game.isClient() && client->getGameLobby()[FT_Map].as<LevelInfo>()->name == "")
-		// Mid-game joiner without the synced map yet: take it from here (see the mod handling below, #973).
-		client->getGameLobby().overwrite[FT_Map] = infoForLevel(GetBaseFilename(sMapFilename));
 
 	// Other game details
 	if(game.isClient() && client->getServerVersion() < OLXBetaVersion(0,59,10)) {
@@ -810,20 +807,9 @@ bool CClientNetEngine::ParsePrepareGame(CBytestream *bs)
 	// Set the gamescript
 	if(game.isClient() && client->getServerVersion() < OLXBetaVersion(0,59,10))
 		client->getGameLobby().overwrite[FT_Mod] = infoForMod(bs->readString());
-	else {
-		// Since 0.59.10 the mod (like the map) is normally synced via the
-		// attribute system, so here we would just skip it.
-		// But a client joining a game in progress has not had that sync yet,
-		// and without the mod it rejects the game ("invalid mod name (none)")
-		// and gets kicked (#973).
-		// The server still writes the mod here, so use it when we have none yet.
-		const std::string modPath = bs->readString();
-		if(game.isClient() && client->getGameLobby()[FT_Mod].as<ModInfo>()->name == "") {
-			notes << "ParsePrepareGame: joining game in progress; taking mod from PrepareGame" << endl;
-			client->getGameLobby().overwrite[FT_Mod] = infoForMod(modPath);
-		}
-	}
-
+	else
+		bs->SkipString();
+	
 	// Bad packet
 	if (client->getGameLobby()[FT_Mod].as<ModInfo>()->name == "")  {
 		hints << "CClientNetEngine::ParsePrepareGame: invalid mod name (none)" << endl;

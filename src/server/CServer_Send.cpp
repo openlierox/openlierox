@@ -609,19 +609,8 @@ void GameServer::SendGameStateUpdates() {
 		if(cl->getChannel()->getBufferFull())
 			continue;
 
-		GameState& state = *cl->gameState;
-		GameStateUpdates updates;
-		updates.diffFromStateToCurrent(state);
-		if(!updates) continue;
-
-		{
-			CBytestream bs;
-			bs.writeByte(S2C_GAMEATTRUPDATE);
-			updates.writeToBs(&bs, state);
-			cl->getChannel()->AddReliablePacketToSend(bs);
-		}
-
-		cl->gameState->updateToCurrent();
+		if(!SendGameStateUpdates(cl))
+			continue;
 
 		lastClientSendData = int(cl - cServer->getClients());
 		if(cl == firstNonlocalClientConnection()) counter.addData(1);
@@ -635,6 +624,28 @@ void GameServer::SendGameStateUpdates() {
 		CClient::addHudDebugInfo("Update FPS: " + ftoa(counter.getRate()));
 		CClient::addHudDebugInfo("BandwdthHit FPS: " + ftoa(bandwidthHitCounter.getRate()));
 	}
+}
+
+bool GameServer::SendGameStateUpdates(CServerConnection* cl) {
+	// The attribute sync is a >=0.59.10 feature;
+	// older clients get their state through the legacy packets instead.
+	if(cl->isLocalClient()) return false;
+	if(!cl->isConnected()) return false;
+	if(cl->getClientVersion() < OLXBetaVersion(0,59,10)) return false;
+	if(!cl->gameState) return false;
+
+	GameState& state = *cl->gameState;
+	GameStateUpdates updates;
+	updates.diffFromStateToCurrent(state);
+	if(!updates) return false;
+
+	CBytestream bs;
+	bs.writeByte(S2C_GAMEATTRUPDATE);
+	updates.writeToBs(&bs, state);
+	cl->getChannel()->AddReliablePacketToSend(bs);
+
+	cl->gameState->updateToCurrent();
+	return true;
 }
 
 void CServerNetEngine::SendWeapons(CWorm* specificW)
