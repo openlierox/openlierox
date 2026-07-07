@@ -78,7 +78,7 @@ void DedicatedControl::Uninit() {
 
 struct ScriptCmdLineIntf : CmdLineIntf {
 	Process pipe;
-	ThreadPoolItem* thread;
+	SmartPointer<ThreadPoolItem> thread;
 	
 
 	ScriptCmdLineIntf() : thread(NULL) {
@@ -112,13 +112,13 @@ struct ScriptCmdLineIntf : CmdLineIntf {
 	}
 	
 	bool havePipe() {
-		return thread != NULL;
+		return thread.get() != NULL;
 	}
 
 	
 	
 	bool breakCurrentScript() {
-		if(thread) {
+		if(thread.get()) {
 			notes << "waiting for pipeThread ..." << endl;
 			pipe.close();
 			threadPool->wait(thread, NULL);

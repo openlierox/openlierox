@@ -55,7 +55,7 @@ void DrawLoadingAni(SDL_Surface* bmpDest, int x, int y, int rx, int ry, Color fg
 
 
 struct ScopedBackgroundLoadingAni::Data {
-	ThreadPoolItem* thread;
+	SmartPointer<ThreadPoolItem> thread;
 	Mutex mutex;
 	bool quit;
 	Condition breakSig;

@@ -79,7 +79,7 @@ struct console_t {
 static void saveHistory();
 
 struct IngameConsole : CmdLineIntf {
-	ThreadPoolItem* thread;
+	SmartPointer<ThreadPoolItem> thread;
 	Mutex mutex;
 	Condition changeSignal;
 	PIVar(bool,false) quit;
@@ -168,7 +168,7 @@ struct IngameConsole : CmdLineIntf {
 	}
 
 	void stopThread() {
-		if(thread) {
+		if(thread.get()) {
 			{
 				Mutex::ScopedLock lock(mutex);
 				quit = true;

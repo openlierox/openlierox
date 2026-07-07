@@ -58,15 +58,29 @@ void getAllThreads(std::set<ThreadId>& ids) {
 }
 
 
+// The reused worker thread. The task it currently runs is a separate,
+// reference-counted ThreadPoolItem handle, so the caller never sees or holds
+// the worker and there is no lifetime coupling between the two.
+struct ThreadWorker {
+	ThreadPool* pool;
+	SDL_Thread* thread;
+	ThreadId nativeThreadId;
+	SmartPointer<ThreadPoolItem> task; // current task, or null when idle
+	Action* action;                    // current action, or null when idle
+	ThreadWorker() : pool(NULL), thread(NULL), nativeThreadId(0), action(NULL) {}
+};
+
+
 ThreadPool::ThreadPool(unsigned int size) {
-	nextAction = NULL; nextIsHeadless = false; nextData = NULL;
-	quitting = false;	
+	nextAction = NULL;
+	quitting = false;
 	mutex = SDL_CreateMutex();
 	awakeThread = SDL_CreateCond();
 	threadStartedWork = SDL_CreateCond();
 	threadStatusChanged = SDL_CreateCond();
+	taskFinished = SDL_CreateCond();
 	startMutex = SDL_CreateMutex();
-	
+
 	notes << "ThreadPool: creating " << size << " threads ..." << endl;
 	while(availableThreads.size() < size)
 		prepareNewThread();
@@ -75,23 +89,22 @@ ThreadPool::ThreadPool(unsigned int size) {
 ThreadPool::~ThreadPool() {
 	waitAll();
 
-	// this is the hint for all available threads to break
-	SDL_mutexP(mutex); // lock to be sure that every thread is outside that region, we could get crashes otherwise
+	// All workers are idle now; tell them to quit, then join and free them.
+	SDL_mutexP(mutex);
 	nextAction = NULL;
 	quitting = true;
 	SDL_CondBroadcast(awakeThread);
-	for(std::set<ThreadPoolItem*>::iterator i = availableThreads.begin(); i != availableThreads.end(); ++i) {
+	for(std::set<ThreadWorker*>::iterator i = availableThreads.begin(); i != availableThreads.end(); ++i) {
 		SDL_mutexV(mutex);
 		SDL_WaitThread((*i)->thread, NULL);
 		SDL_mutexP(mutex);
-		SDL_DestroyCond((*i)->finishedSignal);
-		SDL_DestroyCond((*i)->readyForNewWork);
 		delete *i;
 	}
 	availableThreads.clear();
 	SDL_mutexV(mutex);
-	
+
 	SDL_DestroyMutex(startMutex);
+	SDL_DestroyCond(taskFinished);
 	SDL_DestroyCond(threadStartedWork);
 	SDL_DestroyCond(threadStatusChanged);
 	SDL_DestroyCond(awakeThread);
@@ -99,64 +112,55 @@ ThreadPool::~ThreadPool() {
 }
 
 void ThreadPool::prepareNewThread() {
-	ThreadPoolItem* t = new ThreadPoolItem();
-	t->pool = this;
-	t->finishedSignal = SDL_CreateCond();
-	t->readyForNewWork = SDL_CreateCond();
-	t->finished = false;
-	t->working = false;
-	availableThreads.insert(t);
-	t->nativeThreadId = 0;
-	t->thread = SDL_CreateThread(threadWrapper, "ThreadPool worker", t);
+	ThreadWorker* w = new ThreadWorker();
+	w->pool = this;
+	availableThreads.insert(w);
+	w->thread = SDL_CreateThread(threadWrapper, "ThreadPool worker", w);
 }
 
 int ThreadPool::threadWrapper(void* param) {
-	ThreadPoolItem* data = (ThreadPoolItem*)param;
-	data->nativeThreadId = getCurrentThreadId();
+	ThreadWorker* w = (ThreadWorker*)param;
+	w->nativeThreadId = getCurrentThreadId();
+	ThreadPool* pool = w->pool;
 
-	SDL_mutexP(data->pool->mutex);
+	SDL_mutexP(pool->mutex);
 	while(true) {
-		while(data->pool->nextAction == NULL && !data->pool->quitting)
-			SDL_CondWait(data->pool->awakeThread, data->pool->mutex);
-		if(data->pool->quitting) break;
-		data->pool->usedThreads.insert(data);
-		data->pool->availableThreads.erase(data);
-		
-		Action* act = data->pool->nextAction; data->pool->nextAction = NULL;
-		data->headless = data->pool->nextIsHeadless;
-		data->name = data->pool->nextName;
-		data->finished = false;
-		data->working = true;
-		data->pool->nextData = data;
-		SDL_mutexV(data->pool->mutex);
-		
-		SDL_CondSignal(data->pool->threadStartedWork);
-		setCurThreadName(data->name);
-		data->ret = act->handle();
-		delete act;
-		setCurThreadName(data->name + " [finished]");
-		SDL_mutexP(data->pool->mutex);
-		data->finished = true;
-		SDL_CondSignal(data->pool->threadStatusChanged);
-		
-		if(!data->headless) { // headless means that we just can clean it up right now without waiting
-			SDL_CondSignal(data->finishedSignal);
-			while(data->working) SDL_CondWait(data->readyForNewWork, data->pool->mutex);
-		} else
-			data->working = false;
-		data->pool->usedThreads.erase(data);
-		data->pool->availableThreads.insert(data);
-		SDL_CondSignal(data->pool->threadStatusChanged);
+		while(pool->nextAction == NULL && !pool->quitting)
+			SDL_CondWait(pool->awakeThread, pool->mutex);
+		if(pool->quitting) break;
+
+		// Take the pending task.
+		w->action = pool->nextAction; pool->nextAction = NULL;
+		w->task = pool->nextTask; pool->nextTask = NULL;
+		pool->availableThreads.erase(w);
+		pool->usedThreads.insert(w);
+		SDL_CondSignal(pool->threadStartedWork); // let start() know we took it
+		SDL_mutexV(pool->mutex);
+
+		setCurThreadName(w->task->name);
+		int ret = w->action->handle();
+		delete w->action; w->action = NULL;
+		setCurThreadName(w->task->name + " [finished]");
+
+		SDL_mutexP(pool->mutex);
+		w->task->ret = ret;
+		w->task->finished = true;
+		w->task = NULL; // drop the worker's reference; the handle keeps the result
+		// The worker goes idle immediately: the result lives in the handle,
+		// so there is nothing to wait for a caller to "collect".
+		pool->usedThreads.erase(w);
+		pool->availableThreads.insert(w);
+		SDL_CondBroadcast(pool->taskFinished);     // wake any wait() on this task
+		SDL_CondSignal(pool->threadStatusChanged); // wake waitAll()
 		setCurThreadName("");
 	}
 
-	SDL_mutexV(data->pool->mutex);
-		
+	SDL_mutexV(pool->mutex);
 	return 0;
 }
 
-ThreadPoolItem* ThreadPool::start(Action* act, const std::string& name, bool headless) {
-	SDL_mutexP(startMutex); // If start() method will be called from different threads without mutex, hard-to-find crashes will occur
+SmartPointer<ThreadPoolItem> ThreadPool::start(Action* act, const std::string& name, bool headless) {
+	SDL_mutexP(startMutex); // serialize start() so nextAction/nextTask are not clobbered
 	SDL_mutexP(mutex);
 	if(availableThreads.size() == 0) {
 #ifndef SINGLETHREADED
@@ -165,21 +169,21 @@ ThreadPoolItem* ThreadPool::start(Action* act, const std::string& name, bool hea
 		prepareNewThread();
 	}
 	assert(nextAction == NULL);
-	assert(nextData == NULL);
+	SmartPointer<ThreadPoolItem> task = new ThreadPoolItem();
+	task->name = name;
 	nextAction = act;
-	nextIsHeadless = headless;
-	nextName = name;
-	
+	nextTask = task;
+
 	SDL_CondSignal(awakeThread);
-	while(nextData == NULL) SDL_CondWait(threadStartedWork, mutex);
-	ThreadPoolItem* data = nextData; nextData = NULL;
+	while(nextAction != NULL) SDL_CondWait(threadStartedWork, mutex); // wait until a worker took it
+	nextTask = NULL;
 	SDL_mutexV(mutex);
-		
+
 	SDL_mutexV(startMutex);
-	return data;
+	return task;
 }
 
-ThreadPoolItem* ThreadPool::start(ThreadFunc fct, void* param, const std::string& name) {
+SmartPointer<ThreadPoolItem> ThreadPool::start(ThreadFunc fct, void* param, const std::string& name) {
 	struct StaticAction : Action {
 		ThreadFunc fct; void* param;
 		Result handle() { return (*fct) (param); }
@@ -187,13 +191,10 @@ ThreadPoolItem* ThreadPool::start(ThreadFunc fct, void* param, const std::string
 	StaticAction* act = new StaticAction();
 	act->fct = fct;
 	act->param = param;
-	ThreadPoolItem* item = start(act, name);
-	if(item) return item;
-	delete act;
-	return NULL;
+	return start(act, name);
 }
 
-ThreadPoolItem* ThreadPool::start(boost::function<Result()> fct, const std::string& name, bool headless) {
+SmartPointer<ThreadPoolItem> ThreadPool::start(boost::function<Result()> fct, const std::string& name, bool headless) {
 	struct FctPtrAction : Action {
 		boost::function<Result()> fct;
 		Result handle() { return fct(); }
@@ -203,69 +204,44 @@ ThreadPoolItem* ThreadPool::start(boost::function<Result()> fct, const std::stri
 	return start(act, name, headless);
 }
 
-bool ThreadPool::wait(ThreadPoolItem* thread, int* status) {
-	if(!thread) return false;
+bool ThreadPool::wait(const SmartPointer<ThreadPoolItem>& item, int* status) {
+	if(!item.get()) return false;
 	SDL_mutexP(mutex);
-	if(!thread->working) {
-		warnings << "given thread " << thread->name << " is not working anymore" << endl;
-		SDL_mutexV(mutex);
-		return false;
-	}
-	while(!thread->finished) SDL_CondWait(thread->finishedSignal, mutex);
-	if(status) *status = thread->ret;
-	thread->working = false;
+	while(!item->finished) SDL_CondWait(taskFinished, mutex);
+	if(status) *status = item->ret;
 	SDL_mutexV(mutex);
-	
-	SDL_CondSignal(thread->readyForNewWork);
 	return true;
 }
 
 bool ThreadPool::waitAll() {
 	SDL_mutexP(mutex);
-	while(usedThreads.size() > 0) {		
-		warnings << "ThreadPool: waiting for " << usedThreads.size() << " threads to finish:" << endl;
-		for(std::set<ThreadPoolItem*>::iterator i = usedThreads.begin(); i != usedThreads.end(); ++i) {
-			if((*i)->working && (*i)->finished) {
-				warnings << "  thread " << (*i)->name << " is ready but was not cleaned up" << endl;
-				(*i)->working = false;
-				SDL_CondSignal((*i)->readyForNewWork);
-			}
-			else if((*i)->working && !(*i)->finished) {
-				warnings << "  thread " << (*i)->name << " is still working" << endl;
-			}
-			else if(!(*i)->working && !(*i)->headless && (*i)->finished) {
-				warnings << "  thread " << (*i)->name << " is cleaning itself up right now" << endl;
-			}
-			else {
-				warnings << "  thread " << (*i)->name << " is in an invalid state" << endl;
-			}
+	while(usedThreads.size() > 0) {
+		warnings << "ThreadPool: waiting for " << usedThreads.size() << " task(s) to finish:" << endl;
+		for(std::set<ThreadWorker*>::iterator i = usedThreads.begin(); i != usedThreads.end(); ++i) {
+			SmartPointer<ThreadPoolItem> t = (*i)->task;
+			warnings << "  task " << (t.get() ? t->name : std::string("?")) << " is still working" << endl;
 		}
 		SDL_CondWait(threadStatusChanged, mutex);
 	}
 	SDL_mutexV(mutex);
-	
+
 	return true;
 }
 
 void ThreadPool::dumpState(CmdLineIntf& cli) const {
 	ScopedLock lock(mutex);
-	for(std::set<ThreadPoolItem*>::const_iterator i = usedThreads.begin(); i != usedThreads.end(); ++i) {
-		if((*i)->working && (*i)->finished)
-			cli.writeMsg("thread '" + (*i)->name + "': ready but was not cleaned up");
-		else if((*i)->working && !(*i)->finished)
-			cli.writeMsg("thread '" + (*i)->name + "': working");
-		else if(!(*i)->working && !(*i)->headless && (*i)->finished)
-			cli.writeMsg("thread '" + (*i)->name + "': cleanup");
-		else
-			cli.writeMsg("thread '" + (*i)->name + "': invalid");
+	for(std::set<ThreadWorker*>::const_iterator i = usedThreads.begin(); i != usedThreads.end(); ++i) {
+		SmartPointer<ThreadPoolItem> t = (*i)->task;
+		cli.writeMsg("task '" + (t.get() ? t->name : std::string("?")) + "': working");
 	}
 }
 
 void ThreadPool::getAllWorkingThreads(std::map<ThreadId, std::string>& threads) {
 	ScopedLock lock(mutex);
-	for(std::set<ThreadPoolItem*>::const_iterator i = usedThreads.begin(); i != usedThreads.end(); ++i) {
-		if((*i)->working && !(*i)->finished)
-			threads[(*i)->nativeThreadId] = (*i)->name;
+	for(std::set<ThreadWorker*>::const_iterator i = usedThreads.begin(); i != usedThreads.end(); ++i) {
+		SmartPointer<ThreadPoolItem> t = (*i)->task;
+		if(t.get())
+			threads[(*i)->nativeThreadId] = t->name;
 	}
 }
 
@@ -289,5 +265,3 @@ void UnInitThreadPool() {
 	} else
 		errors << "ThreadPool already uninited" << endl;
 }
-
-

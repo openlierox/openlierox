@@ -147,7 +147,7 @@ public:
 private:
 	std::list<CHttpDownloader *> tDownloads;
 	std::vector<std::string>	 tDownloadServers;
-	ThreadPoolItem					*tThread;
+	SmartPointer<ThreadPoolItem>	tThread;
 	SDL_mutex					*tMutex;
 	size_t						 iActiveDownloads;
 

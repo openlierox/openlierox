@@ -147,7 +147,7 @@ struct TimerData {
 	bool				quitSignal;
 	SDL_cond*			quitCond;
 	SDL_mutex*			mutex;
-	ThreadPoolItem*		thread;
+	SmartPointer<ThreadPoolItem>	thread;
 	
 	TimerData() : timer(NULL), userData(NULL), interval(0), once(false), quitSignal(false), quitCond(NULL), mutex(NULL), thread(NULL) {
 		mutex = SDL_CreateMutex();
@@ -157,7 +157,7 @@ struct TimerData {
 	}
 	~TimerData() {
 		breakThread();
-		if(thread) threadPool->wait(thread, NULL);
+		if(thread.get()) threadPool->wait(thread, NULL);
 		thread = NULL;
 		SDL_DestroyMutex(mutex); mutex = NULL;
 		SDL_DestroyCond(quitCond); quitCond = NULL;
@@ -171,7 +171,7 @@ struct TimerData {
 	}
 
 	void startThread() {
-		assert(thread == NULL);
+		assert(thread.get() == NULL);
 		
 		struct TimerHandler : Action {
 			TimerData* data;

@@ -82,7 +82,7 @@ private:
 	bool quitSignal;
 	std::set<Task*> runningTasks;
 	std::list<Action*> queuedTasks;
-	ThreadPoolItem* queueThread;
+	SmartPointer<ThreadPoolItem> queueThread;
 
 	ScopedTask haveTaskOfType__unsafe(const std::type_info& taskType);
 public:

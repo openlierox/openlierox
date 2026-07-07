@@ -518,14 +518,14 @@ public:
 		break_thread_signal(0),
 		restart_thread_searching_signal(0) {
 		thread = threadPool->start(threadSearch, this, "AI worm pathfinding");
-		if(!thread)
+		if(!thread.get())
 			errors << "could not create AI thread" << endl;
 	}
 
 	~searchpath_base() {
 		// thread cleaning up
 		breakThreadSignal();
-		if(thread) threadPool->wait(thread, NULL);
+		if(thread.get()) threadPool->wait(thread, NULL);
 		else warnings << "AI thread already uninitialized" << endl;
 		thread = NULL;
 		
@@ -773,7 +773,7 @@ public:
 
 private:
 	NEW_ai_node_t* resulted_path;
-	ThreadPoolItem* thread;
+	SmartPointer<ThreadPoolItem> thread;
 	Mutex mutex;
 	bool thread_is_ready;
 	int break_thread_signal;
