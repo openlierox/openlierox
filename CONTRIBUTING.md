@@ -53,11 +53,11 @@ Markdown/READMEs and commit messages alike.
 
 ## Resources
 
-- Wiki: [Development](https://github.com/openlierox/openlierox/wiki/Development),
+- [Wiki](https://github.com/openlierox/openlierox/wiki): [Development](https://github.com/openlierox/openlierox/wiki/Development),
   [Contribute](https://github.com/openlierox/openlierox/wiki/Contribute),
   [Contribute to the source code](https://github.com/openlierox/openlierox/wiki/Contribute-to-the-source-code),
   and the per-platform compile guides.
 - [`doc/`](doc/), notably [`doc/Development`](doc/Development) (code overview and style) and [`doc/TODO`](doc/TODO).
 - [Issue tracker](https://github.com/openlierox/openlierox/issues),
-  [GitHub Discussions](https://github.com/openlierox/openlierox/discussions),
-  [forum](http://openlierox.net/forum); homepage <http://openlierox.net>.
+  [GitHub Discussions](https://github.com/openlierox/openlierox/discussions) (our forum);
+  homepage <http://openlierox.net>.
