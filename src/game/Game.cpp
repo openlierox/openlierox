@@ -823,7 +823,6 @@ void Game::frameInner()
 	}
 
 	if(state >= Game::S_Preparing && gameWasPrepared && !cClient->bWaitingForMod) {
-		bool update = false;
 		bool updateLocal = false;
 
 		// Prepare worms if needed
@@ -870,8 +869,6 @@ void Game::frameInner()
 					cServer->getClients()[i].getNetEngine()->SendWormProperties(w->get()); // if we have changed them in prepare or so
 				}
 			}
-
-			update = true;
 		}
 
 		if(updateLocal)

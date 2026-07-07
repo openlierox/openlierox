@@ -1124,7 +1124,6 @@ void GameServer::ParseGetChallenge(const SmartPointer<NetworkSocket>& tSocket, C
 void GameServer::ParseConnect(const SmartPointer<NetworkSocket>& net_socket, CBytestream *bs) {
 	NetworkAddr		adrFrom;
 	int				p;
-	int				player = -1;
 	CServerConnection	*newcl = NULL;
 
 
@@ -1700,25 +1699,6 @@ void GameServer::ParseConnect(const SmartPointer<NetworkSocket>& net_socket, CBy
 		m_flagInfo->sendCurrentState(newcl);
 				
 		newcl->getNetEngine()->SendWormProperties(true); // send new client other non-default worm properties
-	}
-	
-	
-	
-	// Share reliable channel bandwidth equally between all clients - 
-	// the amount of reliable data that should be transmitted is more-less the same for each client
-	// But we finetuning the delay between reliable packets
-	int clientsAmount = 0;
-	for(int c = 0; c < MAX_CLIENTS; c++) 
-	{
-		if(cClients[c].getStatus() != NET_CONNECTED) 
-			continue;
-		if( !cClients[c].isLocalClient() )
-			clientsAmount ++;
-	}
-	for(int c = 0; c < MAX_CLIENTS; c++) 
-	{
-		if(cClients[c].getStatus() != NET_CONNECTED) 
-			continue;
 	}
 }
 

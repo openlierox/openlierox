@@ -1115,7 +1115,7 @@ int CMap::PlaceDirt(int size, CVec pos)
 {
 	SmartPointer<SDL_Surface> hole;
 	int dx,dy, sx,sy;
-	int x,y;
+	int y;
 	int w,h;
 	int ix,iy;
 	Uint32 pixel, pixel2;
@@ -1173,7 +1173,7 @@ int CMap::PlaceDirt(int size, CVec pos)
 			uchar* px = &material->line[dy][clip_x];
 			Uint8* p2 = (Uint8 *)bmpDrawImage.get()->pixels + dy * 2 * bmpDrawImage.get()->pitch + clip_x * 2 * bmpDrawImage.get()->format->BytesPerPixel;
 
-			for(x=hole_clip_x,dx=clip_x;dx<clip_w;x++,dx++) {
+			for(dx=clip_x;dx<clip_w;dx++) {
 
 				pixel = GetPixelFromAddr(p, screenbpp);
 				uchar flag = m_materialList[*px].toLxFlags();
@@ -1236,7 +1236,7 @@ int CMap::PlaceGreenDirt(CVec pos)
 	}
 	
  	int dx,dy, sx,sy;
-	int x,y;
+	int y;
 	int w,h;
 	Uint32 pixel;
     const Uint32 green = MakeColour(0,255,0);
@@ -1289,7 +1289,7 @@ int CMap::PlaceGreenDirt(CVec pos)
 			uchar* px = &material->line[dy][clip_x];
 			Uint8* p2 = (Uint8 *)bmpDrawImage.get()->pixels + dy * 2 * bmpDrawImage.get()->pitch + clip_x * 2 * bmpDrawImage.get()->format->BytesPerPixel;
 
-			for(x = green_clip_x, dx=clip_x; dx < clip_w; x++, dx++) {
+			for(dx=clip_x; dx < clip_w; dx++) {
 
 				pixel = GetPixelFromAddr(p,screenbpp);
 				uchar flag = m_materialList[*px].toLxFlags();

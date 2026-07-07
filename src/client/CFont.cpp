@@ -90,7 +90,6 @@ bool CFont::IsColumnFree(int x) {
 // Calculate character widths, number of characters and offsets
 void CFont::Parse() {
 	int x;
-	UnicodeChar CurChar = FIRST_CHARACTER;
 	int cur_w;
 
 	// Lock the surface
@@ -141,7 +140,6 @@ void CFont::Parse() {
 		FontWidth.push_back(cur_w);
 		CharacterOffset.push_back(char_start);
 		NumCharacters++;
-		CurChar++;
 	}
 
 

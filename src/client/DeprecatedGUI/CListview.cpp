@@ -1096,12 +1096,9 @@ int	CListview::MouseDown(mouse_t *tMouse, int nDown)
 
 		// Is any of the columns grabbed? Move it
 		if (iGrabbed > 0)  {
-			int x = iX+4;
-
 			// Get the column
 			for (i=0;i != iGrabbed && col;i++) {
 				prev = col;
-				x+=col->iWidth-2;
 				col = col->tNext;
 			}
 

@@ -182,13 +182,12 @@ size_t GetFreeSysMemory() {
 	vm_statistics_data_t page_info;
 	vm_size_t pagesize;
 	mach_msg_type_number_t count;
-	kern_return_t kret;
-	
+
 	pagesize = 0;
-	kret = host_page_size (mach_host_self(), &pagesize);
+	host_page_size (mach_host_self(), &pagesize);
 	count = HOST_VM_INFO_COUNT;
-	
-	kret = host_statistics (mach_host_self(), HOST_VM_INFO,(host_info_t)&page_info, &count);
+
+	host_statistics (mach_host_self(), HOST_VM_INFO,(host_info_t)&page_info, &count);
 	return page_info.free_count * pagesize;
 #elif defined(__WIN64__)
 	MEMORYSTATUSEX memStatex;

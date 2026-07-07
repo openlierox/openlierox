@@ -39,22 +39,6 @@ static SmartPointer<SDL_Surface> getAlternativeCommandButtonGfx() {
 	return gfx;
 }
 
-static SmartPointer<SDL_Surface> getAlternativeProgressGfx() {
-	int w = 360;
-	int h = 20;
-
-	SmartPointer<SDL_Surface> gfx = gfxCreateSurface(w, 2 * h);
-	if(!gfx.get()) return NULL;
-
-	DrawRectFill(gfx.get(), 0, 0, w - 1, h - 1, tLX->clProgress);
-	DrawRect(gfx.get(), 0, 0, w - 1, h - 2, tLX->clBoxDark);
-
-	DrawRect(gfx.get(), 0, h - 1, w - 1, 2 * h - 2, tLX->clBoxDark);
-
-	return gfx;
-}
-
-	
 static SmartPointer<SDL_Surface> getAlternativeClockGfx() {
 	SmartPointer<SDL_Surface> gfx = gfxCreateSurface(12, 12);
 	if(!gfx.get()) return NULL;

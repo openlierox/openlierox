@@ -515,10 +515,8 @@ struct ML_Teeworlds : MapLoad {
 
 	void debugPrint(TWLayer& l) {
 		notes << "  layer type: " << l.type << endl;
-		bool isGameLayer = false;
 		if(l.type == LAYERTYPE_TILES && l.tileLayer.game) {
 			notes << "  - is game layer" << endl;
-			isGameLayer = true;
 		}
 		if(l.type == LAYERTYPE_TILES) {
 			notes << "  - tiles layer, w: " << l.tileLayer.width << ", h: " << l.tileLayer.height << ", image_id: " << l.tileLayer.image_id << endl;

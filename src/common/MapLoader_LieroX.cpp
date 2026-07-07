@@ -134,7 +134,6 @@ class ML_LieroX : public MapLoad {
 		
 		
 		// Load the pixel flags and calculate dirt count
-		Uint64 n=0;
 		m->nTotalDirtCount = 0;
 		
 		m->lockFlags();
@@ -147,7 +146,6 @@ class ML_LieroX : public MapLoad {
 					CopyPixel2x2_SameFormat(m->bmpDrawImage.get(), m->bmpBackImageHiRes.get(), (int)x*2, (int)y*2);
 				if(lxflag & PX_DIRT)
 					m->nTotalDirtCount++;
-				n++;
 			}
 		}
 		m->unlockFlags();
@@ -351,8 +349,7 @@ class ML_LieroX : public MapLoad {
 		}
 		
 		// Update image according to the pixel flags
-		Uint64 n=0;
-		
+
 		curpixel = (Uint8 *)m->bmpDrawImage.get()->pixels;
 		PixelRow = curpixel;
 		Uint8 *backpixel = (Uint8 *)m->bmpBackImageHiRes.get()->pixels;
@@ -372,7 +369,6 @@ class ML_LieroX : public MapLoad {
 					memcpy(curpixel, backpixel, bppX2);
 					memcpy(curpixel+pitch, backpixel+pitch, bppX2);
 				}
-				n++;
 			}
 		}
 		m->unlockFlags();
