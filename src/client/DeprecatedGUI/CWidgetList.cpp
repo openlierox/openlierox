@@ -73,7 +73,7 @@ std::string CWidgetList::getName(int ID)
 {
 	// The list is empty
 	if (!tItems)
-		return NULL;
+		return "";
 
 	// Go through the items
 	widget_item_t *item = tItems;
@@ -84,7 +84,7 @@ std::string CWidgetList::getName(int ID)
 	}
 
 	// Not found
-	return NULL;
+	return "";
 }
 
 ////////////////
