@@ -59,3 +59,32 @@ def test_client_can_join_running_game(network_game):
         "invalid-mod-name seen: %s\n%s"
         % ("invalid mod name" in c2.read_log(), c2.read_log())
     )
+
+
+def test_two_clients_in_lobby_see_each_other(network_game):
+    """Two clients that both join in the lobby must both play and see each other.
+
+    Separate from #973's mid-game timing:
+    a >=0.59.10 server never tells a client about *another* client's worm
+    (the attribute creation is limited to local worms,
+    and the legacy worm-info send is disabled).
+    So on master a client is missing the peer's worm
+    and logs "object for attr update not found".
+    """
+    # Wait for both worms to be in the lobby before starting.
+    server = network_game.start_server(OLX_START_WHEN_WORMS=2)
+    assert server.wait_for("SERVER_LOBBY", timeout=30), server.read_log()
+
+    c1 = network_game.add_client("c1")
+    c2 = network_game.add_client("c2")
+
+    assert server.wait_for("SERVER_PLAYING", timeout=40), server.read_log()
+    assert c1.wait_for("CLIENT[c1] PLAYING", timeout=30), c1.read_log()
+    assert c2.wait_for("CLIENT[c2] PLAYING", timeout=30), c2.read_log()
+
+    # Each client must have received the other's worm.
+    for client in (c1, c2):
+        assert "object for attr update not found" not in client.read_log(), (
+            "%s never received the other client's worm:\n%s"
+            % (client.name, client.read_log())
+        )

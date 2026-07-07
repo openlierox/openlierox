@@ -16,6 +16,7 @@ so one script serves every scenario:
 ``OLX_MAP``                  level file (default "Dirt Level.lxl")
 ``OLX_MOD``                  mod name (default "Classic")
 ``OLX_WEAPON_SEL_TIME``      seconds before unready clients are kicked
+``OLX_START_WHEN_WORMS``     worms that must be in the lobby before we start (default 1)
 ``OLX_RUN_SECONDS``          how long to keep the server loop alive
 ===========================  =========================================
 """
@@ -55,6 +56,7 @@ def main():
     command("startlobby " + port)
     emit("SERVER_LOBBY")
 
+    start_when = int(os.environ.get("OLX_START_WHEN_WORMS", "1"))
     started = False
     playing = False
     deadline = time.time() + int(os.environ.get("OLX_RUN_SECONDS", "90"))
@@ -62,7 +64,7 @@ def main():
         state = game_state()
         worms = worm_ids()
         emit("SERVER_POLL state=%s worms=%s" % (state, ",".join(worms)))
-        if state == "Lobby" and len(worms) >= 1 and not started:
+        if state == "Lobby" and len(worms) >= start_when and not started:
             command("startgame")
             emit("SERVER_STARTGAME")
             started = True
