@@ -16,6 +16,7 @@
 - Keep commits small and focused; it makes review and later bisecting easy.
 - Don't force-push a published commit; a new change is a new commit.
   Only rewrite/force-push your own not-yet-merged commits (or when asked to).
+- No `Co-authored-by:` lines crediting an LLM or AI agent.
 
 ## C++ style
 
@@ -41,8 +42,8 @@ Markdown/READMEs and commit messages alike.
   A comment longer than the code it explains is usually too long.
 - A trailing inline comment is fine only while the whole line stays within the column limit;
   otherwise move it to its own line(s) above.
-- Write plainly. No em-dashes (use `--`), and skip LLM tells:
-  no "delve"/"leverage"/"seamless", no "it's worth noting", no filler.
+- Write plainly. No em-dashes (use `--`).
+  Avoid "delve", "leverage", "seamless", "utilize", "it's worth noting", and empty filler.
 
 ## Tests
 
