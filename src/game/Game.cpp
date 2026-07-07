@@ -1132,6 +1132,7 @@ void Game::onUnprepareWorm(CWorm* w) {
 }
 
 void Game::onRemoveWorm(CWorm* w) {
+	notes << "removing worm " << w->getID() << " '" << w->getName() << "'" << endl;
 	if(w->isPrepared())
 		w->Unprepare(); // also to call onUnprepareWorm and to unlink it
 	std::map<int,CWorm*>::iterator i = m_worms.find(w->getID());
