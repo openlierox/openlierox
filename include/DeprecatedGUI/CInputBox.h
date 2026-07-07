@@ -120,9 +120,6 @@ public:
 
 class CInputboxInput: public CInputbox	// InputBoxDialog.xml should contain exactly one such control at the end
 {
-	private:
-	int		iSkipFirstFrame;
-
 	public:
 	CInputboxInput();
 	~CInputboxInput();

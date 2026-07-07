@@ -12,11 +12,8 @@ public:
 	static LuaReference metaTable;
 	
 	Button(Wnd* parent_, std::map<std::string, std::string> const& properties)
-	: Wnd(parent_, properties, "button"), m_state(false)
+	: Wnd(parent_, properties, "button")
 	{}
-		
-private:
-	bool m_state;
 };
 
 }
