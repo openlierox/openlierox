@@ -21,8 +21,9 @@ the intent is a foundation to extend, not full coverage.
   - `test_client_can_join_running_game` –
     a client that joins an **already-running** game can play.
     This reproduces [issue #973](https://github.com/openlierox/openlierox/issues/973)
-    and is marked `xfail` on current master;
-    it becomes `xpass` once the underlying bug is fixed.
+    and **fails until the bug is fixed** —
+    #973 is critical (it makes builds unusable for hosting),
+    so the suite fails loudly rather than tolerating it.
     It is fix-agnostic —
     it passes with any correct fix,
     not only the [PR #966](https://github.com/openlierox/openlierox/pull/966) protocol revert.

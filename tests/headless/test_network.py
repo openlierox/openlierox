@@ -14,8 +14,6 @@ Two clients tell the cases apart:
 A client counts as joined once it reaches the ``Playing`` state.
 """
 
-import pytest
-
 
 def _host_running_game(network_game):
     """Start the server, join client ``c1`` in the lobby, and start the game.
@@ -41,16 +39,14 @@ def test_client_can_join_in_lobby(network_game):
     _host_running_game(network_game)
 
 
-@pytest.mark.xfail(
-    reason="issue #973: joining an already-running dedicated-server game is broken; "
-           "xfail until the underlying bug is fixed",
-    strict=False,
-)
 def test_client_can_join_running_game(network_game):
     """A client joining an already-running game can play (issue #973).
 
-    Expected to XFAIL on current master and XPASS once the bug is fixed
-    (by any correct fix, not necessarily the PR #966 protocol revert).
+    This currently FAILS: it reproduces the critical #973 bug,
+    where a mid-game joiner never learns the mod and is kicked.
+    #973 is severe enough that the suite should fail loudly rather than
+    tolerate it, so this is a hard failure until the bug is fixed
+    (by any correct fix, not only the PR #966 protocol revert).
     """
     server, c1 = _host_running_game(network_game)
 
