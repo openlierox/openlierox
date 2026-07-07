@@ -46,9 +46,14 @@ jobs:
     uses: ./.github/workflows/package-wasm.yml
     secrets: inherit
 
+  # Gate the release on the tests: a build with failing tests is not published;
+  # its artifacts still upload to this run for manual testing.
+  headless-tests:
+    uses: ./.github/workflows/headless-tests.yml
+
   release:
     name: Publish latest master release
-    needs: [android, linux-bundle, linux-deb, mac, windows, wasm]
+    needs: [android, linux-bundle, linux-deb, mac, windows, wasm, headless-tests]
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout

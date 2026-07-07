@@ -2,9 +2,8 @@ name: Headless tests
 
 on:
   pull_request:
-  push:
-    branches:
-      - master
+  # Called by master-release.yaml so a release is only published when the tests pass.
+  workflow_call:
 
 jobs:
   linux:
