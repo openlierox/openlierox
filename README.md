@@ -24,7 +24,7 @@ Jason B. has released his work in 2006 under the zlib-licence and after some mon
 
 ## Compilation
 
-For more details, read here: <http://www.openlierox.net/wiki/index.php/Compile_OpenLieroX>
+For more details, read here: <https://github.com/openlierox/openlierox/wiki/Compile-OpenLieroX>
 
 ### Linux/Unix
 
@@ -89,11 +89,11 @@ The game searches the paths `~/.OpenLieroX`, `./` and `/usr/share/games/OpenLier
 You can also add more searchpathes and change this in `cfg/options.cfg`.
 Own modified configs, screenshots and other stuff always will be stored in `~/.OpenLieroX`.
 
-More details: <http://www.openlierox.net/wiki/index.php/Virtual_File_System>
+More details: <https://github.com/openlierox/openlierox/wiki/Virtual-File-System>
 
 ## Development
 
-If you are interested in the development, either in how we work, the work / source code itself or if you want to support us in any way, read here: <http://www.openlierox.net/wiki/index.php/Development>
+If you are interested in the development, either in how we work, the work / source code itself or if you want to support us in any way, read here: <https://github.com/openlierox/openlierox/wiki/Development>
 
 ## Report bugs / feature requests
 
