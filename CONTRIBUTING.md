@@ -9,6 +9,8 @@
   For a bug fix, first make sure an issue exists, and put its number in the name (e.g. `fix-973-mid-game-join`).
 - Discuss large or risky changes before you start.
 - Code must compile and pass the tests before you push.
+- Verify a change by running it, not only by reading the diff.
+- Prefer the simple, robust solution over the clever one.
 
 ## Commits
 
@@ -51,6 +53,7 @@ Markdown/READMEs and commit messages alike.
 
 - Headless test suite: [`tests/headless/`](tests/headless/) (see its README); runs in CI via `./tests/headless/run.sh`.
 - Add or adjust tests together with your change.
+- For a bug fix, add a test that reproduces it first (it should fail), then fix it.
 - Fail loudly, don't hide:
   a known critical bug is a plain failing test (not `xfail`),
   and a missing prerequisite fails rather than skips.
