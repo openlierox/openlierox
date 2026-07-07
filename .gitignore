@@ -66,3 +66,7 @@ build/android/deps
 build/android/output/
 *.claude
 CLAUDE.md
+
+__pycache__
+*.pyc
+.pytest_cache
