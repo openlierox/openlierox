@@ -1,13 +1,11 @@
 # Headless test suite
 
-Runtime tests that drive real `openlierox` processes in dedicated mode
-(`-dedicated`), so they need no display or audio
+Runtime tests that drive real `openlierox` processes in dedicated mode (`-dedicated`),
+so they need no display or audio,
 and run on a bare CI runner.
 
 - `test_smoke.py` — the game boots and hosts a lobby.
-- `test_network.py` — a dedicated server plus two connecting clients;
-  includes the [#973](https://github.com/openlierox/openlierox/issues/973)
-  mid-game-join regression (fails until that bug is fixed).
+- `test_network.py` — networked play between instances.
 - `harness.py`, `conftest.py`, `control/` —
   helpers plus the Python 3 control scripts that drive each instance.
 

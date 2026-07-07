@@ -1,14 +1,5 @@
 name: Headless tests
 
-# Builds OpenLieroX and runs the headless test suite (tests/headless):
-# smoke tests plus a networked dedicated-server / two-clients test.
-# Everything runs in dedicated mode,
-# so the runner needs no display or audio device.
-#
-# Runs on Linux.
-# (The suite also runs on macOS, where it was developed;
-# use tests/headless/run.sh locally.)
-
 on:
   pull_request:
   push:
