@@ -51,7 +51,9 @@ Markdown/READMEs and commit messages alike.
 
 - Headless test suite: [`tests/headless/`](tests/headless/) (see its README); runs in CI via `./tests/headless/run.sh`.
 - Add or adjust tests together with your change.
-- A known critical bug should fail loudly: a plain failing test, not `xfail`.
+- Fail loudly, don't hide:
+  a known critical bug is a plain failing test (not `xfail`),
+  and a missing prerequisite fails rather than skips.
 
 ## Resources
 
