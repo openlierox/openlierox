@@ -5,6 +5,8 @@
 - Build and run the game first: see [README](README.md) (dependencies in [`DEPS`](DEPS)); the build is CMake-based.
 - Report bugs and request features as GitHub issues.
 - Contribute via a branch and a pull request against `master`; another developer reviews before merge.
+- Use a short, descriptive branch name.
+  For a bug fix, first make sure an issue exists, and put its number in the name (e.g. `fix-973-mid-game-join`).
 - Discuss large or risky changes before you start.
 - Code must compile and pass the tests before you push.
 
