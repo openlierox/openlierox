@@ -22,6 +22,8 @@ jobs:
 
       - name: Install dependencies
         run: |
+          # Drop broken pre-installed third-party apt repos (microsoft/azure); we don't use them.
+          sudo rm -f /etc/apt/sources.list.d/*microsoft* /etc/apt/sources.list.d/*azure*
           sudo apt-get update
           sudo apt-get install -y \
             cmake \
