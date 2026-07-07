@@ -60,6 +60,7 @@ private:
 	Action* nextAction; std::string nextName;
 	SmartPointer<ThreadPoolItem> nextTask;
 	bool quitting;
+	int aliveWorkers; // worker threads that have entered threadWrapper and not yet returned
 	std::set<ThreadWorker*> availableThreads;
 	std::set<ThreadWorker*> usedThreads;
 	void prepareNewThread();

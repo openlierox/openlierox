@@ -74,6 +74,7 @@ struct ThreadWorker {
 ThreadPool::ThreadPool(unsigned int size) {
 	nextAction = NULL;
 	quitting = false;
+	aliveWorkers = 0;
 	mutex = SDL_CreateMutex();
 	awakeThread = SDL_CreateCond();
 	threadStartedWork = SDL_CreateCond();
@@ -89,19 +90,25 @@ ThreadPool::ThreadPool(unsigned int size) {
 ThreadPool::~ThreadPool() {
 	waitAll();
 
-	// All workers are idle now; tell them to quit, then join and free them.
+	// All workers are idle now; tell them to quit and wait until every worker
+	// has actually returned from threadWrapper before we free anything. We wait
+	// on aliveWorkers rather than relying on SDL_WaitThread to block, because a
+	// worker that is still parked in SDL_CondWait must not be left touching the
+	// mutex/conds once we destroy them.
 	SDL_mutexP(mutex);
 	nextAction = NULL;
 	quitting = true;
 	SDL_CondBroadcast(awakeThread);
+	while(aliveWorkers > 0)
+		SDL_CondWait(threadStatusChanged, mutex);
+	SDL_mutexV(mutex);
+
+	// The workers are done; reclaim their thread handles and free them.
 	for(std::set<ThreadWorker*>::iterator i = availableThreads.begin(); i != availableThreads.end(); ++i) {
-		SDL_mutexV(mutex);
 		SDL_WaitThread((*i)->thread, NULL);
-		SDL_mutexP(mutex);
 		delete *i;
 	}
 	availableThreads.clear();
-	SDL_mutexV(mutex);
 
 	SDL_DestroyMutex(startMutex);
 	SDL_DestroyCond(taskFinished);
@@ -124,6 +131,7 @@ int ThreadPool::threadWrapper(void* param) {
 	ThreadPool* pool = w->pool;
 
 	SDL_mutexP(pool->mutex);
+	pool->aliveWorkers++;
 	while(true) {
 		while(pool->nextAction == NULL && !pool->quitting)
 			SDL_CondWait(pool->awakeThread, pool->mutex);
@@ -155,6 +163,10 @@ int ThreadPool::threadWrapper(void* param) {
 		setCurThreadName("");
 	}
 
+	// Woken by ~ThreadPool: mark ourselves gone before releasing the mutex, so
+	// that once aliveWorkers hits 0 no worker can still touch the pool.
+	pool->aliveWorkers--;
+	SDL_CondSignal(pool->threadStatusChanged);
 	SDL_mutexV(pool->mutex);
 	return 0;
 }
