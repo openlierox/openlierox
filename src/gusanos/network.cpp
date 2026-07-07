@@ -416,7 +416,7 @@ void Network::sendEncodedLuaEvents(Net_ConnID cid) {
 	}
 	
 	// on the client side, this is handled in Client::Net_cbDataReceived
-	std::auto_ptr<BitStream> data(new BitStream);
+	std::unique_ptr<BitStream> data(new BitStream);
 	Encoding::encode(*data, Network::ClientEvents::LuaEvents, Network::ClientEvents::Max);
 	network.encodeLuaEvents(data.get());
 	m_control->Net_sendData(cid, data.release(), eNet_ReliableOrdered);		

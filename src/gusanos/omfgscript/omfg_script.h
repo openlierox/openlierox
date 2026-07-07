@@ -41,7 +41,7 @@ struct Function;
 
 struct TokenBase
 {
-	typedef std::auto_ptr<TokenBase> ptr;
+	typedef std::unique_ptr<TokenBase> ptr;
 	
 	TokenBase(Location loc_)
 	: loc(loc_) 

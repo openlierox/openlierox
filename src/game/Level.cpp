@@ -33,7 +33,7 @@ LevelInfo infoForLevel(const std::string& f, bool absolute) {
 SmartPointer<SDL_Surface> minimapForLevel(const std::string& f, bool absolute) {
 	LevelInfo info = infoForLevel(f, absolute);
 	
-	std::auto_ptr<MapLoad> loader( MapLoad::open(absolute ? f : ("levels/" + f), absolute, false) );
+	std::unique_ptr<MapLoad> loader( MapLoad::open(absolute ? f : ("levels/" + f), absolute, false) );
 	if(!loader.get()) {
 		SmartPointer<SDL_Surface> minimap = gfxCreateSurface(128,96);
 		DrawCross(minimap.get(), 0, 0, 128, 96, Color(0,0,255));

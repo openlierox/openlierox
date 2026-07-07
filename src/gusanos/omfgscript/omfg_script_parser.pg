@@ -150,23 +150,23 @@ leaf<TokenBase::ptr& a> = (
 	| TRUE $( a.reset(new INTEGER(*self, 1)); )
 	| FALSE $( a.reset(new INTEGER(*self, 0)); )
 	| STRING<x> (
-		$( auto_ptr<Func> l(new Func(self->getLoc(), x->str)); TokenBase::ptr el; )
+		$( unique_ptr<Func> l(new Func(self->getLoc(), x->str)); TokenBase::ptr el; )
 		LPARAN (
-			leaf<el> $( l->add(el); )
-			( COMMA leaf<el> $( l->add(el); ) )*
+			leaf<el> $( l->add(std::move(el)); )
+			( COMMA leaf<el> $( l->add(std::move(el)); ) )*
 		) RPARAN
-		$( a = l; )
+		$( a = std::move(l); )
 		
-		| $( a = x; )
+		| $( a = std::move(x); )
 	)
 	| INTEGER<=a>
 	| NUMBER<=a>
-	| $( auto_ptr<List> l(new List(self->getLoc())); TokenBase::ptr el; )
+	| $( unique_ptr<List> l(new List(self->getLoc())); TokenBase::ptr el; )
 		LBRACKET (
-			expr<el> $( l->add(el); )
-			( COMMA expr<el> $( l->add(el); ) )*
+			expr<el> $( l->add(std::move(el)); )
+			( COMMA expr<el> $( l->add(std::move(el)); ) )*
 		) RBRACKET
-	  $( a = l; )
+	  $( a = std::move(l); )
 	| LPARAN expr<a> RPARAN
 	) ;
 
@@ -225,10 +225,10 @@ parameter<Parameters& params> = $( TokenBase::ptr v; )
 	( 
 	| STRING<name>
 		(
-		| EQUAL expr<v> $( params.addParam(name->str, v, paramLoc); )
-		| $( params.addParam(TokenBase::ptr(name), paramLoc); )
+		| EQUAL expr<v> $( params.addParam(name->str, std::move(v), paramLoc); )
+		| $( params.addParam(TokenBase::ptr(std::move(name)), paramLoc); )
 		)
-	| expr<v> $( params.addParam(v, paramLoc); )
+	| expr<v> $( params.addParam(std::move(v), paramLoc); )
 	) ;
 	
 parameters<Parameters& params> = parameter<params> (COMMA parameter<params>)* ;
@@ -252,7 +252,7 @@ action<EventDef* event, std::vector<BaseAction*>& actions> =
 		}
 		else
 		{
-			auto_ptr<Parameters> param(new Parameters(action->paramDef, self->getLoc()));
+			unique_ptr<Parameters> param(new Parameters(action->paramDef, self->getLoc()));
 	)
 	
 	LPARAN [parameters<*param>] RPARAN
@@ -261,7 +261,7 @@ action<EventDef* event, std::vector<BaseAction*>& actions> =
 			if(param->flags & Parameters::Error)
 				semanticError("Malformed parameters", param->loc);
 			else
-				actions.push_back(self->createAction(action, param));
+				actions.push_back(self->createAction(action, std::move(param)));
 		}
 	)
 	;
@@ -277,7 +277,7 @@ event<> = ON STRING<name>
 		}
 		else
 		{
-			auto_ptr<Parameters> param(new Parameters(event->paramDef, self->getLoc()));
+			unique_ptr<Parameters> param(new Parameters(event->paramDef, self->getLoc()));
 	)
 	
 	LPARAN [parameters<*param>] RPARAN
@@ -288,7 +288,7 @@ event<> = ON STRING<name>
 			if(param->flags & Parameters::Error)
 				semanticError("Malformed parameters", param->loc);
 			else
-				self->addEvent(event, param, actions);
+				self->addEvent(event, std::move(param), actions);
 		}
 	) ;
 

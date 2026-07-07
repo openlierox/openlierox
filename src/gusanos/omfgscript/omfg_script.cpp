@@ -10,7 +10,7 @@
 #include "util/text.h"
 #include "gusanos/allegro.h"
 #include <boost/crc.hpp>
-using std::auto_ptr;
+using std::unique_ptr;
 using std::cout;
 using std::endl;
 
@@ -65,7 +65,7 @@ struct Parameters
 		}
 	}
 	
-	void addParam(std::string const& name, auto_ptr<OmfgScript::TokenBase> v, Location loc_)
+	void addParam(std::string const& name, unique_ptr<OmfgScript::TokenBase> v, Location loc_)
 	{
 		size_t i = 0;
 		for(; i < paramDef->params.size(); ++i)
@@ -108,7 +108,7 @@ struct Parameters
 		cur = -1;
 	}
 	
-	void addParam(auto_ptr<OmfgScript::TokenBase> v, Location loc_)
+	void addParam(unique_ptr<OmfgScript::TokenBase> v, Location loc_)
 	{
 		if(cur < 0 && !(flags & PosParamAfterNamed))
 		{
@@ -228,7 +228,7 @@ struct List : public TokenBase
 	{
 	}
 	
-	void add(std::auto_ptr<TokenBase> el)
+	void add(std::unique_ptr<TokenBase> el)
 	{
 		elements.push_back(el.release());
 	}
@@ -310,7 +310,7 @@ struct Func : public Function
 	{
 	}
 	
-	void add(std::auto_ptr<TokenBase> el)
+	void add(std::unique_ptr<TokenBase> el)
 	{
 		params.push_back(el.release());
 	}
@@ -673,13 +673,13 @@ struct ParserImpl : public TGrammar<ParserImpl>
 		return 0;
 	}
 	
-	BaseAction* createAction(ActionDef* action, std::auto_ptr<Parameters> params)
+	BaseAction* createAction(ActionDef* action, std::unique_ptr<Parameters> params)
 	{
 		params->calcCRC(crc);
 		return action->create(params->params);
 	}
 	
-	void addEvent(GameEventDef* event, std::auto_ptr<Parameters> params, std::vector< boost::shared_ptr<BaseAction> >& actions)
+	void addEvent(GameEventDef* event, std::unique_ptr<Parameters> params, std::vector< boost::shared_ptr<BaseAction> >& actions)
 	{
 		params->calcCRC(crc);
 		events.push_back(new GameEvent(event, params.release(), actions));

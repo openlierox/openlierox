@@ -183,7 +183,7 @@ struct NetNodeIntern {
 	Net_NodeID nodeId;
 	eNet_NodeRole role;
 	bool eventForInit, eventForRemove;
-	std::auto_ptr<BitStream> announceData;
+	std::unique_ptr<BitStream> announceData;
 	Net_ConnID ownerConn;
 	
 	typedef std::list< std::pair<Net_Replicator*,bool> > ReplicationSetup;
@@ -935,7 +935,7 @@ Net_Node::~Net_Node() {
 
 eNet_NodeRole Net_Node::getRole() { return intern->role; }
 void Net_Node::setOwner(Net_ConnID cid) { intern->ownerConn = cid; }
-void Net_Node::setAnnounceData(BitStream* s) { intern->announceData = std::auto_ptr<BitStream>(s); }
+void Net_Node::setAnnounceData(BitStream* s) { intern->announceData = std::unique_ptr<BitStream>(s); }
 Net_NodeID Net_Node::getNetworkID() { return intern->nodeId; }
 
 static void tellAllClientsAboutNode(Net_Node* node) {
