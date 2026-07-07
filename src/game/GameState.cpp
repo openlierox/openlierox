@@ -301,12 +301,9 @@ void GameStateUpdates::diffFromStateToCurrent(const GameState& s) {
 	foreach(o, game.gameStateUpdates->objCreations) {
 		if(game.isClient()) continue; // none-at-all right now... worm-creation is handled independently atm
 		if(!o->obj) continue;
-		// Emit a creation for any object this client does not have yet.
-		// This used to be gated on weOwnThis() (worm->getLocal()),
-		// but on a dedicated server no worm is local,
-		// so no worm creation was ever sent
-		// and a joining client never learned about the other clients' worms (#973).
-		// The attr-update loop below is already ungated, so this keeps them consistent.
+		// Create any object this client does not have yet.
+		// Was gated on weOwnThis() (== getLocal()), false for a worm owned by
+		// another client, so a client never learned the other clients' worms (#973).
 		if(!s.haveObject(*o))
 			pushObjCreation(*o);
 	}
