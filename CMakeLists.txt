@@ -51,6 +51,7 @@ IF(OLX_TESTS)
 	ADD_EXECUTABLE(olx_tests
 		${OLXROOTDIR}/tests/unit/test_main.cpp
 		${OLXROOTDIR}/tests/unit/test_CBytestream.cpp
+		${OLXROOTDIR}/tests/unit/test_Version.cpp
 		${ALL_SRCS} ${OLX_WIN_RESOURCES})
 	SET_TARGET_PROPERTIES(olx_tests PROPERTIES
 		RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"

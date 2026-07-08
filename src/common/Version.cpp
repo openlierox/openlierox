@@ -62,9 +62,18 @@ INLINE void setByString__optionalPostCheck(const Version* version, const std::st
 }
 
 void Version::setByString(const std::string& versionStr) {
-	if(versionStr == "") { reset(); setByString__optionalPostCheck(this,versionStr); return; }
+	// SemVer build metadata (everything from the first '+', e.g. "+git.db202c4")
+	// is build provenance, not part of the comparable version,
+	// so drop it before parsing.
+	// Otherwise the git hash leaks into subsubnum
+	// and two builds of the same release compare as different versions.
+	std::string cmpStr = versionStr;
+	size_t plus = cmpStr.find('+');
+	if(plus != std::string::npos) cmpStr.erase(plus);
 
-	std::string tmp = versionStr;
+	if(cmpStr == "") { reset(); setByString__optionalPostCheck(this,cmpStr); return; }
+
+	std::string tmp = cmpStr;
 
 	size_t p = tmp.find_first_of(" /\\");
 	if(p == std::string::npos)
@@ -83,19 +92,19 @@ void Version::setByString(const std::string& versionStr) {
 	p = tmp.find(".");
 	bool fail = false;
 	num = from_string<int>(tmp.substr(0, p), fail);
-	if(fail) { num = 0; setByString__optionalPostCheck(this,versionStr); return; }
-	if(p == std::string::npos) { setByString__optionalPostCheck(this,versionStr); return; }
+	if(fail) { num = 0; setByString__optionalPostCheck(this,cmpStr); return; }
+	if(p == std::string::npos) { setByString__optionalPostCheck(this,cmpStr); return; }
 	tmp.erase(0, p + 1);
 
 	// subnum
 	p = tmp.find_first_of("._-");
 	subnum = from_string<int>(tmp.substr(0, p), fail);
-	if(fail) { subnum = 0; setByString__optionalPostCheck(this,versionStr); return; }
-	if(p == std::string::npos) { setByString__optionalPostCheck(this,versionStr); return; }
+	if(fail) { subnum = 0; setByString__optionalPostCheck(this,cmpStr); return; }
+	if(p == std::string::npos) { setByString__optionalPostCheck(this,cmpStr); return; }
 	tmp.erase(0, p + 1);
 
 	// releasetype
-	if(tmp == "") { setByString__optionalPostCheck(this,versionStr); return; }
+	if(tmp == "") { setByString__optionalPostCheck(this,cmpStr); return; }
 	size_t nextNumP = tmp.find_first_of("0123456789");
 	if(nextNumP == 0)
 		releasetype = RT_NORMAL;
@@ -110,22 +119,22 @@ void Version::setByString(const std::string& versionStr) {
 	tmp.erase(0, nextNumP);
 
 	// subsubnum
-	if(tmp == "") { setByString__optionalPostCheck(this,versionStr); return; }
+	if(tmp == "") { setByString__optionalPostCheck(this,cmpStr); return; }
 	if(tmp.find_first_of(".") == 0) tmp.erase(0, 1);
 	p = tmp.find_first_of("._-");
 	subsubnum = from_string<int>(tmp.substr(0, p), fail);
-	if(fail) { subsubnum = 0; setByString__optionalPostCheck(this,versionStr); return; }
-	if(p == std::string::npos) { setByString__optionalPostCheck(this,versionStr); return; }
+	if(fail) { subsubnum = 0; setByString__optionalPostCheck(this,cmpStr); return; }
+	if(p == std::string::npos) { setByString__optionalPostCheck(this,cmpStr); return; }
 	tmp.erase(0, p + 1);
 
 	// revnum
 	nextNumP = tmp.find_first_of("0123456789");
-	if(nextNumP == std::string::npos) { setByString__optionalPostCheck(this,versionStr); return; }
+	if(nextNumP == std::string::npos) { setByString__optionalPostCheck(this,cmpStr); return; }
 	tmp.erase(0, nextNumP);
 	revnum = from_string<int>(tmp, fail);
 	if(fail) revnum = 0;
 
-	setByString__optionalPostCheck(this,versionStr); return;
+	setByString__optionalPostCheck(this,cmpStr); return;
 }
 
 
