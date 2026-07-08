@@ -70,7 +70,7 @@
     #log       { max-height: 25vh; overflow: auto; padding: 4px 10px;
                  background: #181818; font: 12px/1.3 monospace; white-space: pre-wrap;
                  align-self: stretch; }
-    #log.err   { color: #f99; }
+    #log .err  { color: #f99; }
   </style>
 </head>
 <body>
@@ -100,9 +100,13 @@
     const logEl    = document.getElementById("log");
 
     function appendLog(text, isErr) {
-      logEl.textContent += text + "\n";
+      // One line per node, so only error lines go red
+      // (a single stderr line must not colour every following note).
+      const line = document.createElement("div");
+      if (isErr) line.className = "err";
+      line.textContent = text;
+      logEl.appendChild(line);
       logEl.scrollTop = logEl.scrollHeight;
-      if (isErr) logEl.classList.add("err");
     }
 
     // Latch: once the data download is complete we show "Starting OpenLieroX…"
