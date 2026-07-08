@@ -68,6 +68,7 @@
 #include <execinfo.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h> // memmove
 #endif
 
 #if HAVE_EXECINFO
