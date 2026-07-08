@@ -43,6 +43,7 @@ public:
 	Game();
 
 	void init();
+	void uninit(); // release loaded content; call at shutdown (see Game.cpp)
 	void startServer(bool localGame);
 	void startClient();
 	void startGame();
