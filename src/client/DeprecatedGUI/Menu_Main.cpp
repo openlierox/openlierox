@@ -270,10 +270,11 @@ void Menu_MainFrame()
 
 	// Credits
 
-	// Show the short get_version.sh string (e.g. "20260616.4", no git hash)
-	// rather than GetGameVersion().asHumanString(), which forces it through
-	// the old integer num.subnum scheme and would mangle the new format.
-	static const std::string credits1 = "  " + std::string(GetGameName()) + " " + GetGameVersionString();
+	// Show the full get_version_full.sh string (e.g. "20260616.4+git.b547037"),
+	// so the git hash of a dev build is visible. This is the raw string rather
+	// than GetGameVersion().asHumanString(), which forces it through the old
+	// integer num.subnum scheme and would mangle the new format.
+	static const std::string credits1 = "  " + std::string(GetGameName()) + " " + GetGameVersionStringFull();
 
 	static const std::string credits2 = std::string(
 		"- Original code by Jason Boettcher\n"

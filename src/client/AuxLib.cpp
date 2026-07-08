@@ -466,9 +466,11 @@ bool VideoPostProcessor::initWindow() {
 	}
 
 setvideomode:
-	// Window title: short version string (see GetGameVersionString), not the
-	// integer-parsed asHumanString() which mangles the new format.
-	m_window = SDL_CreateWindow((std::string(GetGameName()) + " " + GetGameVersionString()).c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, screenWidth(), screenHeight(), vidflags);
+	// Window title: full version string incl. the "+git.HASH" suffix, so a dev
+	// build is identifiable at a glance. This is the raw string (see
+	// GetGameVersionStringFull), not the integer-parsed asHumanString() which
+	// mangles the new format.
+	m_window = SDL_CreateWindow((std::string(GetGameName()) + " " + GetGameVersionStringFull()).c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, screenWidth(), screenHeight(), vidflags);
 	
 	if(m_window.get() == NULL) {
 		if (resetting)  {

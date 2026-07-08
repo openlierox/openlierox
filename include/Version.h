@@ -38,7 +38,7 @@ struct Version {
 	Version() { reset(); }
 	Version(const std::string& versionStr) { setByString(versionStr); }
 	
-	void reset() { gamename = "LieroX"; num = 0; subnum = 56; subsubnum = 0; revnum = 0; releasetype = RT_NORMAL; }
+	void reset() { gamename = "LieroX"; num = 0; subnum = 56; subsubnum = 0; revnum = 0; releasetype = RT_NORMAL; buildmetadata = ""; }
 	void setByString(const std::string& versionStr);
 	std::string asString() const;
 	std::string asHumanString() const;
@@ -55,13 +55,14 @@ struct Version {
 		RT_UNKNOWN, RT_ALPHA, RT_BETA, RT_RC, RT_NORMAL
 	} releasetype;
 	std::string gamename; // OpenLieroX
+	std::string buildmetadata; // SemVer build metadata after '+', e.g. "git.db202c4"; provenance only, ignored when comparing
 
 };
 
 
 // The following functions are declared INLINE because they are used very often.
 
-// For comparision, we ignore the following: revnum, gamename
+// For comparision, we ignore the following: revnum, gamename, buildmetadata
 // That means, a special revision of a baseversion should not change the behaviour (and it's only for debugging).
 // And another game like Hirudo should keep the same version-counting. We can start Hirudo at version 1.0 or 0.99.
 

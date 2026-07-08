@@ -62,16 +62,22 @@ INLINE void setByString__optionalPostCheck(const Version* version, const std::st
 }
 
 void Version::setByString(const std::string& versionStr) {
-	// SemVer build metadata (everything from the first '+', e.g. "+git.db202c4")
-	// is build provenance, not part of the comparable version,
-	// so drop it before parsing.
-	// Otherwise the git hash leaks into subsubnum
-	// and two builds of the same release compare as different versions.
+	// Split off the SemVer build metadata (everything after the first '+', e.g. "git.db202c4").
+	// It is build provenance:
+	// kept for display and round-tripped by asString(),
+	// but not parsed into the num.subnum.subsubnum version,
+	// and ignored when comparing.
+	// Otherwise the git hash would leak into subsubnum
+	// and two builds of the same release would compare as different.
+	buildmetadata = "";
 	std::string cmpStr = versionStr;
 	size_t plus = cmpStr.find('+');
-	if(plus != std::string::npos) cmpStr.erase(plus);
+	if(plus != std::string::npos) {
+		buildmetadata = cmpStr.substr(plus + 1);
+		cmpStr.erase(plus);
+	}
 
-	if(cmpStr == "") { reset(); setByString__optionalPostCheck(this,cmpStr); return; }
+	if(versionStr == "") { reset(); setByString__optionalPostCheck(this,versionStr); return; }
 
 	std::string tmp = cmpStr;
 
@@ -92,19 +98,19 @@ void Version::setByString(const std::string& versionStr) {
 	p = tmp.find(".");
 	bool fail = false;
 	num = from_string<int>(tmp.substr(0, p), fail);
-	if(fail) { num = 0; setByString__optionalPostCheck(this,cmpStr); return; }
-	if(p == std::string::npos) { setByString__optionalPostCheck(this,cmpStr); return; }
+	if(fail) { num = 0; setByString__optionalPostCheck(this,versionStr); return; }
+	if(p == std::string::npos) { setByString__optionalPostCheck(this,versionStr); return; }
 	tmp.erase(0, p + 1);
 
 	// subnum
 	p = tmp.find_first_of("._-");
 	subnum = from_string<int>(tmp.substr(0, p), fail);
-	if(fail) { subnum = 0; setByString__optionalPostCheck(this,cmpStr); return; }
-	if(p == std::string::npos) { setByString__optionalPostCheck(this,cmpStr); return; }
+	if(fail) { subnum = 0; setByString__optionalPostCheck(this,versionStr); return; }
+	if(p == std::string::npos) { setByString__optionalPostCheck(this,versionStr); return; }
 	tmp.erase(0, p + 1);
 
 	// releasetype
-	if(tmp == "") { setByString__optionalPostCheck(this,cmpStr); return; }
+	if(tmp == "") { setByString__optionalPostCheck(this,versionStr); return; }
 	size_t nextNumP = tmp.find_first_of("0123456789");
 	if(nextNumP == 0)
 		releasetype = RT_NORMAL;
@@ -119,22 +125,22 @@ void Version::setByString(const std::string& versionStr) {
 	tmp.erase(0, nextNumP);
 
 	// subsubnum
-	if(tmp == "") { setByString__optionalPostCheck(this,cmpStr); return; }
+	if(tmp == "") { setByString__optionalPostCheck(this,versionStr); return; }
 	if(tmp.find_first_of(".") == 0) tmp.erase(0, 1);
 	p = tmp.find_first_of("._-");
 	subsubnum = from_string<int>(tmp.substr(0, p), fail);
-	if(fail) { subsubnum = 0; setByString__optionalPostCheck(this,cmpStr); return; }
-	if(p == std::string::npos) { setByString__optionalPostCheck(this,cmpStr); return; }
+	if(fail) { subsubnum = 0; setByString__optionalPostCheck(this,versionStr); return; }
+	if(p == std::string::npos) { setByString__optionalPostCheck(this,versionStr); return; }
 	tmp.erase(0, p + 1);
 
 	// revnum
 	nextNumP = tmp.find_first_of("0123456789");
-	if(nextNumP == std::string::npos) { setByString__optionalPostCheck(this,cmpStr); return; }
+	if(nextNumP == std::string::npos) { setByString__optionalPostCheck(this,versionStr); return; }
 	tmp.erase(0, nextNumP);
 	revnum = from_string<int>(tmp, fail);
 	if(fail) revnum = 0;
 
-	setByString__optionalPostCheck(this,cmpStr); return;
+	setByString__optionalPostCheck(this,versionStr); return;
 }
 
 
@@ -161,6 +167,12 @@ std::string Version::asString() const {
 		ret += itoa(revnum);
 	}
 
+	// SemVer build metadata, so the string round-trips through setByString.
+	if(!buildmetadata.empty()) {
+		ret += "+";
+		ret += buildmetadata;
+	}
+
 	return ret;
 }
 
@@ -181,6 +193,13 @@ std::string Version::asHumanString() const
 		case RT_UNKNOWN: ret += " "; break;
 		}
 		ret += itoa(subsubnum);
+	}
+
+	// Show the build provenance (git hash) in parentheses; helpful for dev builds.
+	if(!buildmetadata.empty()) {
+		ret += " (";
+		ret += buildmetadata;
+		ret += ")";
 	}
 
 	return ret;
