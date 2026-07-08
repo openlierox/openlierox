@@ -1106,8 +1106,10 @@ void GameServer::ParseGetChallenge(const SmartPointer<NetworkSocket>& tSocket, C
 	// The loop above always selects a slot, so ChallengeToSet is >= 0 here.
 	// Guard anyway, so tChallenges[i] below can never be indexed out of
 	// bounds (with i == MAX_CHALLENGES) should that ever change.
-	if (ChallengeToSet < 0)
+	if (ChallengeToSet < 0) {
+		errors << "GameServer::ParseGetChallenge: no challenge slot selected" << endl;
 		return;
+	}
 
 	// overwrite the oldest
 	tChallenges[ChallengeToSet].iNum = (rand() << 16) ^ rand();
