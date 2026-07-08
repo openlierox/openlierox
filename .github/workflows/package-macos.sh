@@ -141,6 +141,15 @@ fi
 # Re-signing here, after everything is in place, makes the seal cover it all.
 codesign --force --deep --sign - "$APP"
 
+# Sanity check the finished bundle: the signature must be valid and every
+# sealed resource must match its recorded hash. This is exactly what was
+# broken in #1037 (libSDL3 added after signing), so verify it now and fail
+# the build rather than ship a "damaged" app.
+if ! codesign --verify --deep --strict "$APP"; then
+    echo "ERROR: bundle code signature verification failed" >&2
+    exit 1
+fi
+
 # Zip uses tilde instead of underscore so e.g. "beta9" sorts correctly.
 VERSION="$(./get_version.sh | tr '_' '~')"
 ZIP="openlierox_${VERSION}_macos.zip"
