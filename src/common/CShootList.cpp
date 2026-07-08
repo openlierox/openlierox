@@ -323,7 +323,7 @@ void CShootList::writeSmallShot( shoot_t *psFirst, CBytestream *bs, const Versio
 
 
 	int xoff = (int)( psShot->cPos.x - psFirst->cPos.x );
-	int yoff = (int)( psShot->cPos.x - psFirst->cPos.x );
+	int yoff = (int)( psShot->cPos.y - psFirst->cPos.y );
 	xoff = abs(xoff);
 	yoff = abs(yoff);
 
