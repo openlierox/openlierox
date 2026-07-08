@@ -17,8 +17,12 @@ To keep commands auto-approved, write them plain and literal:
   run separate commands, or issue parallel tool calls.
 - Don't combine `cd` with a write in one compound command
   (`cd dir && git commit ...`);
-  the working directory already persists between calls,
-  so use an absolute path or `git -C <dir> ...`.
+  the working directory already persists between calls
+  and is the repo, so just run plain `git ...` there.
+  Avoid `git -C <dir>`:
+  read-only auto-approval and `git <subcommand>` allowlist entries
+  match only a plain leading `git <subcommand>`,
+  so `git -C <dir> <subcommand>` falls back to a prompt every time.
 - Don't use `find -exec`;
   list with `find`, then act in a separate step.
 - Don't pass a shell script as a quoted string (`sh -c "..."`).
