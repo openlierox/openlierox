@@ -15,4 +15,10 @@ void olxCheckFailed(const char* expr, const char* file, int line);
 
 #define CHECK(cond) do { if(!(cond)) olxCheckFailed(#cond, __FILE__, __LINE__); } while(0)
 
+// Passes iff evaluating expr does not throw; records a failure if it does.
+#define CHECK_NOTHROW(expr) do { \
+	try { (void)(expr); } \
+	catch(...) { olxCheckFailed("must not throw: " #expr, __FILE__, __LINE__); } \
+} while(0)
+
 #endif // OLX_UNITTEST_H
