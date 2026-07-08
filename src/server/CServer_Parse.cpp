@@ -1024,7 +1024,6 @@ void GameServer::ParseConnectionlessPacket(const SmartPointer<NetworkSocket>& tS
 ///////////////////
 // Handle a "getchallenge" msg
 void GameServer::ParseGetChallenge(const SmartPointer<NetworkSocket>& tSocket, CBytestream *bs_in) {
-	int			i;
 	NetworkAddr	adrFrom;
 	AbsTime		OldestTime = AbsTime::Max();
 	int			ChallengeToSet = -1;
@@ -1082,11 +1081,16 @@ void GameServer::ParseGetChallenge(const SmartPointer<NetworkSocket>& tSocket, C
 	}
 	
 	// see if we already have a challenge for this ip
-	for (i = 0;i < MAX_CHALLENGES;i++) {
+	for (int i = 0;i < MAX_CHALLENGES;i++) {
 
 		if (IsNetAddrValid(tChallenges[i].Address)) {
-			if (AreNetAddrEqual(adrFrom, tChallenges[i].Address))
-				continue;
+			if (AreNetAddrEqual(adrFrom, tChallenges[i].Address)) {
+				// We already have a challenge for this address, reuse the slot.
+				// (Skipping it instead would, once every slot holds this address,
+				// leave ChallengeToSet at -1, i.e. no slot selected.)
+				ChallengeToSet = i;
+				break;
+			}
 			if (ChallengeToSet < 0 || tChallenges[i].fTime < OldestTime) {
 				OldestTime = tChallenges[i].fTime;
 				ChallengeToSet = i;
@@ -1097,16 +1101,19 @@ void GameServer::ParseGetChallenge(const SmartPointer<NetworkSocket>& tSocket, C
 		}
 	}
 
-	if (ChallengeToSet >= 0) {
-
-		// overwrite the oldest
-		tChallenges[ChallengeToSet].iNum = (rand() << 16) ^ rand();
-		tChallenges[ChallengeToSet].Address = adrFrom;
-		tChallenges[ChallengeToSet].fTime = tLX->currentTime;
-		tChallenges[ChallengeToSet].sClientVersion = client_version;
-
-		i = ChallengeToSet;
+	// The loop above always selects a slot, so ChallengeToSet is >= 0 here.
+	// Guard anyway, so the tChallenges[ChallengeToSet] accesses below never
+	// use an invalid index should that ever change.
+	if (ChallengeToSet < 0) {
+		errors << "GameServer::ParseGetChallenge: no challenge slot selected" << endl;
+		return;
 	}
+
+	// overwrite the oldest
+	tChallenges[ChallengeToSet].iNum = (rand() << 16) ^ rand();
+	tChallenges[ChallengeToSet].Address = adrFrom;
+	tChallenges[ChallengeToSet].fTime = tLX->currentTime;
+	tChallenges[ChallengeToSet].sClientVersion = client_version;
 
 	// Send the challenge details back to the client
 	tSocket->setRemoteAddress(adrFrom);
@@ -1115,7 +1122,7 @@ void GameServer::ParseGetChallenge(const SmartPointer<NetworkSocket>& tSocket, C
 	// TODO: move this out here
 	bs.writeInt(-1, 4);
 	bs.writeString("lx::challenge");
-	bs.writeInt(tChallenges[i].iNum, 4);
+	bs.writeInt(tChallenges[ChallengeToSet].iNum, 4);
 	if( client_version != "" )
 		bs.writeString(GetFullGameName());
 	bs.Send(tSocket.get());
