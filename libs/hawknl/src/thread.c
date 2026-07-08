@@ -182,7 +182,7 @@ void nlThreadSleep(NLint mseconds)
     struct timespec     tv;
 
     tv.tv_sec = mseconds / 1000;
-    tv.tv_nsec = (mseconds % 1000) * 1000;
+    tv.tv_nsec = (mseconds % 1000) * 1000000;
 
     (void)nanosleep(&tv, NULL);
 #endif /* !WINDOWS_APP */
