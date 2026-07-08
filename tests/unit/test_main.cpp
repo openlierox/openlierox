@@ -20,12 +20,26 @@ void olxCheckFailed(const char* expr, const char* file, int line) {
 // Test entry points, defined in the test_*.cpp files.
 void test_CBytestream();
 void test_Version();
+void test_LoopbackDeliversDatagramExactlyOnce();
+void test_LoopbackReplyReachesSender();
+void test_LoopbackSecondClientReconnects();
+void test_ChallengeIssueThenConsume();
+void test_ChallengeSurvivesStaleConnect();
+void test_ChallengeReissueIsIdempotent();
+void test_ChallengeConsumeRepeated();
 
 int main() {
 	printf("Running OLX unit tests...\n");
 
 	test_CBytestream();
 	test_Version();
+	test_LoopbackDeliversDatagramExactlyOnce();
+	test_LoopbackReplyReachesSender();
+	test_LoopbackSecondClientReconnects();
+	test_ChallengeIssueThenConsume();
+	test_ChallengeSurvivesStaleConnect();
+	test_ChallengeReissueIsIdempotent();
+	test_ChallengeConsumeRepeated();
 
 	if(g_olxTestFailures) {
 		printf("FAILED: %d check(s)\n", g_olxTestFailures);

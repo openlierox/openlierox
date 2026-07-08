@@ -17,13 +17,16 @@ class challenge_t { public:
 	std::string	sClientVersion;
 };
 
-// Issue a challenge for addr in a table of count slots; return its number.
+// Issue (or refresh) addr's challenge in a table of count slots;
+// return its number.
+// Repeated calls for the same address return the same number until consumed.
 int ChallengeTable_issue(challenge_t* slots, int count,
 						 const NetworkAddr& addr, AbsTime now,
 						 const std::string& clientVersion);
 
 // Consume addr's challenge if challId matches it, filling clientVersion;
 // return whether it matched.
+// A non-match leaves the challenge in place.
 bool ChallengeTable_consume(challenge_t* slots, int count,
 							const NetworkAddr& addr, int challId,
 							std::string& clientVersion);
