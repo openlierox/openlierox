@@ -330,8 +330,22 @@ distrib/openlierox-wasm/
 ├── icon-512.png
 ├── build-info.json         # version / commit / file list (provenance)
 ├── _headers                # Netlify / CF Pages headers
-└── .htaccess               # Apache headers + MIME types
+├── .htaccess               # Apache headers + MIME types
+├── serve.py                # local test server (sets COOP/COEP headers)
+└── run.command             # macOS double-click launcher for serve.py
 ```
+
+To test a bundle locally, serve it over HTTP with the isolation headers
+(`python3 serve.py` inside the bundle, or double-click `run.command` on macOS),
+then open `http://localhost:8000/`.
+Opening `index.html` as a `file://` URL cannot work:
+the threaded build needs `SharedArrayBuffer`,
+which browsers only grant to cross-origin-isolated pages served over http(s),
+and `file://` can carry no headers
+and can't register the COI service-worker shim either.
+The shell shows an explanatory message in that case
+(and when a page is served without the isolation headers),
+rather than the browser's opaque "Script error.".
 
 The bundle works on:
 
