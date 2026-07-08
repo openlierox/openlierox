@@ -11,6 +11,8 @@ To keep commands auto-approved, write them plain and literal:
 
 - No variable or command substitution (`$VAR`, `` $(...) ``);
   hardcode the value instead.
+- No wildcards or brace expansion (`*.cpp`, `build*`, `{a,b}`);
+  they expand to whatever is on disk, so pass the exact paths.
 - No `for`/`while` loops;
   run separate commands, or issue parallel tool calls.
 - Don't combine `cd` with a write in one compound command
