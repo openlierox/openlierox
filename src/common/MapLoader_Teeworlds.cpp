@@ -395,9 +395,17 @@ struct ML_Teeworlds : MapLoad {
 
 	size_t getItemSize(uint32_t itemIndex) {
 		if(itemIndex >= itemOffsets.size()) return 0;
-		if(itemIndex == itemOffsets.size() - 1)
-			return teeHeader.m_ItemSize - itemOffsets[itemIndex].m_Offset - 8; // -8 to cut out type_and_id and size
-		return itemOffsets[itemIndex+1].m_Offset - itemOffsets[itemIndex].m_Offset - 8;
+		int64_t cur = itemOffsets[itemIndex].m_Offset;
+		int64_t next = (itemIndex == itemOffsets.size() - 1)
+			? teeHeader.m_ItemSize
+			: itemOffsets[itemIndex+1].m_Offset;
+		// The offsets are read from the file
+		// and are not guaranteed monotonic or in range.
+		// Reject anything that would make the size negative,
+		// which would wrap to a huge size_t and crash the resize.
+		if(cur < 0 || next < cur + 8 || next > teeHeader.m_ItemSize)
+			return 0;
+		return (size_t)(next - cur - 8); // -8 to cut out type_and_id and size
 	}
 
 	Result getItem(uint32_t itemIndex, Raw& data) {
@@ -424,9 +432,16 @@ struct ML_Teeworlds : MapLoad {
 
 	size_t getDataSize(uint32_t index) {
 		if(index >= dataOffsets.size()) return 0;
-		if(index == dataOffsets.size() - 1)
-			return teeHeader.m_DataSize - dataOffsets[index].m_Offset;
-		return dataOffsets[index + 1].m_Offset - dataOffsets[index].m_Offset;
+		int64_t cur = dataOffsets[index].m_Offset;
+		int64_t next = (index == dataOffsets.size() - 1)
+			? teeHeader.m_DataSize
+			: dataOffsets[index + 1].m_Offset;
+		// Same guard as getItemSize:
+		// reject non-monotonic or out-of-range offsets
+		// so the size can't wrap to a huge size_t.
+		if(cur < 0 || next < cur || next > teeHeader.m_DataSize)
+			return 0;
+		return (size_t)(next - cur);
 	}
 
 	Result getData(uint32_t index, Raw& data) {
@@ -833,9 +848,16 @@ struct ML_Teeworlds : MapLoad {
 		TWTileLayer& l = gameLayer->tileLayer;
 
 		notes << "TW map w: " << l.width << ", h: " << l.height << endl;
+		// width/height come from the file;
+		// bound them so width*TileW can't overflow
+		// and the bitmap stays a sane size.
+		if(l.width < 0 || l.height < 0 || l.width > 4096 || l.height > 4096)
+			return "TW tile layer dimensions out of range";
 		map->Width = l.width * TileW;
 		map->Height = l.height * TileH;
 		map->material = create_bitmap_ex(8, map->Width, map->Height);
+		if(!map->material)
+			return "could not allocate the material bitmap";
 
 		for(int y = 0; y < l.height; ++y) {
 			for(int x = 0; x < l.width; ++x) {
@@ -1109,8 +1131,13 @@ Result TWGroup::read(ML_Teeworlds* l, char* p, char* end) {
 Result TWGroup::readLayers(ML_Teeworlds* l) {
 	CDatafileItemType* t = l->getItemType(ITEM_LAYER);
 	if(!t) return "item layer type not found";
-	if(start_layer + num_layers > t->m_Num)
-		return "start_layer + num_layers are going out of bounds of item layers";
+	// start_layer and num_layers come from the file.
+	// Check them for sign and range in 64-bit,
+	// so a negative count can't make resize allocate a huge size_t,
+	// and a signed overflow can't bypass the bound.
+	if(start_layer < 0 || num_layers < 0
+	   || (int64_t)start_layer + num_layers > t->m_Num)
+		return "start_layer / num_layers out of bounds of item layers";
 	layers.resize(num_layers);
 	for(int j = 0; j < num_layers; ++j) {
 		Raw data;
