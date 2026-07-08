@@ -456,7 +456,9 @@ void Net_Control::olxParse(Net_ConnID src, CBytestream& bs) {
 	//size_t bsStart = bs.GetPos();
 	size_t len = readEliasGammaNr(bs) + 1;
 
-	for(size_t i = 0; i < len; ++i) {
+	// Stop once the packet is exhausted: a real package consumes bytes,
+	// so the attacker-controlled len can never exceed the bytes present.
+	for(size_t i = 0; i < len && !bs.isPosAtEnd(); ++i) {
 		intern->packetsReceived.push_back(NetControlIntern::DataPackage());
 		NetControlIntern::DataPackage& p = intern->packetsReceived.back();
 		p.read(this->intern, bs);
@@ -469,7 +471,8 @@ void Net_Control::olxParse(Net_ConnID src, CBytestream& bs) {
 static void olxParseWithFixedType(Net_Control* con, Net_ConnID src, CBytestream& bs, NetControlIntern::DataPackage::Type type) {
 	size_t len = readEliasGammaNr(bs) + 1;
 	
-	for(size_t i = 0; i < len; ++i) {
+	// Same bound as olxParse: stop once the packet is exhausted.
+	for(size_t i = 0; i < len && !bs.isPosAtEnd(); ++i) {
 		con->intern->packetsReceived.push_back(NetControlIntern::DataPackage());
 		NetControlIntern::DataPackage& p = con->intern->packetsReceived.back();
 		p.type = type;
