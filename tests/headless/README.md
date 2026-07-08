@@ -6,6 +6,8 @@ and run on a bare CI runner.
 
 - `test_smoke.py` — the game boots and hosts a lobby.
 - `test_network.py` — networked play between instances.
+- `test_gameplay.py` — bots play a real round (combat, death, respawn),
+  and the in-game state (health, kills, damage) syncs to a connected client.
 - `harness.py`, `conftest.py`, `control/` —
   helpers plus the Python 3 control scripts that drive each instance.
 
