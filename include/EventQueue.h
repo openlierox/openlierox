@@ -30,6 +30,7 @@ enum SDLUserEvent {
 // bDedicated must be set before we can call this
 void InitEventQueue();
 void ShutdownEventQueue();
+void ProcessPendingQuitSignal();
 
 
 

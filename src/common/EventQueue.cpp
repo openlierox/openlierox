@@ -226,37 +226,46 @@ static void InitQuitSignalHandler()
 	SetConsoleMode(stdin, ENABLE_PROCESSED_INPUT);
 }
 
+// The console-control handler runs on its own thread, so it pushes the quit
+// event directly; nothing to do from the main loop here.
+void ProcessPendingQuitSignal() {}
+
 #else // MacOSX, Linux, Unix
 
 #include <signal.h>
 
+static volatile sig_atomic_t gotQuitSignal = 0;
+
 static void QuitSignalHandler(int sig)
 {
-	if(mainQueue) {
-		SDL_Event event;
-		event.type = SDL_QUIT;
-		mainQueue->push(event);
-	} else {
-		warnings << "got quit-signal and mainQueue is not set" << endl;
-	}
-	// Don't set game.state here.
-	// This runs asynchronously in signal context,
-	// on whatever thread caught the signal,
-	// which is usually not the gameloop thread.
-	// game.state is an Attr,
-	// and assigning it runs the attribute-update machinery
-	// (locks, allocation, and a gameloop-thread assertion),
-	// which is neither reentrant nor async-signal-safe.
-	// Doing it here asserted or raced against the gameloop,
-	// and crashed on quit.
-	// The pushed SDL_QUIT event sets game.state = S_Quit via EvHndl_Quit,
-	// on the gameloop thread where ProcessEvents() dispatches it.
+	// Runs asynchronously in signal context,
+	// on whatever thread caught the signal:
+	// only async-signal-safe operations are allowed here.
+	// Just record it.
+	// Pushing the event takes the queue mutex, and logging takes the log mutex;
+	// both are unsafe here (deadlock) and were done in this handler before.
+	// ProcessPendingQuitSignal() does that from the main loop instead.
+	gotQuitSignal = 1;
 }
 
 static void InitQuitSignalHandler()
 {
 	signal(SIGINT, QuitSignalHandler);
 	signal(SIGTERM, QuitSignalHandler);
+}
+
+void ProcessPendingQuitSignal()
+{
+	if(!gotQuitSignal) return;
+	gotQuitSignal = 0;
+	if(mainQueue) {
+		SDL_Event event;
+		event.type = SDL_QUIT;
+		mainQueue->push(event);
+	} else
+		warnings << "got quit-signal and mainQueue is not set" << endl;
+	// The pushed SDL_QUIT sets game.state = S_Quit via EvHndl_Quit, on the
+	// gameloop thread where ProcessEvents() dispatches it.
 }
 
 #endif

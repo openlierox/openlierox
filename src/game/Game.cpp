@@ -693,6 +693,7 @@ void Game::frame() {
 	SetCrashHandlerReturnPoint("main game loop");
 
 	ReportPendingSigpipe(); // log any SIGPIPE recorded by the signal handler
+	ProcessPendingQuitSignal(); // act on a SIGINT/SIGTERM the handler recorded
 
 	// Timing
 	tLX->currentTime = GetTime();
