@@ -198,12 +198,34 @@ static const NLaddress* getNLaddr(const NetworkAddr& addr) {
 // ------------------------------------------------------------------------
 
 
+
+
 #ifndef WIN32
-static void sigpipe_handler(int i) {
-	warnings << "got SIGPIPE, ignoring..." << endl;
-	signal(SIGPIPE, sigpipe_handler);
+// SIGPIPE fires when a write to a closed socket or pipe would otherwise kill us.
+// The handler runs in signal context, so it must be async-signal-safe:
+// it only bumps a counter.
+// It must not log here -- the logging path takes a mutex and writes to stdout,
+// and when the SIGPIPE came from a stdout write that recursed into a stack overflow.
+// ReportPendingSigpipe() emits the warning later, from the main loop.
+static volatile sig_atomic_t sigpipeCount = 0;
+static void sigpipe_handler(int) {
+	++sigpipeCount;
+	signal(SIGPIPE, sigpipe_handler); // re-arm where signal() resets the disposition
 }
 #endif
+
+// Runs on the main/game loop, where logging is safe.
+// Reports any SIGPIPEs that the handler recorded since the last call.
+void ReportPendingSigpipe() {
+#ifndef WIN32
+	static sig_atomic_t reported = 0;
+	const sig_atomic_t cur = sigpipeCount;
+	if(cur != reported) {
+		warnings << "got SIGPIPE (" << (int)(cur - reported) << "), ignoring" << endl;
+		reported = cur;
+	}
+#endif
+}
 
 
 /*
@@ -320,7 +342,8 @@ bool InitNetworkSystem() {
 	dnsCache6 = new ThreadVar<dnsCacheT>();
 
 #if !defined(WIN32) && !defined(__ANDROID__)
-	//sigignore(SIGPIPE);
+	// Catch SIGPIPE so a broken socket/pipe write does not kill us.
+	// The handler only records it; ReportPendingSigpipe() logs it safely later.
 	signal(SIGPIPE, sigpipe_handler);
 #endif
 	

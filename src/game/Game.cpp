@@ -45,6 +45,7 @@
 #include "Attr.h"
 #include "gusanos/luaapi/classes.h"
 #include "gusanos/network.h"
+#include "Networking.h"
 #include "FlagInfo.h"
 #include "CWpnRest.h"
 #include "CChannel.h"
@@ -690,6 +691,8 @@ struct GusSpeedScope {
 
 void Game::frame() {
 	SetCrashHandlerReturnPoint("main game loop");
+
+	ReportPendingSigpipe(); // log any SIGPIPE recorded by the signal handler
 
 	// Timing
 	tLX->currentTime = GetTime();
