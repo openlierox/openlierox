@@ -20,17 +20,11 @@ INLINE const char* GetFullGameName() { return fullGameName; }
 const char* GetGameName();
 const Version& GetGameVersion();
 
-// The OLX version string without the git hash, e.g. "20260616.4". This is
-// what should be shown in most user-facing places (menu, window title) — the
-// git hash is noise there. Unlike Version::asHumanString() this is NOT
-// re-parsed through the integer num.subnum.subsubnum scheme (which can't
-// represent the date-based version system — see functions.sh), so it is
-// shown verbatim.
-const std::string& GetGameVersionString();
-
-// The full version string including the "+git.HASH" suffix, e.g.
-// "20260616.4+git.b547037" (matches get_version_full.sh). Use this only
-// where the exact build provenance matters (crash reports, etc.).
+// The full version string as produced by get_version_full.sh,
+// including the "+git.HASH" suffix (and a "-dirty" marker for a modified tree),
+// e.g. "20260616.4+git.b547037".
+// Shown verbatim wherever the version is displayed (window title, menu, crash reports):
+// it is the exact build string, not reconstructed through Version, so nothing is lost.
 const std::string& GetGameVersionStringFull();
 
 

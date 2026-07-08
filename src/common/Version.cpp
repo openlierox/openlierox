@@ -42,17 +42,6 @@ const std::string& GetGameVersionStringFull() {
 	return ver;
 }
 
-const std::string& GetGameVersionString() {
-	static std::string ver;
-	if(ver.empty()) {
-		ver = LX_VERSION;
-		// Strip the "+git.HASH" provenance suffix; keep just "YYYYMMDD.N".
-		size_t p = ver.find('+');
-		if(p != std::string::npos) ver.erase(p);
-	}
-	return ver;
-}
-
 INLINE void setByString__optionalPostCheck(const Version* version, const std::string& versionStr) {
 #ifdef DEBUG
 	if(version->asString() != versionStr) {
