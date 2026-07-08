@@ -20,17 +20,12 @@ INLINE const char* GetFullGameName() { return fullGameName; }
 const char* GetGameName();
 const Version& GetGameVersion();
 
-// The OLX version string without the git hash, e.g. "20260616.4". This is
-// what should be shown in most user-facing places (menu, window title) — the
-// git hash is noise there. Unlike Version::asHumanString() this is NOT
-// re-parsed through the integer num.subnum.subsubnum scheme (which can't
-// represent the date-based version system — see functions.sh), so it is
-// shown verbatim.
-const std::string& GetGameVersionString();
-
-// The full version string including the "+git.HASH" suffix, e.g.
-// "20260616.4+git.b547037" (matches get_version_full.sh). Use this only
-// where the exact build provenance matters (crash reports, etc.).
+// The full version string as produced by get_version_full.sh,
+// including the "+git.HASH" suffix (and a ".dirty" marker for a modified tree),
+// e.g. "20260616.4+git.b547037".
+// Shown verbatim wherever the version is displayed (window title, menu, crash reports):
+// it is the exact build string, not reconstructed through Version,
+// so nothing is lost.
 const std::string& GetGameVersionStringFull();
 
 
@@ -38,7 +33,7 @@ struct Version {
 	Version() { reset(); }
 	Version(const std::string& versionStr) { setByString(versionStr); }
 	
-	void reset() { gamename = "LieroX"; num = 0; subnum = 56; subsubnum = 0; revnum = 0; releasetype = RT_NORMAL; }
+	void reset() { gamename = "LieroX"; num = 0; subnum = 56; subsubnum = 0; revnum = 0; releasetype = RT_NORMAL; buildmetadata = ""; }
 	void setByString(const std::string& versionStr);
 	std::string asString() const;
 	std::string asHumanString() const;
@@ -55,13 +50,16 @@ struct Version {
 		RT_UNKNOWN, RT_ALPHA, RT_BETA, RT_RC, RT_NORMAL
 	} releasetype;
 	std::string gamename; // OpenLieroX
+	// SemVer build metadata after '+', e.g. "git.db202c4";
+	// provenance only, ignored when comparing.
+	std::string buildmetadata;
 
 };
 
 
 // The following functions are declared INLINE because they are used very often.
 
-// For comparision, we ignore the following: revnum, gamename
+// For comparision, we ignore the following: revnum, gamename, buildmetadata
 // That means, a special revision of a baseversion should not change the behaviour (and it's only for debugging).
 // And another game like Hirudo should keep the same version-counting. We can start Hirudo at version 1.0 or 0.99.
 

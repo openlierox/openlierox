@@ -42,17 +42,6 @@ const std::string& GetGameVersionStringFull() {
 	return ver;
 }
 
-const std::string& GetGameVersionString() {
-	static std::string ver;
-	if(ver.empty()) {
-		ver = LX_VERSION;
-		// Strip the "+git.HASH" provenance suffix; keep just "YYYYMMDD.N".
-		size_t p = ver.find('+');
-		if(p != std::string::npos) ver.erase(p);
-	}
-	return ver;
-}
-
 INLINE void setByString__optionalPostCheck(const Version* version, const std::string& versionStr) {
 #ifdef DEBUG
 	if(version->asString() != versionStr) {
@@ -62,9 +51,24 @@ INLINE void setByString__optionalPostCheck(const Version* version, const std::st
 }
 
 void Version::setByString(const std::string& versionStr) {
+	// Split off the SemVer build metadata (everything after the first '+', e.g. "git.db202c4").
+	// It is build provenance:
+	// kept for display and round-tripped by asString(),
+	// but not parsed into the num.subnum.subsubnum version,
+	// and ignored when comparing.
+	// Otherwise the git hash would leak into subsubnum
+	// and two builds of the same release would compare as different.
+	buildmetadata = "";
+	std::string cmpStr = versionStr;
+	size_t plus = cmpStr.find('+');
+	if(plus != std::string::npos) {
+		buildmetadata = cmpStr.substr(plus + 1);
+		cmpStr.erase(plus);
+	}
+
 	if(versionStr == "") { reset(); setByString__optionalPostCheck(this,versionStr); return; }
 
-	std::string tmp = versionStr;
+	std::string tmp = cmpStr;
 
 	size_t p = tmp.find_first_of(" /\\");
 	if(p == std::string::npos)
@@ -152,6 +156,12 @@ std::string Version::asString() const {
 		ret += itoa(revnum);
 	}
 
+	// SemVer build metadata, so the string round-trips through setByString.
+	if(!buildmetadata.empty()) {
+		ret += "+";
+		ret += buildmetadata;
+	}
+
 	return ret;
 }
 
@@ -172,6 +182,13 @@ std::string Version::asHumanString() const
 		case RT_UNKNOWN: ret += " "; break;
 		}
 		ret += itoa(subsubnum);
+	}
+
+	// Show the build provenance (git hash) in parentheses; helpful for dev builds.
+	if(!buildmetadata.empty()) {
+		ret += " (";
+		ret += buildmetadata;
+		ret += ")";
 	}
 
 	return ret;

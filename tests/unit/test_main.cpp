@@ -19,11 +19,13 @@ void olxCheckFailed(const char* expr, const char* file, int line) {
 
 // Test entry points, defined in the test_*.cpp files.
 void test_CBytestream();
+void test_Version();
 
 int main() {
 	printf("Running OLX unit tests...\n");
 
 	test_CBytestream();
+	test_Version();
 
 	if(g_olxTestFailures) {
 		printf("FAILED: %d check(s)\n", g_olxTestFailures);
