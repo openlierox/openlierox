@@ -1025,8 +1025,6 @@ void GameServer::ParseConnectionlessPacket(const SmartPointer<NetworkSocket>& tS
 // Handle a "getchallenge" msg
 void GameServer::ParseGetChallenge(const SmartPointer<NetworkSocket>& tSocket, CBytestream *bs_in) {
 	NetworkAddr	adrFrom;
-	AbsTime		OldestTime = AbsTime::Max();
-	int			ChallengeToSet = -1;
 	CBytestream	bs;
 
 	//hints << "Got GetChallenge packet" << endl;
@@ -1080,40 +1078,9 @@ void GameServer::ParseGetChallenge(const SmartPointer<NetworkSocket>& tSocket, C
 		return;
 	}
 	
-	// see if we already have a challenge for this ip
-	for (int i = 0;i < MAX_CHALLENGES;i++) {
-
-		if (IsNetAddrValid(tChallenges[i].Address)) {
-			if (AreNetAddrEqual(adrFrom, tChallenges[i].Address)) {
-				// We already have a challenge for this address, reuse the slot.
-				// (Skipping it instead would, once every slot holds this address,
-				// leave ChallengeToSet at -1, i.e. no slot selected.)
-				ChallengeToSet = i;
-				break;
-			}
-			if (ChallengeToSet < 0 || tChallenges[i].fTime < OldestTime) {
-				OldestTime = tChallenges[i].fTime;
-				ChallengeToSet = i;
-			}
-		} else {
-			ChallengeToSet = i;
-			break;
-		}
-	}
-
-	// The loop above always selects a slot, so ChallengeToSet is >= 0 here.
-	// Guard anyway, so the tChallenges[ChallengeToSet] accesses below never
-	// use an invalid index should that ever change.
-	if (ChallengeToSet < 0) {
-		errors << "GameServer::ParseGetChallenge: no challenge slot selected" << endl;
-		return;
-	}
-
-	// overwrite the oldest
-	tChallenges[ChallengeToSet].iNum = (rand() << 16) ^ rand();
-	tChallenges[ChallengeToSet].Address = adrFrom;
-	tChallenges[ChallengeToSet].fTime = tLX->currentTime;
-	tChallenges[ChallengeToSet].sClientVersion = client_version;
+	// Issue (or reuse) a challenge slot for this address.
+	int challNum = ChallengeTable_issue(
+		tChallenges, MAX_CHALLENGES, adrFrom, tLX->currentTime, client_version);
 
 	// Send the challenge details back to the client
 	tSocket->setRemoteAddress(adrFrom);
@@ -1122,7 +1089,7 @@ void GameServer::ParseGetChallenge(const SmartPointer<NetworkSocket>& tSocket, C
 	// TODO: move this out here
 	bs.writeInt(-1, 4);
 	bs.writeString("lx::challenge");
-	bs.writeInt(tChallenges[ChallengeToSet].iNum, 4);
+	bs.writeInt(challNum, 4);
 	if( client_version != "" )
 		bs.writeString(GetFullGameName());
 	bs.Send(tSocket.get());
@@ -1233,37 +1200,15 @@ void GameServer::ParseConnect(const SmartPointer<NetworkSocket>& net_socket, CBy
 	
 	// If we ignored this challenge verification, there could be double connections
 
-	// See if the challenge is valid
+	// See if the challenge is valid.
+	// A reconnecting client keeps its slot on the server (reconnectFrom set),
+	// so its challenge need not still match.
 	{
-		bool valid_challenge = false;
-		int i;
-		for (i = 0; i < MAX_CHALLENGES; i++) {
-			if (IsNetAddrValid(tChallenges[i].Address) && AreNetAddrEqual(adrFrom, tChallenges[i].Address)) {
+		std::string challClientVersion;
+		bool validChallenge =
+			ChallengeTable_consume(tChallenges, MAX_CHALLENGES, adrFrom, ChallId, challClientVersion);
 
-				if (ChallId == tChallenges[i].iNum)  { // good
-					SetNetAddrValid(tChallenges[i].Address, false); // Invalidate it here to avoid duplicate connections
-					tChallenges[i].iNum = 0;
-					valid_challenge = true;
-					break;
-				} else { // bad
-					valid_challenge = false;
-
-					// HINT: we could receive another connect packet which will contain this challenge
-					// and therefore get the worm connected twice. To avoid it, we clear the challenge here
-					SetNetAddrValid(tChallenges[i].Address, false);
-					tChallenges[i].iNum = 0;
-					if(!reconnectFrom) {
-						hints << "HINT: deleting a doubled challenge" << endl;
-					}
-					
-					// There can be more challanges from one client, if this one doesn't match,
-					// perhaps some other does
-				}
-			}
-		}
-
-		// Ran out of challenges
-		if (!reconnectFrom && i == MAX_CHALLENGES ) {
+		if (!reconnectFrom && !validChallenge) {
 			notes << "No connection verification for client found" << endl;
 			CBytestream bytestr;
 			bytestr.writeInt(-1, 4);
@@ -1273,20 +1218,10 @@ void GameServer::ParseConnect(const SmartPointer<NetworkSocket>& net_socket, CBy
 			return;
 		}
 
-		if (!reconnectFrom && !valid_challenge)  {
-			notes << "Bad connection verification of client" << endl;
-			CBytestream bytestr;
-			bytestr.writeInt(-1, 4);
-			bytestr.writeString("lx::badconnect");
-			bytestr.writeString(OldLxCompatibleString(networkTexts->sBadVerification));
-			bytestr.Send(net_socket.get());
-			return;
-		}
-				
 		if(reconnectFrom)
 			clientVersion = reconnectFrom->getClientVersion();
 		else
-			clientVersion = tChallenges[i].sClientVersion;
+			clientVersion = challClientVersion;
 	}
 
 

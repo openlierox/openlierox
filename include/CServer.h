@@ -26,6 +26,7 @@
 #include "Timer.h"
 #include "CBanList.h"
 #include "game/GameMode.h"
+#include "ChallengeTable.h"
 
 class CWorm;
 class CServerConnection;
@@ -41,14 +42,6 @@ enum {
 	MAX_SERVER_SOCKETS = 6, // = max UDP masterservers
 };
 
-
-// Challenge structure
-class challenge_t { public:
-	NetworkAddr	Address;
-	AbsTime		fTime;
-	int			iNum;
-	std::string	sClientVersion;
-};
 
 // Client leaving reasons
 enum {

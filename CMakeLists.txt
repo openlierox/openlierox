@@ -52,6 +52,8 @@ IF(OLX_TESTS)
 		${OLXROOTDIR}/tests/unit/test_main.cpp
 		${OLXROOTDIR}/tests/unit/test_CBytestream.cpp
 		${OLXROOTDIR}/tests/unit/test_Version.cpp
+		${OLXROOTDIR}/tests/unit/test_loopback.cpp
+		${OLXROOTDIR}/tests/unit/test_challenge_table.cpp
 		${ALL_SRCS} ${OLX_WIN_RESOURCES})
 	SET_TARGET_PROPERTIES(olx_tests PROPERTIES
 		RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
