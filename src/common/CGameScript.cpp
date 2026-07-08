@@ -480,8 +480,7 @@ static bool checkLXBinMod(const std::string& dir, bool abs_filename, ModInfo& in
 	if(!fp) return false;
 	
 	// Header
-	gs_header_t head;
-	memset(&head,0,sizeof(gs_header_t));
+	gs_header_t head = {};
 	fread_compat(head,sizeof(gs_header_t),1,fp);
 	fclose(fp);
 	

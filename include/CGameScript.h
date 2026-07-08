@@ -56,8 +56,8 @@ static_assert(GS_VERSION - GS_FIRST_SUPPORTED_VERSION + 1 == sizeof(GS_MinLxVers
 // WARNING: never change this!
 // it's used in CGameScript.cpp and it represents
 // the original file format
+// Trivially copyable POD read from / written to the mod file as a raw block.
 struct gs_header_t {
-	gs_header_t() { ID[0] = 0; Version = 0; ModName[0] = 0; }
 	char	ID[18];
 	Uint32	Version;
 	char	ModName[64];
@@ -98,7 +98,7 @@ private:
 
 	// Header
 	bool loaded;
-	gs_header_t	Header;
+	gs_header_t	Header = {};
 	std::string modname;
 	bool m_gusEngineUsed;
 
