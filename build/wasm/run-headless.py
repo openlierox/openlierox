@@ -34,13 +34,28 @@ for tok in sys.argv[3:]:
         SCRIPT.append((float(parts[1]), parts[2], ":".join(parts[3:])))
 
 
+def find_chrome() -> str:
+    """Locate a Chrome/Chromium binary: PATH names first, then the macOS app."""
+    candidates = [
+        "google-chrome", "google-chrome-stable", "chromium", "chromium-browser",
+        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    ]
+    for c in candidates:
+        if os.sep in c:
+            if os.path.exists(c):
+                return c
+        elif shutil.which(c):
+            return c
+    return "google-chrome"  # not found; let the launch fail with a clear error
+
+
 def main() -> int:
     shutil.rmtree(PROFILE,   ignore_errors=True)
     shutil.rmtree(SHOTS_DIR, ignore_errors=True)
     os.makedirs(SHOTS_DIR, exist_ok=True)
 
     chrome = subprocess.Popen([
-        "google-chrome",
+        find_chrome(),
         "--headless=new",
         # Keep GPU on — disabling it falls back to a software path
         # that hides issues real Chrome users hit (e.g. WebGL-related
