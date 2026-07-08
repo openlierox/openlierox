@@ -254,7 +254,7 @@ void startMainLockDetector() {
 			return true;
 		}
 	};
-	threadPool->start(new MainLockDetector(), "main lock detector", true);
+	threadPool->start(new MainLockDetector(), "main lock detector");
 }
 
 
@@ -347,7 +347,7 @@ void doMainLoop() {
 			break;
 	}
 #else
-	SmartPointer<ThreadPoolItem> mainLoopThread = threadPool->start(new MainLoopTask(), "main loop", false);
+	SmartPointer<ThreadPoolItem> mainLoopThread = threadPool->start(new MainLoopTask(), "main loop");
 
 	startMainLockDetector();
 

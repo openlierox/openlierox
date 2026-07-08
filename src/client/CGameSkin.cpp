@@ -125,7 +125,7 @@ struct CGameSkin::Thread {
 				return lastRet;
 			}
 		};
-		threadPool->start(new SkinActionHandler(skin), "CGameSkin handler", true);
+		threadPool->start(new SkinActionHandler(skin), "CGameSkin handler");
 		ready = false;
 	}
 	

@@ -133,7 +133,7 @@ void TaskManager::start(Task* t, QueueType queue) {
 						TaskHandler* handler = new TaskHandler();
 												handler->task = task->replacingTask;
 												task->replacingTask->state = Task::TS_WAITFORIMMSTART;
-												threadPool->start(handler, task->replacingTask->name + " handler", true);
+												threadPool->start(handler, task->replacingTask->name + " handler");
 					}
 					else
 						// We were requested to quit, i.e. we should not start this queued task anymore.
@@ -156,7 +156,7 @@ void TaskManager::start(Task* t, QueueType queue) {
 	
 	if(queue == QT_NoQueue) {
 		t->state = Task::TS_WAITFORIMMSTART;
-		threadPool->start(handler, t->name + " handler", true);
+		threadPool->start(handler, t->name + " handler");
 	} else {
 		t->state = Task::TS_QUEUED;
 		queuedTasks.push_back(handler);

@@ -262,7 +262,7 @@ void CHttp::RequestData(const std::string& url, const std::string& proxy)
 {
 	CURL * curl = InitializeTransfer(url, proxy);
 	curlThread = new CurlThread(this, curl);
-	threadPool->start(curlThread, "CHttp: " + Url, true);
+	threadPool->start(curlThread, "CHttp: " + Url);
 }
 
 void CHttp::SendData(const std::list<HTTPPostField>& data, const std::string url, const std::string& proxy)
@@ -295,7 +295,7 @@ void CHttp::SendData(const std::list<HTTPPostField>& data, const std::string url
 	curl_easy_setopt(curl, CURLOPT_HTTPPOST, curlForm);
 	curlThread = new CurlThread(this, curl);
 	curlThread->curlForm = curlForm;
-	threadPool->start(curlThread, "CHttp: " + Url, true);
+	threadPool->start(curlThread, "CHttp: " + Url);
 }
 
 Result CurlThread::handle()

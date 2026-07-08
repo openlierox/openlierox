@@ -395,7 +395,7 @@ Result Game::prepareGameloop() {
 			TimeoutAvoiderAction* a = new TimeoutAvoiderAction();
 			a->chan = cClient->cNetChan;
 			a->scope = scope;
-			threadPool->start(a, "prepareGameloop timeout avoider keep-me-alive", true);
+			threadPool->start(a, "prepareGameloop timeout avoider keep-me-alive");
 		}
 		~TimeoutAvoider() { if(scope.get()) scope->write() = false; }
 	};

@@ -966,7 +966,7 @@ void Cmd_wait::exec(CmdLineIntf* caller, const std::vector<std::string>& params)
 		}
 	};
 	
-	threadPool->start( new WaitThread(params), "Cmd_wait() command thread", true );
+	threadPool->start( new WaitThread(params), "Cmd_wait() command thread" );
 }
 
 COMMAND(setViewport, "Set viewport mode", "mode=follow|cycle|freelook|actioncam [wormID] [mode2] [wormID2]", 1, 4);

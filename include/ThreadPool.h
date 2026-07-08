@@ -69,9 +69,8 @@ public:
 	~ThreadPool();
 
 	SmartPointer<ThreadPoolItem> start(ThreadFunc fct, void* param = NULL, const std::string& name = "unknown worker");
-	// headless is only informational now; the returned handle can always be waited on, or discarded.
-	SmartPointer<ThreadPoolItem> start(Action* act, const std::string& name = "unknown worker", bool headless = false); // ThreadPool will own and free the Action
-	SmartPointer<ThreadPoolItem> start(boost::function<Result()> fct, const std::string& name = "unknown worker", bool headless = false);
+	SmartPointer<ThreadPoolItem> start(Action* act, const std::string& name = "unknown worker"); // ThreadPool will own and free the Action
+	SmartPointer<ThreadPoolItem> start(boost::function<Result()> fct, const std::string& name = "unknown worker");
 	bool wait(const SmartPointer<ThreadPoolItem>& item, int* status = NULL);
 	bool waitAll();
 	void dumpState(CmdLineIntf& cli) const;

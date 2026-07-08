@@ -174,7 +174,7 @@ int ThreadPool::threadWrapper(void* param) {
 	return 0;
 }
 
-SmartPointer<ThreadPoolItem> ThreadPool::start(Action* act, const std::string& name, bool headless) {
+SmartPointer<ThreadPoolItem> ThreadPool::start(Action* act, const std::string& name) {
 	SDL_mutexP(startMutex); // serialize start() so nextAction/nextTask are not clobbered
 	SDL_mutexP(mutex);
 	if(availableThreads.size() == 0) {
@@ -209,14 +209,14 @@ SmartPointer<ThreadPoolItem> ThreadPool::start(ThreadFunc fct, void* param, cons
 	return start(act, name);
 }
 
-SmartPointer<ThreadPoolItem> ThreadPool::start(boost::function<Result()> fct, const std::string& name, bool headless) {
+SmartPointer<ThreadPoolItem> ThreadPool::start(boost::function<Result()> fct, const std::string& name) {
 	struct FctPtrAction : Action {
 		boost::function<Result()> fct;
 		Result handle() { return fct(); }
 	};
 	FctPtrAction* act = new FctPtrAction();
 	act->fct = fct;
-	return start(act, name, headless);
+	return start(act, name);
 }
 
 bool ThreadPool::wait(const SmartPointer<ThreadPoolItem>& item, int* status) {
