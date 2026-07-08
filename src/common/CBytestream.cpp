@@ -583,6 +583,10 @@ bool CBytestream::readBit()
 // Get data from the bytestream
 std::string CBytestream::readData( size_t size )
 {
+	// Nothing left, and guards against pos being at/past the end:
+	// otherwise GetLength() - pos underflows and substr throws.
+	if( pos >= GetLength() )
+		return "";
 	size = MIN( size, GetLength() - pos );
 	size_t oldpos = pos;
 	pos += size;
@@ -671,7 +675,9 @@ bool CBytestream::SkipString() {
 }
 
 bool CBytestream::Skip(size_t num) {
-	pos += num;
+	// Clamp to the end so pos never runs past the buffer
+	// (readData and others rely on pos <= GetLength()).
+	pos = MIN( pos + num, GetLength() );
 	return isPosAtEnd();
 }
 
