@@ -143,6 +143,11 @@ int threadedTeeStdout(void*) {
 }
 
 void teeStdoutInit() {
+	// Idempotent: a theme-switch restart runs this again while the tee is still up.
+	// Re-initialising would orphan the old tee, which then crashes at exit on teeOlxOutputFile.
+	if(teeStdoutInfo.thread || teeStdoutInfo.proc)
+		return;
+
 	int pipe_to_handler[2];
 
 	if(stdinCLIActive()) {
