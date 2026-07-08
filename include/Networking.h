@@ -78,6 +78,7 @@ bool	GetFromDnsCache(const std::string& name, NetworkAddr& addr4, NetworkAddr& a
 // general networking
 bool	InitNetworkSystem();
 bool	QuitNetworkSystem();
+void	ReportPendingSigpipe();
 
 
 class NetworkSocket {
