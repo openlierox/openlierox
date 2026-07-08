@@ -5,6 +5,9 @@ just that the binary starts, initialises,
 and reaches the lobby as a dedicated server.
 """
 
+import signal
+import subprocess
+
 
 def test_dedicated_server_reaches_lobby(network_game):
     """A dedicated server starts up and reaches the hosting lobby."""
@@ -30,3 +33,35 @@ def test_loads_configured_mod_and_map(network_game):
     log = server.read_log()
     assert "invalid mod name" not in log, log
     assert "could not load level" not in log.lower(), log
+
+
+def test_graceful_shutdown_on_quit_signal(network_game):
+    """A quit signal to a running server shuts it down cleanly, without crashing.
+
+    Regression test for the quit-signal crash:
+    once the gameloop thread is running,
+    the SIGINT/SIGTERM handler used to assign the game.state Attr directly
+    from signal context, off the gameloop thread,
+    which tripped the attribute-update machinery's thread assertion and aborted.
+    The handler must instead only push an SDL_QUIT event,
+    which the gameloop dispatches to set the state on the right thread.
+    """
+    server = network_game.start_server()
+    # Once the lobby is up, the gameloop thread is running,
+    # which is the precondition for the crash.
+    assert server.wait_for("SERVER_LOBBY", timeout=30), server.read_log()
+
+    server.proc.send_signal(signal.SIGINT)
+
+    try:
+        rc = server.proc.wait(timeout=30)
+    except subprocess.TimeoutExpired:
+        raise AssertionError(
+            "server did not exit after SIGINT:\n" + server.read_log())
+
+    # A crash (abort/segfault) shows up as termination by signal,
+    # i.e. a negative return code (e.g. -6 for SIGABRT).
+    # A clean shutdown returns 0.
+    assert rc == 0, (
+        "server did not shut down cleanly (returncode=%d):\n" % rc
+    ) + server.read_log()
