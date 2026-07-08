@@ -733,6 +733,7 @@ void VideoPostProcessor::cloneBuffer() {
 
 void VideoPostProcessor::uninit() {
 	instance.m_videoSurface = NULL; // should never be used before resetVideo() is called
+	instance.m_videoBufferSurface = NULL; // else a restart keeps the old frame
 	instance.m_videoTexture = NULL;
 	instance.m_renderer = NULL;
 	instance.m_window = NULL;
