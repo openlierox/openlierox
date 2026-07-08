@@ -87,6 +87,15 @@ protected:
 	// Set per-frame by the menu / gameplay draw. See render() and the mouse
 	// handling, and displayScreenWidth()/displayScreenOffsetX() below.
 	int m_displayScreenWidth = 640;
+	// Snapshot of m_displayScreenWidth taken when a drawn frame is committed
+	// (flipBuffers, under the video mutex) and handed to render() via process(),
+	// so each frame is presented with the layout width it was actually drawn for.
+	// render() runs on the main thread,
+	// while the game thread keeps updating m_displayScreenWidth for the next frame,
+	// so reading it live in render() races
+	// and can center a frame with the wrong offset at menu/game transitions.
+	int m_committedDisplayScreenWidth = 640; // flipBuffers writes, process reads (both under mutex)
+	int m_renderDisplayScreenWidth = 640;    // main-thread only: process writes, render reads
 	static VideoPostProcessor instance;
 	
 public:

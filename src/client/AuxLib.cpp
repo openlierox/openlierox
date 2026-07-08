@@ -646,6 +646,10 @@ bool VideoPostProcessor::resetVideo() {
 
 void VideoPostProcessor::flipBuffers() {
 	std::swap(get()->m_videoBufferSurface, get()->m_videoSurface);
+	// Capture the layout width the just-committed frame was drawn for,
+	// so render() presents it with the matching centering
+	// even after the game thread changes m_displayScreenWidth for the next frame.
+	get()->m_committedDisplayScreenWidth = get()->m_displayScreenWidth;
 }
 
 
@@ -656,6 +660,9 @@ void VideoPostProcessor::process() {
 	
 	void* pixels = get()->m_videoBufferSurface->pixels;
 	SDL_UpdateTexture(get()->m_videoTexture.get(), NULL, pixels, get()->screenWidth() * sizeof (uint32_t));
+	// Hand the committed frame's layout width to the main-thread-only render().
+	// This runs under the video mutex; render() does not.
+	get()->m_renderDisplayScreenWidth = get()->m_committedDisplayScreenWidth;
 }
 
 void VideoPostProcessor::render() {
@@ -667,8 +674,11 @@ void VideoPostProcessor::render() {
 	if(!get()->m_renderer.get()) return;
 
 	SDL_RenderClear(get()->m_renderer.get());
-	const int dw = get()->displayScreenWidth();
-	const int centerOffset = get()->displayScreenOffsetX();
+	// Use the layout width captured for this frame (see process()), not the live
+	// displayScreenWidth(), which the game thread may already have moved on.
+	const int dw = get()->m_renderDisplayScreenWidth;
+	int centerOffset = (get()->m_screenWidth - dw) / 2;
+	if(centerOffset < 0) centerOffset = 0;
 	if(centerOffset > 0) {
 		// The frame's content (a menu, or a network game) is only dw wide and is
 		// drawn into the left dw columns of the (wider) video surface. Present
