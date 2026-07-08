@@ -59,14 +59,25 @@ def main():
     # Optional bots, so a round can actually be played out with no human input.
     bots = int(os.environ.get("OLX_BOTS", "0"))
     if bots > 0:
-        # Wait for the lobby (and the server's own local client) to come up,
-        # otherwise addBots fails with "localClient not found".
-        for _ in range(25):
-            if game_state() == "Lobby":
+        # addBots needs the server's own local client, which is not ready the
+        # instant the lobby comes up: called too early it logs
+        # "localClient not found" and silently adds nothing. So wait for the
+        # lobby, then add the bots and confirm they actually appeared
+        # (getComputerWormList counts only bots), retrying while the local
+        # client is still coming up. Give up loudly rather than starting a
+        # broken round.
+        deadline = time.time() + 15
+        while time.time() < deadline:
+            if game_state() == "Lobby" and len(command("getComputerWormList")) < bots:
+                command("addBots %d" % bots)
+            if len(command("getComputerWormList")) >= bots:
                 break
-            time.sleep(0.2)
-        time.sleep(0.5)
-        command("addBots %d" % bots)
+            time.sleep(0.3)
+        joined = len(command("getComputerWormList"))
+        if joined < bots:
+            emit("SERVER_ERROR only %d/%d bots joined (state=%s)"
+                 % (joined, bots, game_state()))
+            raise SystemExit("could not add %d bots" % bots)
         emit("SERVER_ADDBOTS %d" % bots)
 
     emit_state = os.environ.get("OLX_EMIT_STATE")
