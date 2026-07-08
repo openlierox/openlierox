@@ -6,8 +6,9 @@ Serves the bundle on http://localhost:8000 with:
 - Cross-Origin-Opener-Policy / Cross-Origin-Embedder-Policy headers,
   required by the -pthread build (SharedArrayBuffer).
 
-Serves build/wasm/output/ when run from the repo, or the directory it
-sits in when shipped inside a distributed bundle (next to index.html).
+Serves build/wasm/output/ when run from the repo,
+or the directory it sits in when shipped inside a distributed bundle
+(next to index.html).
 Set OLX_WASM_ROOT to serve a different directory.
 
 Optional TLS, for testing on a phone over the LAN: SharedArrayBuffer
@@ -24,9 +25,10 @@ import ssl
 import sys
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
-# Serve the bundle directory. Inside a distributed bundle this script sits next
-# to index.html; in the repo it sits in build/wasm/ with the artefacts under
-# output/. An explicit OLX_WASM_ROOT wins over both.
+# Serve the bundle directory.
+# Inside a distributed bundle this script sits next to index.html;
+# in the repo it sits in build/wasm/ with the artefacts under output/.
+# An explicit OLX_WASM_ROOT wins over both.
 if os.environ.get("OLX_WASM_ROOT"):
     ROOT = os.environ["OLX_WASM_ROOT"]
 elif os.path.isfile(os.path.join(_HERE, "index.html")):

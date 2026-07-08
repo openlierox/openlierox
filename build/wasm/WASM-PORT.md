@@ -336,13 +336,15 @@ distrib/openlierox-wasm/
 ```
 
 To test a bundle locally, serve it over HTTP with the isolation headers
-(`python3 serve.py` inside the bundle, or double-click `run.command` on
-macOS), then open `http://localhost:8000/`. Opening `index.html` as a
-`file://` URL cannot work: the threaded build needs `SharedArrayBuffer`,
-which browsers only grant to cross-origin-isolated pages served over
-http(s) — and `file://` can carry no headers and can't register the COI
-service-worker shim either. The shell shows an explanatory message in
-that case (and when a page is served without the isolation headers)
+(`python3 serve.py` inside the bundle, or double-click `run.command` on macOS),
+then open `http://localhost:8000/`.
+Opening `index.html` as a `file://` URL cannot work:
+the threaded build needs `SharedArrayBuffer`,
+which browsers only grant to cross-origin-isolated pages served over http(s),
+and `file://` can carry no headers
+and can't register the COI service-worker shim either.
+The shell shows an explanatory message in that case
+(and when a page is served without the isolation headers),
 rather than the browser's opaque "Script error.".
 
 The bundle works on:

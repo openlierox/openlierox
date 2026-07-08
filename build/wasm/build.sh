@@ -77,15 +77,18 @@ cp -f "$SHIM_SRC" "$DIST_DIR/coi-serviceworker.js"
     cp -f "$WASM_DIR/shell/coi-serviceworker.LICENSE" \
           "$DIST_DIR/coi-serviceworker.LICENSE"
 
-# Local-testing launcher. serve.py sets the COOP/COEP headers the threaded
-# build needs; a plain `python3 -m http.server` doesn't, and the engine then
-# hangs at startup with SharedArrayBuffer unavailable. run.command is a
-# double-clickable macOS wrapper that serves the bundle and opens a browser.
+# Local-testing launcher.
+# serve.py sets the COOP/COEP headers the threaded build needs;
+# a plain `python3 -m http.server` doesn't,
+# and the engine then hangs at startup with SharedArrayBuffer unavailable.
+# run.command is a double-clickable macOS wrapper
+# that serves the bundle and opens a browser.
 cp -f "$WASM_DIR/serve.py" "$DIST_DIR/serve.py"
 cat > "$DIST_DIR/run.command" <<'EOF'
 #!/bin/sh
-# Double-click (macOS) to serve this OpenLieroX bundle locally with the
-# COOP/COEP headers the WebAssembly build requires, then open it in a browser.
+# Double-click (macOS) to serve this OpenLieroX bundle locally
+# with the COOP/COEP headers the WebAssembly build requires,
+# then open it in a browser.
 cd "$(dirname "$0")" || exit 1
 ( sleep 1 && open "http://localhost:8000/" ) &
 exec python3 serve.py
@@ -197,6 +200,7 @@ echo "  - Hosts without header config (GitHub Pages): coi-serviceworker.js"
 echo "    is wired into index.html and provides the headers client-side."
 echo "    First load triggers a one-time reload to activate the worker."
 echo
-echo "To test the bundle locally: run 'python3 serve.py' inside it (or"
-echo "double-click run.command on macOS), then open http://localhost:8000/."
+echo "To test the bundle locally, run 'python3 serve.py' inside it"
+echo "(or double-click run.command on macOS),"
+echo "then open http://localhost:8000/."
 echo "Opening index.html as a file:// URL will not work."

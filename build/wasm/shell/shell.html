@@ -110,8 +110,8 @@
     let loadingDone = false;
 
     // Set once an environment preflight has shown a fatal, actionable message
-    // (wrong URL scheme / no cross-origin isolation). When set, the engine's
-    // own status and error churn must not overwrite it.
+    // (wrong URL scheme, or no cross-origin isolation).
+    // When set, the engine's own status and error churn must not overwrite it.
     let preflightFailed = false;
     function showStarting() {
       if (loadingDone) return;
@@ -121,23 +121,25 @@
       statusEl.textContent = "Starting OpenLieroX…";
     }
 
-    // Startup watchdog. Once every asset has loaded (monitorRunDependencies
-    // reaches 0) the engine normally boots to the main menu within a few
-    // seconds and calls olxOnEngineReady(). If it never does, startup has most
-    // likely failed — a wasm abort or a failed thread spawn that surfaced no
-    // error — and the page would otherwise sit on "Starting OpenLieroX…"
-    // forever. Replace that dead-end with a message pointing at the console.
+    // Startup watchdog.
+    // Once every asset has loaded (monitorRunDependencies reaches 0),
+    // the engine normally boots to the main menu within a few seconds
+    // and calls olxOnEngineReady().
+    // If it never does, startup has most likely failed
+    // (a wasm abort, or a failed thread spawn that surfaced no error),
+    // and the page would otherwise sit on "Starting OpenLieroX…" forever.
+    // Replace that dead-end with a message pointing at the console.
     let startWatchdog = null;
     function armStartWatchdog() {
       if (startWatchdog !== null) return;
       startWatchdog = setTimeout(() => {
-        // Don't stomp a clearer message that already owns the status line (a
-        // preflight failure, an abort, or an engine error).
+        // Don't stomp a clearer message that already owns the status line
+        // (a preflight failure, an abort, or an engine error).
         if (preflightFailed || statusEl.classList.contains("err")) return;
         statusEl.style.display = "";
         statusEl.classList.add("err");
         statusEl.innerHTML =
-          "OpenLieroX hasn’t reached the menu — startup may have failed.<br>" +
+          "OpenLieroX hasn’t reached the menu; startup may have failed.<br>" +
           "Check the browser console (F12 / Developer Tools) for errors.";
       }, 30000);
     }
@@ -209,10 +211,12 @@
         statusEl.classList.remove("err");
       },
       monitorRunDependencies: (left) => {
-        // Backstop for the cached case where the byte counter may not emit a
-        // final x == y: once everything's resolved, show "Starting…". This is
-        // also the point where the wasm is instantiated and the thread pool is
-        // up, so it's when the boot-to-menu watchdog should start ticking.
+        // Backstop for the cached case
+        // where the byte counter may not emit a final x == y:
+        // once everything's resolved, show "Starting…".
+        // This is also the point where the wasm is instantiated
+        // and the thread pool is up,
+        // so it's when the boot-to-menu watchdog should start ticking.
         if (left === 0) { showStarting(); armStartWatchdog(); }
       },
       // Don't stream every "dependency: fp /xxx" or "(end of list)" line
@@ -228,29 +232,31 @@
     };
 
     // --- Environment preflight -------------------------------------------
-    // This is a threaded (-pthread) build: main() runs on a Web Worker and the
-    // engine can't start without SharedArrayBuffer, which browsers only expose
-    // to cross-origin-isolated pages served over http(s) with COOP/COEP
-    // headers. Opening this page as a file:// URL, or serving it without those
-    // headers, otherwise fails with an opaque "Script error." or just hangs at
-    // "Starting…". Detect both cases up front and explain what to do.
+    // This is a threaded (-pthread) build:
+    // main() runs on a Web Worker,
+    // and the engine can't start without SharedArrayBuffer,
+    // which browsers only expose to cross-origin-isolated pages
+    // served over http(s) with COOP/COEP headers.
+    // Opening this page as a file:// URL, or serving it without those headers,
+    // otherwise fails with an opaque "Script error." or just hangs at "Starting…".
+    // Detect both cases up front and explain what to do.
     const FATAL = {
       file:
-        "This WebAssembly build can’t run from a <code>file://</code> URL " +
-        "— it must be served over HTTP.<br>Use the bundled server: run " +
-        "<b>python3&nbsp;serve.py</b> in this folder,<br>then open the " +
-        "<b>http://localhost:8000/</b> URL it prints.",
+        "This WebAssembly build can’t run from a <code>file://</code> URL; " +
+        "it must be served over HTTP.<br>" +
+        "Use the bundled server: run <b>python3&nbsp;serve.py</b> in this folder,<br>" +
+        "then open the <b>http://localhost:8000/</b> URL it prints.",
       coi:
         "OpenLieroX can’t start: this page is not cross-origin isolated, " +
-        "so <b>SharedArrayBuffer</b> (required by the threaded build) is " +
-        "unavailable.<br>Serve it with the COOP/COEP headers — the bundled " +
-        "<b>python3&nbsp;serve.py</b> sets them for you.<br>(A plain " +
-        "<code>http.server</code> only works if <code>coi-serviceworker.js</code> " +
-        "is present and can register.)",
+        "so <b>SharedArrayBuffer</b> (required by the threaded build) is unavailable.<br>" +
+        "Serve it with the COOP/COEP headers; " +
+        "the bundled <b>python3&nbsp;serve.py</b> sets them for you.<br>" +
+        "(A plain <code>http.server</code> only works " +
+        "if <code>coi-serviceworker.js</code> is present and can register.)",
       script:
-        "OpenLieroX failed to load its engine files.<br>If you opened this as a " +
-        "<code>file://</code> URL, serve it over HTTP instead: run " +
-        "<b>python3&nbsp;serve.py</b> in this folder.",
+        "OpenLieroX failed to load its engine files.<br>" +
+        "If you opened this as a <code>file://</code> URL, " +
+        "serve it over HTTP instead: run <b>python3&nbsp;serve.py</b> in this folder.",
     };
     function showFatal(kind) {
       preflightFailed = true;
@@ -262,11 +268,12 @@
     if (location.protocol === "file:") {
       showFatal("file");
     } else if (!self.crossOriginIsolated) {
-      // Not isolated yet. The bundled coi-serviceworker.js shim can fix this on
-      // a header-less host, but only via a one-time reload — and that
-      // navigation tears down this timer. If we're still here and un-isolated
-      // after it's had time to act, isolation isn't coming: say so instead of
-      // hanging at "Starting…".
+      // Not isolated yet.
+      // The bundled coi-serviceworker.js shim can fix this on a header-less host,
+      // but only via a one-time reload,
+      // and that navigation tears down this timer.
+      // If we're still here and un-isolated after it's had time to act,
+      // isolation isn't coming: say so instead of hanging at "Starting…".
       setTimeout(() => {
         if (!self.crossOriginIsolated && !preflightFailed) showFatal("coi");
       }, 5000);
@@ -275,8 +282,9 @@
     Module.setStatus("Downloading…");
     window.onerror = (msg) => {
       if (preflightFailed) return;   // keep the clearer preflight message
-      // The browser scrubs cross-origin script errors down to a bare "Script
-      // error." with no detail — almost always a file:// / not-served page.
+      // The browser scrubs cross-origin script errors
+      // down to a bare "Script error." with no detail,
+      // almost always a file:// or otherwise not-served page.
       // Replace that with something actionable.
       if (typeof msg === "string" && /^script error\.?$/i.test(msg.trim())) {
         showFatal("script");
