@@ -164,8 +164,9 @@ private:
 		size_t getbit_bytepos[5];
 		uint8_t getbit_bitmask[5];
 		char* RawData;
-		
-		LatchReader(ML_CommanderKeen123* p) : parent(p), RawData(NULL) {}
+		size_t RawDataSize;
+
+		LatchReader(ML_CommanderKeen123* p) : parent(p), RawData(NULL), RawDataSize(0) {}
 		~LatchReader() {
 			if(RawData) delete[] RawData;
 			RawData = NULL;
@@ -202,6 +203,11 @@ private:
 				getbit_bytepos[plane]++;
 			}
 			
+			// The plane offsets and tile counts come from the latch file,
+			// so a bad header can advance getbit_bytepos past RawData.
+			// Treat reads past the end as a zero bit instead of reading OOB.
+			if(getbit_bytepos[plane] >= RawDataSize)
+				return 0;
 			int byt = buf[getbit_bytepos[plane]];
 			
 			int retval = 0;
@@ -253,6 +259,11 @@ private:
 			LatchHeader.Num32Tiles = fgeti(headfile);
 			LatchHeader.Off32Tiles = fgetl(headfile);
 			LatchHeader.Num16Tiles = fgeti(headfile);
+			// Num16Tiles bounds the tiledata[MAX_TILES] decode and clear loops.
+			// Clamp it to the array;
+			// a negative short would otherwise make the clear loop write before it.
+			if(LatchHeader.Num16Tiles < 0) LatchHeader.Num16Tiles = 0;
+			if(LatchHeader.Num16Tiles > MAX_TILES) LatchHeader.Num16Tiles = MAX_TILES;
 			LatchHeader.Off16Tiles = fgetl(headfile);
 			LatchHeader.NumBitmaps = fgeti(headfile);
 			LatchHeader.OffBitmaps = fgetl(headfile);
@@ -373,7 +384,14 @@ private:
 			
 			// figure out how much RAM we'll need to read all 4 planes of
 			// latch data into memory.
-			size_t RawDataSize = (LatchHeader.LatchPlaneSize * 4);
+			// LatchPlaneSize comes from the latch file;
+			// reject absurd values so RawDataSize can't wrap or be huge.
+			if(LatchHeader.LatchPlaneSize < 0 || LatchHeader.LatchPlaneSize > (16 << 20)) {
+				errors << "latch_loadlatch(): implausible LatchPlaneSize " << LatchHeader.LatchPlaneSize << endl;
+				fclose(latchfile);
+				return 1;
+			}
+			RawDataSize = (size_t)LatchHeader.LatchPlaneSize * 4;
 			if(RawData) delete[] RawData;
 			RawData = new char[RawDataSize];
 			if (!RawData)
@@ -956,11 +974,15 @@ public:
 		{
 			for(Uint16 x=0;x<map.xsize;x++)
 			{
-				map.mapdata[x][y] = *data[index++];
+				// index derives from the map's own xsize/ysize/plane_size,
+				// so it can run past data.size().
+				// SafeVector returns NULL there, so guard the deref.
+				auto pd = data[index++];
+				map.mapdata[x][y] = pd ? *pd : 0;
 			}
 		}
-		
-		// copy the object layer into the map	
+
+		// copy the object layer into the map
 		// get index of plane 2, rounding up to the nearest 16 worde boundary (8 words)
 		index = roundup((HD_PLANES_START + (plane_size / 2)), 8);
 		
@@ -968,7 +990,8 @@ public:
 		{
 			for(Uint16 x=0;x<map.xsize;x++)
 			{
-				Uint16 t = *data[index++];
+				auto pd = data[index++];
+				Uint16 t = pd ? *pd : 0;
 				if (t==255)
 				{
 					//map_setstartpos(x, y);
@@ -1042,7 +1065,11 @@ public:
 private:
 	
 	void map_coat_border(int episode)
-	{		
+	{
+		// This writes rows/columns at ysize-1/-2 and xsize-1/-2,
+		// so a map smaller than 2x2 would index before the array.
+		if(map.xsize < 2 || map.ysize < 2)
+			return;
 		enum {
 			TILE_FELLOFFMAP		=	582,
 			TILE_FELLOFFMAP_EP3	=	0,
@@ -1196,6 +1223,9 @@ private:
 	
 	void sb_drawtile(SDL_Surface* dest, Uint32 x, Uint32 y, unsigned int t)
 	{
+		// t is a tile id taken from the map data, so it can be out of range.
+		if(t >= MAX_TILES)
+			return;
 		for(uint8_t dy = 0; dy < TILE_H; dy++)
 			for(uint8_t dx = 0; dx < TILE_W; dx++) {
 				PutPixel2x2(dest, (x + dx)*2, (y + dy)*2, getPaletteColor(tiledata[t][dy][dx]).get(dest->format));
@@ -1203,6 +1233,9 @@ private:
 	}
 	
 	char getPixelFlag(Uint32 t) {
+		// t is a tile id taken from the map data, so it can be out of range.
+		if(t >= MAX_TILES)
+			return PX_EMPTY;
 		char flag = tiles[t].solidceil ? PX_ROCK : (tiles[t].solidfall ? PX_DIRT : PX_EMPTY);
 		if(flag == PX_ROCK && (map.isworldmap || map.ismenumap))
 			flag = PX_DIRT; // otherwise we would have a lot of not-accessible areas
