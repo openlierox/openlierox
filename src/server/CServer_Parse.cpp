@@ -1103,16 +1103,19 @@ void GameServer::ParseGetChallenge(const SmartPointer<NetworkSocket>& tSocket, C
 		}
 	}
 
-	if (ChallengeToSet >= 0) {
+	// The loop above always selects a slot, so ChallengeToSet is >= 0 here.
+	// Guard anyway, so tChallenges[i] below can never be indexed out of
+	// bounds (with i == MAX_CHALLENGES) should that ever change.
+	if (ChallengeToSet < 0)
+		return;
 
-		// overwrite the oldest
-		tChallenges[ChallengeToSet].iNum = (rand() << 16) ^ rand();
-		tChallenges[ChallengeToSet].Address = adrFrom;
-		tChallenges[ChallengeToSet].fTime = tLX->currentTime;
-		tChallenges[ChallengeToSet].sClientVersion = client_version;
+	// overwrite the oldest
+	tChallenges[ChallengeToSet].iNum = (rand() << 16) ^ rand();
+	tChallenges[ChallengeToSet].Address = adrFrom;
+	tChallenges[ChallengeToSet].fTime = tLX->currentTime;
+	tChallenges[ChallengeToSet].sClientVersion = client_version;
 
-		i = ChallengeToSet;
-	}
+	i = ChallengeToSet;
 
 	// Send the challenge details back to the client
 	tSocket->setRemoteAddress(adrFrom);
