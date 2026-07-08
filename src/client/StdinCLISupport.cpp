@@ -1,7 +1,9 @@
-#include <SDL_thread.h>
+#include <thread>
+#include <system_error>
 #include "StdinCLISupport.h"
 #include "ThreadPool.h"
 #include "Mutex.h"
+#include "AuxLib.h" // setCurThreadName
 #include "OLXCommand.h"
 #include "Debug.h"
 #include "InputEvents.h"
@@ -120,6 +122,7 @@ bool linenoiseCompletionCallbackFunc(const std::string& buf, LinenoiseCompletion
 }
 
 int handleStdin(void*) {
+	setCurThreadName("stdin");
 	while(!linenoiseEnv.hadReadError) {
 		bool useHistory = false;
 		std::string buf;
@@ -143,7 +146,7 @@ int handleStdin(void*) {
 	return 0;
 }
 
-static SDL_Thread* stdinHandleThread = NULL;
+static std::thread stdinHandleThread;
 
 Result initStdinCLISupport() {
 	if(!isatty(STDIN_FILENO))
@@ -154,9 +157,14 @@ Result initStdinCLISupport() {
 
 	linenoiseSetCompletionCallback(linenoiseCompletionCallbackFunc);
 
-	stdinHandleThread = SDL_CreateThread(handleStdin, "stdin", NULL);
-	if(stdinHandleThread == NULL)
-		return "couldn't create thread";
+	// std::thread rather than SDL_CreateThread,
+	// so quitStdinCLISupport() can join it reliably at exit (see #995);
+	// the thread names itself via setCurThreadName() from inside.
+	try {
+		stdinHandleThread = std::thread(handleStdin, (void*)NULL);
+	} catch(const std::system_error& e) {
+		return std::string("couldn't create thread: ") + e.what();
+	}
 
 	hasStdinCLISupport = true;
 	return true;
@@ -164,15 +172,15 @@ Result initStdinCLISupport() {
 
 void quitStdinCLISupport() {
 	if(!hasStdinCLISupport) return;
-	if(!stdinHandleThread) return;
+	if(!stdinHandleThread.joinable()) return;
 
 	notes << "wait for StdinCLI quit" << endl;
 	{
 		Mutex::ScopedLock lock(stdoutMutex);
 		quit = true;
 	}
-	SDL_WaitThread(stdinHandleThread, NULL);
-	stdinHandleThread = NULL;
+	// A real join: it returns only once the thread has fully finished.
+	stdinHandleThread.join();
 	hasStdinCLISupport = false;
 }
 
