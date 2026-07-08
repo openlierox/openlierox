@@ -97,6 +97,10 @@ jobs:
 
           - Branch: \`${GITHUB_REF_NAME}\`
           - Commit: ${GITHUB_SHA}
+
+          **macOS:** this build is not notarized, so on first launch Gatekeeper warns that OpenLieroX is from an "unidentified developer".
+          It is safe; allow it once with \`xattr -cr /path/to/OpenLieroX.app\`, then open it normally.
+          See [the README](https://github.com/openlierox/openlierox#macos-first-run).
           EOF
           )"
 
