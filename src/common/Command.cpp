@@ -2285,8 +2285,8 @@ void Cmd_simStep::exec(CmdLineIntf* caller, const std::vector<std::string>& para
 	if(!game.manualStep) {
 		// From now on the simulation only advances when told to.
 		game.manualStep = true;
-		// Align the LX physics clock (~84 FPS) to the sim clock, so the first
-		// step does not run an extra sub-step depending on prior wall-clock timing.
+		// Align the LX physics clock (~84 FPS) to the sim clock,
+		// so the first step does not run an extra sub-step depending on prior wall-clock timing.
 		if(cClient) cClient->fLastSimulationTime = game.simulationAbsTime();
 	}
 	game.manualStepBudget += n;

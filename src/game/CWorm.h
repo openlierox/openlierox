@@ -191,8 +191,9 @@ protected:
 	CWormInputHandler* m_inputHandler;
 	bool            bPrepared;
 
-	// Test hook: when set, getInput() ignores the input handler (AI/keyboard)
-	// and applies this fixed input each frame, for deterministic physics tests.
+	// Test hook: when set,
+	// getInput() ignores the input handler (AI/keyboard) and applies this fixed input each frame,
+	// for deterministic physics tests.
 	bool            m_forceInput;
 	bool            m_forcedMove, m_forcedShoot, m_forcedJump, m_forcedCarve;
 

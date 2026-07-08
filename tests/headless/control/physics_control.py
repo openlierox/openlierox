@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """Control script for the deterministic physics tests.
 
-It sets up a single controlled worm and advances the simulation by an exact
-number of fixed frames, then reports the worm's state. The simulation uses a
-fixed timestep, and here it is driven frame by frame (``simStep``) with a fixed
-seed (``simSetSeed``) and forced input (``setWormInput``, so no non-deterministic
-bot AI runs), so the outcome is reproducible and a test can compare it against a
-golden value.
+It sets up a single controlled worm,
+advances the simulation by an exact number of fixed frames,
+then reports the worm's state.
+The simulation uses a fixed timestep,
+and here it is driven frame by frame (``simStep``)
+with a fixed seed (``simSetSeed``)
+and forced input (``setWormInput``, so no non-deterministic bot AI runs),
+so the outcome is reproducible and a test can compare it against a golden value.
 
 Environment variables:
 
@@ -46,8 +48,10 @@ def main():
         command('setvar %s "%s"' % (key, value))
     command("startlobby 23400")
 
-    # One bot, purely so there is a worm object to control; its AI never runs
-    # because we force its input below.
+    # A bot, purely as a worm object to control:
+    # a dedicated server cannot add a human worm (addHuman is refused in
+    # dedicated mode), and setWormInput below bypasses the bot AI entirely,
+    # so the worm never acts on its own.
     added = set()
     deadline = time.time() + 15
     while len(added) < 1 and time.time() < deadline:

@@ -1,17 +1,21 @@
 """Deterministic physics regression tests.
 
-These pin down exact physics behaviour so a refactor of the physics code can be
-checked to still behave as before. The simulation runs at a fixed timestep, and
-the control script drives it frame by frame (``simStep``) with a fixed seed and
-forced worm input, so the outcome is reproducible. We then assert it against a
-golden value.
+These pin down exact physics behaviour,
+so a refactor of the physics code can be checked to still behave as before.
+The simulation runs at a fixed timestep,
+and the control script drives it frame by frame (``simStep``)
+with a fixed seed and forced worm input,
+so the outcome is reproducible.
+We then assert it against a golden value.
 
-If a change to the physics alters the outcome, this fails. If the change is
-intended, update the golden below; the failure message prints the actual values.
+If a change to the physics alters the outcome, this fails.
+If the change is intended, update the golden below;
+the failure message prints the actual values.
 
-The tolerance is small but non-zero, to absorb floating-point differences across
-compilers/CPUs while still catching any real behaviour change (a real change
-moves the worm by far more than a fraction of a pixel over many frames).
+The tolerance is small but non-zero,
+to absorb floating-point differences across compilers/CPUs
+while still catching any real behaviour change
+(a real change moves the worm by far more than a fraction of a pixel over many frames).
 """
 
 import os

@@ -896,9 +896,9 @@ void Game::frameInner()
 				frameDt = TimeDiff(1);
 		}
 		
-		// In manual-step mode (test hook) the loop runs exactly manualStepBudget
-		// fixed frames instead of chasing the wall clock, so a test can advance
-		// the simulation by an exact number of frames.
+		// In manual-step mode (test hook) the loop runs exactly manualStepBudget fixed frames
+		// instead of chasing the wall clock,
+		// so a test can advance the simulation by an exact number of frames.
 		while(manualStep ? (manualStepBudget > 0) : (simulationTime < tLX->currentTime)) {
 
 			if(!manualStep && hasSeriousHighSimulationDelay()) {
