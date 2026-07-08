@@ -21,7 +21,7 @@ const char* GetGameName();
 const Version& GetGameVersion();
 
 // The full version string as produced by get_version_full.sh,
-// including the "+git.HASH" suffix (and a "-dirty" marker for a modified tree),
+// including the "+git.HASH" suffix (and a ".dirty" marker for a modified tree),
 // e.g. "20260616.4+git.b547037".
 // Shown verbatim wherever the version is displayed (window title, menu, crash reports):
 // it is the exact build string, not reconstructed through Version,

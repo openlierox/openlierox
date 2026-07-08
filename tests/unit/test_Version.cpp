@@ -35,14 +35,14 @@ void test_Version() {
 		CHECK(v.asString() == "OpenLieroX/20260708.1");
 	}
 
-	// A "-dirty" build marker (uncommitted tree, see functions.sh)
-	// is kept and round-trips:
-	// the hyphen lives in the metadata and is not parsed further.
+	// A ".dirty" build marker (uncommitted tree, see functions.sh)
+	// is kept and round-trips as an extra build-metadata identifier;
+	// the dots after '+' are not parsed as version components.
 	{
-		Version v("OpenLieroX/20260708.1+git.db202c4-dirty");
-		CHECK(v.buildmetadata == "git.db202c4-dirty");
+		Version v("OpenLieroX/20260708.1+git.db202c4.dirty");
+		CHECK(v.buildmetadata == "git.db202c4.dirty");
 		CHECK(v.subsubnum == 0);
-		CHECK(v.asString() == "OpenLieroX/20260708.1+git.db202c4-dirty");
+		CHECK(v.asString() == "OpenLieroX/20260708.1+git.db202c4.dirty");
 		CHECK(v == Version("OpenLieroX/20260708.1"));
 	}
 

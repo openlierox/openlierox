@@ -104,10 +104,11 @@ get_olx_version() {
 # get the full OLX version-string, i.e. get_olx_version() plus the git hash:
 #
 #   YYYYMMDD.N+git.HASH        e.g. 20260615.1+git.a6632ac
-#   YYYYMMDD.N+git.HASH-dirty  when the working tree has uncommitted changes
+#   YYYYMMDD.N+git.HASH.dirty  when the working tree has uncommitted changes
 #
 # where HASH is the 7-char hash of the HEAD commit.
-# The "-dirty" marker flags a build made from a modified tree,
+# The ".dirty" marker (a separate SemVer build-metadata identifier)
+# flags a build made from a modified tree,
 # so its hash alone does not identify the code.
 # Use this where the exact build provenance matters
 # (crash reports, the in-binary version).
@@ -123,7 +124,7 @@ get_olx_version_with_hash() {
 		# so unchanged files with new mtimes don't read as dirty.
 		git update-index -q --refresh >/dev/null 2>&1
 		_olx_dirty=""
-		git diff-index --quiet HEAD -- >/dev/null 2>&1 || _olx_dirty="-dirty"
+		git diff-index --quiet HEAD -- >/dev/null 2>&1 || _olx_dirty=".dirty"
 		echo "${_olx_ver}+git.${_olx_hash}${_olx_dirty}"
 		return 0
 	fi
