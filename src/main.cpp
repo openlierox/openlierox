@@ -820,7 +820,13 @@ static void ShutdownLoading()  {
 void ShutdownLieroX()
 {
 	notes << "Shutting me down..." << endl;
-	
+
+	// Free the loaded game content while all subsystems are still up
+	// (see Game::uninit), so it is not torn down in ~Game at exit.
+	// Skip on a restart: the engine keeps running and reuses game.
+	if(!bRestartGameAfterQuit)
+		game.uninit();
+
 	// Options
 	// Save already here in case some other method crashes
 	if(!bDedicated) // only save if not in dedicated mode

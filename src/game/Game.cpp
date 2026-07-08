@@ -91,6 +91,17 @@ void Game::init() {
 	prepareMenu();
 }
 
+void Game::uninit() {
+	// Free the loaded content now (via the SmartPointers, so exactly once),
+	// while graphics/sound/cache are still up.
+	// Otherwise ~Game frees it at exit during static destruction,
+	// where those subsystems are already gone and it crashes.
+	m_gameMod = NULL;
+	m_gameMap = NULL;
+	m_gameMode = NULL;
+	m_wpnRest = NULL;
+}
+
 void Game::startServer(bool localGame) {
 	m_isServer = true;
 	m_isLocalGame = localGame;
