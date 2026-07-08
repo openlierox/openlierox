@@ -24,7 +24,8 @@ const Version& GetGameVersion();
 // including the "+git.HASH" suffix (and a "-dirty" marker for a modified tree),
 // e.g. "20260616.4+git.b547037".
 // Shown verbatim wherever the version is displayed (window title, menu, crash reports):
-// it is the exact build string, not reconstructed through Version, so nothing is lost.
+// it is the exact build string, not reconstructed through Version,
+// so nothing is lost.
 const std::string& GetGameVersionStringFull();
 
 
@@ -49,7 +50,9 @@ struct Version {
 		RT_UNKNOWN, RT_ALPHA, RT_BETA, RT_RC, RT_NORMAL
 	} releasetype;
 	std::string gamename; // OpenLieroX
-	std::string buildmetadata; // SemVer build metadata after '+', e.g. "git.db202c4"; provenance only, ignored when comparing
+	// SemVer build metadata after '+', e.g. "git.db202c4";
+	// provenance only, ignored when comparing.
+	std::string buildmetadata;
 
 };
 

@@ -6,11 +6,12 @@
 #include "Version.h"
 
 void test_Version() {
-	// The SemVer "+git.HASH" build-metadata suffix is kept as provenance but
-	// must not leak into the parsed version. Before the fix
-	// "20260708.1+git.db202c4" parsed as num.subnum.subsubnum = 20260708.1.202
-	// (the "202" from the hash), so a hashed build compared as a different
-	// version than a clean build.
+	// The SemVer "+git.HASH" build-metadata suffix is kept as provenance,
+	// but must not leak into the parsed version.
+	// Before the fix, "20260708.1+git.db202c4" parsed
+	// as num.subnum.subsubnum = 20260708.1.202 (the "202" from the hash),
+	// so a hashed build compared as a different version
+	// than a clean build.
 	{
 		Version v("OpenLieroX/20260708.1+git.db202c4");
 		CHECK(v.gamename == "OpenLieroX");
@@ -34,8 +35,9 @@ void test_Version() {
 		CHECK(v.asString() == "OpenLieroX/20260708.1");
 	}
 
-	// A "-dirty" build marker (uncommitted tree, see functions.sh) is kept and
-	// round-trips: the hyphen lives in the metadata and is not parsed further.
+	// A "-dirty" build marker (uncommitted tree, see functions.sh)
+	// is kept and round-trips:
+	// the hyphen lives in the metadata and is not parsed further.
 	{
 		Version v("OpenLieroX/20260708.1+git.db202c4-dirty");
 		CHECK(v.buildmetadata == "git.db202c4-dirty");

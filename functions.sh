@@ -106,18 +106,21 @@ get_olx_version() {
 #   YYYYMMDD.N+git.HASH        e.g. 20260615.1+git.a6632ac
 #   YYYYMMDD.N+git.HASH-dirty  when the working tree has uncommitted changes
 #
-# where HASH is the 7-char hash of the HEAD commit. The "-dirty" marker flags a
-# build made from a modified tree, so its hash alone does not identify the code.
+# where HASH is the 7-char hash of the HEAD commit.
+# The "-dirty" marker flags a build made from a modified tree,
+# so its hash alone does not identify the code.
 # Use this where the exact build provenance matters
-# (crash reports, the in-binary version). When git is unavailable it degrades to
-# plain get_olx_version(); if that can't determine a version either, the failure
-# propagates (non-zero return).
+# (crash reports, the in-binary version).
+# When git is unavailable it degrades to plain get_olx_version();
+# if that can't determine a version either,
+# the failure propagates (non-zero return).
 get_olx_version_with_hash() {
 	_olx_ver="$(get_olx_version)" || return 1
 	if command -v git >/dev/null 2>&1 && git rev-parse --git-dir >/dev/null 2>&1; then
 		_olx_hash="$(git rev-parse --short=7 HEAD)"
-		# Only tracked changes count as dirty (like `git describe --dirty`);
-		# refresh the stat cache first to avoid false positives from mtimes.
+		# Only tracked changes count as dirty, like `git describe --dirty`;
+		# refresh the stat cache first,
+		# so unchanged files with new mtimes don't read as dirty.
 		git update-index -q --refresh >/dev/null 2>&1
 		_olx_dirty=""
 		git diff-index --quiet HEAD -- >/dev/null 2>&1 || _olx_dirty="-dirty"
