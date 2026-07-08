@@ -14,14 +14,13 @@
 #include <set>
 #include <map>
 #include <string>
+#include <mutex>
+#include <condition_variable>
 #include <boost/function.hpp>
 #include "util/Result.h"
 #include "ThreadId.h"
 #include "SmartPointer.h"
 
-struct SDL_mutex;
-struct SDL_cond;
-struct SDL_Thread;
 class ThreadPool;
 typedef Result (*ThreadFunc) (void*);
 struct CmdLineIntf;
@@ -50,20 +49,19 @@ struct ThreadWorker;
 
 class ThreadPool {
 private:
-	SDL_mutex* mutex;
-	SDL_cond* awakeThread;
-	SDL_cond* threadStartedWork;
-	SDL_cond* threadStatusChanged; // a worker became idle (for waitAll)
-	SDL_cond* taskFinished;        // a task finished (for wait)
+	mutable std::mutex mutex;
+	std::condition_variable awakeThread;
+	std::condition_variable threadStartedWork;
+	std::condition_variable threadStatusChanged; // a worker became idle (for waitAll)
+	std::condition_variable taskFinished;        // a task finished (for wait)
 	Action* nextAction; std::string nextName;
 	SmartPointer<ThreadPoolItem> nextTask;
 	bool quitting;
-	int aliveWorkers; // worker threads that have entered threadWrapper and not yet returned
 	std::set<ThreadWorker*> availableThreads;
 	std::set<ThreadWorker*> usedThreads;
 	void prepareNewThread();
-	static int threadWrapper(void* param);
-	SDL_mutex* startMutex;
+	static void threadWrapper(ThreadWorker* w);
+	std::mutex startMutex;
 public:
 	ThreadPool(unsigned int size = 5);
 	~ThreadPool();
