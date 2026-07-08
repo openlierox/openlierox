@@ -3,10 +3,11 @@
 # Generates a Version_generated.h that defines LX_VERSION from the output of
 # get_version_full.sh (see functions.sh:get_olx_version_with_hash — the
 # YYYYMMDD.N+git.HASH scheme). The binary embeds the full version (with hash)
-# for provenance/crash reports; the menu and window title display the short
-# version via GetGameVersionShortString(). src/common/Version.cpp is the only
-# translation unit that includes Version_generated.h, so bumping the version
-# recompiles just that one file.
+# for provenance/crash reports,
+# and the menu and window title show it too via GetGameVersionStringFull().
+# src/common/Version.cpp is the only translation unit
+# that includes Version_generated.h,
+# so bumping the version recompiles just that one file.
 #
 # Without this Version.cpp has no LX_VERSION and the build fails (#error)
 # rather than baking in a bogus version.

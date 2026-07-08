@@ -34,6 +34,16 @@ void test_Version() {
 		CHECK(v.asString() == "OpenLieroX/20260708.1");
 	}
 
+	// A "-dirty" build marker (uncommitted tree, see functions.sh) is kept and
+	// round-trips: the hyphen lives in the metadata and is not parsed further.
+	{
+		Version v("OpenLieroX/20260708.1+git.db202c4-dirty");
+		CHECK(v.buildmetadata == "git.db202c4-dirty");
+		CHECK(v.subsubnum == 0);
+		CHECK(v.asString() == "OpenLieroX/20260708.1+git.db202c4-dirty");
+		CHECK(v == Version("OpenLieroX/20260708.1"));
+	}
+
 	// A classic beta version still parses as before.
 	{
 		Version v("OpenLieroX/0.58_beta9");
