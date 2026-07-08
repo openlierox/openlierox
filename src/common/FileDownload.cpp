@@ -64,6 +64,18 @@ void CHttpDownloader::Start(const std::string& filename, const std::string& dest
 		return;
 	}
 
+	// filename can come straight from the server
+	// (e.g. the mod path from ParseUpdateLobbyGame)
+	// and is used below to build the local destination path.
+	// Reject anything that could escape the download directory
+	// (".." , absolute paths, and so on),
+	// the same validation the UDP downloader already applies.
+	if (!CUdpFileDownloader::isPathValid(filename))  {
+		Unlock();
+		SetDlError(FILEDL_ERROR_NO_FILE);
+		return;
+	}
+
 	if (dest_dir.size() == 0)  {
 		Unlock();
 		SetDlError(FILEDL_ERROR_NO_DEST);
