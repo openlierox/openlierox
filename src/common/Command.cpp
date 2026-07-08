@@ -2259,6 +2259,55 @@ void Cmd_getGameState::exec(CmdLineIntf* caller, const std::vector<std::string>&
 }
 
 
+// Test hooks for deterministic physics tests (see tests/headless/test_physics.py).
+
+COMMAND(getFrame, "get the current simulation frame (test hook)", "", 0, 0);
+void Cmd_getFrame::exec(CmdLineIntf* caller, const std::vector<std::string>& params) {
+	caller->pushReturnArg(to_string(game.serverFrame));
+}
+
+COMMAND(simSetSeed, "seed the random number generator (test hook)", "seed", 1, 1);
+void Cmd_simSetSeed::exec(CmdLineIntf* caller, const std::vector<std::string>& params) {
+	bool fail = false;
+	int seed = from_string<int>(params[0], fail);
+	if(fail) { printUsage(caller); return; }
+	srand((unsigned int)seed);
+}
+
+COMMAND(simStep, "advance the simulation by N fixed frames (test hook)", "[n]", 0, 1);
+void Cmd_simStep::exec(CmdLineIntf* caller, const std::vector<std::string>& params) {
+	int n = 1;
+	if(params.size() > 0) {
+		bool fail = false;
+		n = from_string<int>(params[0], fail);
+		if(fail || n < 0) { printUsage(caller); return; }
+	}
+	if(!game.manualStep) {
+		// From now on the simulation only advances when told to.
+		game.manualStep = true;
+		// Align the LX physics clock (~84 FPS) to the sim clock, so the first
+		// step does not run an extra sub-step depending on prior wall-clock timing.
+		if(cClient) cClient->fLastSimulationTime = game.simulationAbsTime();
+	}
+	game.manualStepBudget += n;
+}
+
+COMMAND(setWormInput, "force a worm's per-frame input (test hook)", "id move shoot jump carve", 5, 5);
+void Cmd_setWormInput::exec(CmdLineIntf* caller, const std::vector<std::string>& params) {
+	bool fail = false;
+	int id = from_string<int>(params[0], fail);
+	if(fail) { printUsage(caller); return; }
+	CWorm* w = CheckWorm(caller, id, name);
+	if(!w) return;
+	bool move  = from_string<bool>(params[1], fail);
+	bool shoot = from_string<bool>(params[2], fail);
+	bool jump  = from_string<bool>(params[3], fail);
+	bool carve = from_string<bool>(params[4], fail);
+	if(fail) { printUsage(caller); return; }
+	w->setForcedInput(move, shoot, jump, carve);
+}
+
+
 COMMAND(dumpGameState, "dump game state", "", 0, 0);
 void Cmd_dumpGameState::exec(CmdLineIntf* caller, const std::vector<std::string>& params) {
 	caller->writeMsg("GameState: " + Game::StateAsStr(game.state), CNC_DEV);

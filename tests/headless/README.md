@@ -8,6 +8,8 @@ and run on a bare CI runner.
 - `test_network.py` — networked play between instances.
 - `test_gameplay.py` — bots play a real round (combat, death, respawn),
   and the in-game state (health, kills, damage) syncs to a connected client.
+- `test_physics.py` — deterministic, frame-exact physics regression
+  (drives the fixed-timestep sim frame by frame and checks a golden value).
 - `harness.py`, `conftest.py`, `control/` —
   helpers plus the Python 3 control scripts that drive each instance.
 

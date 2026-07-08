@@ -193,6 +193,7 @@ CWorm::CWorm() :
 
 	// set all pointers to NULL
 	m_inputHandler = NULL;
+	m_forceInput = false;
 	cOwner = NULL;
 	m_type = NULL;
 	m_node = NULL;
@@ -463,12 +464,30 @@ void CWorm::getInput() {
 		return;
 	}
 	
+	if(m_forceInput) {
+		// Test hook: apply the fixed input instead of running the handler.
+		worm_state_t& ws = tState.write();
+		ws.bMove = m_forcedMove;
+		ws.bShoot = m_forcedShoot;
+		ws.bJump = m_forcedJump;
+		ws.bCarve = m_forcedCarve;
+		return;
+	}
+
 	if(!m_inputHandler) {
 		warnings << "CWorm::getInput: input handler not set for worm " << getName() << ", cannot get input" << endl;
 		return;
 	}
-	
+
 	m_inputHandler->getInput();
+}
+
+void CWorm::setForcedInput(bool move, bool shoot, bool jump, bool carve) {
+	m_forceInput = true;
+	m_forcedMove = move;
+	m_forcedShoot = shoot;
+	m_forcedJump = jump;
+	m_forcedCarve = carve;
 }
 
 void CWorm::clearInput() {

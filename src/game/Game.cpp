@@ -80,6 +80,8 @@ Game::Game() {
 	thisRef.objId = 1;
 	m_isServer = false;
 	m_isLocalGame = false;
+	manualStep = false;
+	manualStepBudget = 0;
 	m_wpnRest = new CWpnRest();
 	gameStateUpdates = new GameStateUpdates;
 }
@@ -894,9 +896,12 @@ void Game::frameInner()
 				frameDt = TimeDiff(1);
 		}
 		
-		while(simulationTime < tLX->currentTime) {
+		// In manual-step mode (test hook) the loop runs exactly manualStepBudget
+		// fixed frames instead of chasing the wall clock, so a test can advance
+		// the simulation by an exact number of frames.
+		while(manualStep ? (manualStepBudget > 0) : (simulationTime < tLX->currentTime)) {
 
-			if(hasSeriousHighSimulationDelay()) {
+			if(!manualStep && hasSeriousHighSimulationDelay()) {
 				TimeDiff simDelay = simulationDelay();
 				if(simDelay > 0.5f)
 					warnings << "deltatime " << simDelay.seconds() << " is too high" << endl;
@@ -932,6 +937,7 @@ void Game::frameInner()
 			if(isServer())
 				cServer->Frame();
 
+			if(manualStep) manualStepBudget--;
 			simulationTime += frameDt;
 		}
 		tLX->fDeltaTime = tLX->fRealDeltaTime = curDeltaTime;
