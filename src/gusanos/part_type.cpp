@@ -178,10 +178,19 @@ PartType::~PartType()
 void PartType::touch()
 {
 #ifndef DEDICATED_ONLY
+	// distort_size and light_size come from the mod,
+	// which is downloaded from the server and thus untrusted.
+	// Their products (width*height*4 and width*2) are computed in int
+	// and overflow for huge or negative values,
+	// which would under-size the buffers the loops below write into.
+	// Reject implausible sizes.
+	const int MaxGenSize = 4096;
 	if(!distortion && !distortionGen.empty())
 	{
 		LuaReference f = distortionGen.get();
-		if(f.isSet(luaIngame))
+		if(f.isSet(luaIngame)
+		   && distortionSize.x >= 0 && distortionSize.x <= MaxGenSize
+		   && distortionSize.y >= 0 && distortionSize.y <= MaxGenSize)
 		{
 			DistortionMap* d = new DistortionMap;
 			int width = distortionSize.x;
@@ -214,12 +223,15 @@ void PartType::touch()
 	if(!lightHax && !lightGen.empty())
 	{
 		LuaReference f = lightGen.get();
-		if(f.isSet(luaIngame))
+		if(f.isSet(luaIngame)
+		   && lightSize.x >= 0 && lightSize.x <= MaxGenSize
+		   && lightSize.y >= 0 && lightSize.y <= MaxGenSize)
 		{
 			int width = lightSize.x;
 			int height = lightSize.y;
 			
 			ALLEGRO_BITMAP* l = create_bitmap_ex(8, width*2, height*2);
+			if(!l) return; // allocation failed; this is the last effect, so just bail
 			
 			int hwidth = width / 2;
 			int hheight = height / 2;
