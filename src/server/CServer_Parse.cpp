@@ -1802,14 +1802,6 @@ void GameServer::ParseQuery(const SmartPointer<NetworkSocket>& tSocket, CBytestr
 	bytestr.writeInt(-1, 4);
 	bytestr.writeString("lx::queryreturn");
 
-	// Get Port
-	size_t pos = ip.rfind(':');
-	if (pos != std::string::npos)
-		ip.substr(pos);
-	
-	//if(ip == "23401")
-	//	bytestr.writeString(OldLxCompatibleString(sName+" (private)")); // Not used anyway
-	//else
 	bytestr.writeString(OldLxCompatibleString(tLXOptions->sServerName));
 	bytestr.writeByte(game.worms()->size());
 	bytestr.writeByte(tLXOptions->iMaxPlayers);
