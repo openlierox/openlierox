@@ -78,13 +78,24 @@ PYEOF
 fi
 
 # boost-hdr: symlink to whatever boost headers the host system has.
+# Linux keeps them under /usr/include; macOS Homebrew puts them in its prefix.
 if [ ! -e boost-hdr/boost ]; then
     mkdir -p boost-hdr
-    if [ -d /usr/include/boost ]; then
-        ln -sfn /usr/include/boost boost-hdr/boost
-        echo "boost-hdr -> /usr/include/boost"
+    boost_inc=""
+    for cand in \
+        /usr/include/boost \
+        "$(brew --prefix boost 2>/dev/null)/include/boost" \
+        /opt/homebrew/include/boost \
+        /usr/local/include/boost
+    do
+        if [ -d "$cand" ]; then boost_inc="$cand"; break; fi
+    done
+    if [ -n "$boost_inc" ]; then
+        ln -sfn "$boost_inc" boost-hdr/boost
+        echo "boost-hdr -> $boost_inc"
     else
-        echo "WARNING: /usr/include/boost not found. Install libboost-dev." >&2
+        echo "WARNING: boost headers not found." >&2
+        echo "         Install libboost-dev (Linux) or 'brew install boost' (macOS)." >&2
     fi
 fi
 
