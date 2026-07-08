@@ -59,24 +59,22 @@ def main():
     # Optional bots, so a round can actually be played out with no human input.
     bots = int(os.environ.get("OLX_BOTS", "0"))
     if bots > 0:
-        # addBots needs the server's own local client, which is not ready the
-        # instant the lobby comes up: called too early it logs
-        # "localClient not found" and silently adds nothing. So wait for the
-        # lobby, then add the bots and confirm they actually appeared
-        # (getComputerWormList counts only bots), retrying while the local
-        # client is still coming up. Give up loudly rather than starting a
-        # broken round.
+        # addBots adds nothing ("localClient not found") if the server's own
+        # local client is not ready yet, and it returns the ids of the bots it
+        # actually added (empty on failure). So retry until they are all in,
+        # but always ask only for the ones still missing -- that way a retry
+        # can never add too many, regardless of any delay. Give up loudly
+        # rather than starting a broken round.
+        added = set()
         deadline = time.time() + 15
-        while time.time() < deadline:
-            if game_state() == "Lobby" and len(command("getComputerWormList")) < bots:
-                command("addBots %d" % bots)
-            if len(command("getComputerWormList")) >= bots:
-                break
-            time.sleep(0.3)
-        joined = len(command("getComputerWormList"))
-        if joined < bots:
+        while len(added) < bots and time.time() < deadline:
+            if game_state() == "Lobby":
+                added.update(command("addBots %d" % (bots - len(added))))
+            if len(added) < bots:
+                time.sleep(0.3)
+        if len(added) < bots:
             emit("SERVER_ERROR only %d/%d bots joined (state=%s)"
-                 % (joined, bots, game_state()))
+                 % (len(added), bots, game_state()))
             raise SystemExit("could not add %d bots" % bots)
         emit("SERVER_ADDBOTS %d" % bots)
 
