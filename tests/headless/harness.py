@@ -15,6 +15,7 @@ in each instance's combined output log.
 """
 
 import os
+import signal
 import subprocess
 import time
 
@@ -75,6 +76,11 @@ class OlxInstance:
         self.proc = subprocess.Popen(
             args, cwd=GAMEDIR, env=env,
             stdout=self._log_file, stderr=subprocess.STDOUT,
+            # Own session/process group, so stop() can reap the whole tree:
+            # OLX forks a child copy of itself, and killing only the tracked
+            # pid would strand that child as a launchd-orphaned dedicated
+            # server -- which, under OLX_FORCE_LOOPBACK, busy-spins forever.
+            start_new_session=True,
         )
         return self
 
@@ -108,7 +114,12 @@ class OlxInstance:
             # SIGKILL, not SIGTERM:
             # OLX's shutdown path is slow and can trip its own crash handler,
             # which only adds noise to the log.
-            self.proc.kill()
+            # Signal the whole process group (see start_new_session in start),
+            # so OLX's forked child is reaped too instead of being orphaned.
+            try:
+                os.killpg(self.proc.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
             try:
                 self.proc.wait(timeout=10)
             except subprocess.TimeoutExpired:
