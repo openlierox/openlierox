@@ -109,6 +109,8 @@ static bool Menu_InitSockets() {
 
 menu_t::menu_t() : cSkin(CGameSkin::WormSkin(), true) {}
 
+static void Menu_DrawScreenOverlay(SDL_Surface* screen); // registered in Menu_Initialize
+
 ///////////////////
 // Initialize the menu system
 bool Menu_Initialize()
@@ -142,6 +144,9 @@ bool Menu_Initialize()
 	tMenu->bmpMainBack_common = LoadGameImage("data/frontend/background_common.png");
 	if (!tMenu->bmpMainBack_common.get())
 		tMenu->bmpMainBack_common = tMenu->bmpMainBack_wob;
+
+	// Draw the task-status bar and FPS in screen space (full display width).
+	VideoPostProcessor::setScreenOverlay(&Menu_DrawScreenOverlay);
 
 
 	tMenu->bmpBuffer = gfxCreateSurface(640,480);
@@ -253,6 +258,24 @@ void Menu_SetSkipStart(int s)
     bSkipStart = s;
 }
 	
+// Draw the task-status bar and FPS full width,
+// on the main thread (the VideoPostProcessor screen overlay).
+// Uses cOverlayFont, not cFont,
+// so it doesn't race the gameloop's font drawing (CFont is not thread-safe).
+static void Menu_DrawScreenOverlay(SDL_Surface* screen) {
+	if(!screen || !tLX) return;
+	if(game.state >= Game::S_Preparing) return; // menus only, as before
+
+	if(taskManager)
+		taskManager->renderTasksStatus(screen, tLX->cOverlayFont);
+
+#ifdef DEBUG
+	if(tLX->fDeltaTime != TimeDiff())
+		tLX->cOverlayFont.Draw(screen, 0, 0, tLX->clWhite,
+			"FPS: " + itoa((int)(1.0f/tLX->fDeltaTime.seconds())));
+#endif
+}
+
 void Menu_Frame() {
 	if(bDedicated) {
 		ServerList::get()->process();
@@ -268,6 +291,10 @@ void Menu_Frame() {
 	// Menus are authored for menuWidth and presented centered on the screen.
 	// (Overwritten by the gameplay draw, see CClient::Draw.)
 	VideoPostProcessor::get()->setDisplayScreenWidth(VideoPostProcessor::menuWidth);
+
+	// Keep the side bars in sync with this menu's background.
+	// (buildSideGaps only rebuilds when the edges change; a game keeps the last.)
+	VideoPostProcessor::get()->buildSideGaps(tMenu->bmpBuffer);
 
 	// Check if user pressed screenshot key
 	if (tLX->cTakeScreenshot.isDownOnce())  {
@@ -319,16 +346,8 @@ void Menu_Frame() {
 	if(tMenu->iMenuType != MNU_NETWORK)
 		ServerList::get()->process();
 	
-	// DEBUG: show FPS
-#ifdef DEBUG
-	if(tLX->fDeltaTime != TimeDiff()) {
-		Menu_redrawBufferRect(0, 0, 100, 20);
-		tLX->cFont.Draw(VideoPostProcessor::videoSurface().get(), 0, 0, tLX->clWhite, "FPS: " + itoa((int)(1.0f/tLX->fDeltaTime.seconds())));
-	}
-#endif
+	// Task-status bar and FPS are drawn full width by Menu_DrawScreenOverlay, not here.
 
-	taskManager->renderTasksStatus(VideoPostProcessor::videoSurface().get());
-	
 	if (!tMenu->bForbidConsole)  {
 		Con_Process(tLX->fDeltaTime);
 		Con_Draw(VideoPostProcessor::videoSurface().get());
@@ -1509,7 +1528,7 @@ void Menu_Current_Shutdown() {
 
 
 
-void TaskManager::renderTasksStatus(SDL_Surface* s) {
+void TaskManager::renderTasksStatus(SDL_Surface* s, CFont& font) {
 	std::list<std::string> statusTxts;
 	
 	static const unsigned int MaxEntries = 4;
@@ -1529,12 +1548,12 @@ void TaskManager::renderTasksStatus(SDL_Surface* s) {
 		static const int StatusLoadingLeft = 5;
 		static const int StatusLeft = 30;
 		static const int StatusTop = 5;
-		const int StatusHeight = tLX->cFont.GetHeight() + 5;
+		const int StatusHeight = font.GetHeight() + 5;
 		DrawRectFill(s, 0, 0, s->w, StatusTop + StatusHeight * (int)statusTxts.size(), Color(42,73,145,180));
-		
+
 		int y = StatusTop;
 		for(std::list<std::string>::iterator i = statusTxts.begin(); i != statusTxts.end(); ++i) {
-			tLX->cFont.Draw(s, StatusLeft, y, Color(255,255,255), *i);
+			font.Draw(s, StatusLeft, y, Color(255,255,255), *i);
 			y += StatusHeight;
 		}
 	

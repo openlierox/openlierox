@@ -333,6 +333,11 @@ bool LoadFonts()  {
 	if(!tLX->cOutlineFont.Load("data/gfx/out_font.png",true))
 		return false;
 
+	// Overlay font: a second copy for the main-thread overlay (see LieroX.h).
+	tLX->cOverlayFont.SetVSpacing(0);
+	if(!tLX->cOverlayFont.Load("data/gfx/font.png",true))
+		return false;
+
 	return true;
 }
 
@@ -345,6 +350,7 @@ void ShutdownGraphics()
 	if (tLX)  {
 		tLX->cFont.Shutdown();
 		tLX->cOutlineFont.Shutdown();
+		tLX->cOverlayFont.Shutdown();
 	}
 }
 

@@ -17,6 +17,7 @@
 
 #include "FindFile.h"
 #include "InputEvents.h"
+#include "AuxLib.h"
 #include "GfxPrimitives.h"
 #include "ConfigHandler.h"
 #include "Cursor.h"
@@ -83,6 +84,8 @@ bool InitializeCursors()
 // Shutdown the cursors
 void ShutdownCursors()
 {
+	tCurrentCursor = NULL; // else it dangles past the free below (e.g. composePresentFrame)
+
 	// Free all the cursor structures
 	for (byte i=0; i<CURSOR_COUNT; i++)
 		if (tCursors[i])  {
@@ -93,6 +96,7 @@ void ShutdownCursors()
 	if (tAnimTimer)  {
 		tAnimTimer->stop();
 		delete tAnimTimer;
+		tAnimTimer = NULL;
 	}
 }
 
@@ -124,8 +128,19 @@ void SetGameCursor(CCursor *c)
 /////////////////
 // Draw game cursor
 void DrawCursor(SDL_Surface * dst) {
+	// On centered frames composePresentFrame() draws the cursor (see there),
+	// so skip the in-band bake here to keep the gap-filling edge columns clean.
+	if (VideoPostProcessor::get()->displayScreenOffsetX() > 0)
+		return;
 	if (tCurrentCursor)
 		tCurrentCursor->Draw(dst);
+}
+
+/////////////////
+// Draw game cursor at an explicit position
+void DrawCursorAt(SDL_Surface * dst, int x, int y) {
+	if (tCurrentCursor)
+		tCurrentCursor->DrawAdv(dst, x, y);
 }
 
 ///////////////////
@@ -234,6 +249,14 @@ CCursor::~CCursor()
 // Draw the cursor
 void CCursor::Draw(SDL_Surface * dst)
 {
+	mouse_t *Mouse = GetMouse();
+	DrawAdv(dst, Mouse->X, Mouse->Y);
+}
+
+//////////////////
+// Draw the cursor at an explicit position
+void CCursor::DrawAdv(SDL_Surface * dst, int mouseX, int mouseY)
+{
 	// Check
 	if (!dst || !bmpCursor.get())
 		return;
@@ -244,21 +267,21 @@ void CCursor::Draw(SDL_Surface * dst)
 	if (Mouse->FirstDown)  // Mouse down
 	{
 		if (cDown)  {
-			cDown->Draw(dst);
+			cDown->DrawAdv(dst, mouseX, mouseY);
 			return;
 		}
 	}
 	else if (Mouse->Up) // Mouse up
 	{
 		if (cUp)  {
-			cUp->Draw(dst);
+			cUp->DrawAdv(dst, mouseX, mouseY);
 			return;
 		}
 	}
 
 	// Image position
-	int X = Mouse->X;
-	int Y = Mouse->Y;
+	int X = mouseX;
+	int Y = mouseY;
 
 	// Change the position depending on the type
 	switch (iType)  {

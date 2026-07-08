@@ -75,17 +75,17 @@ class VideoPostProcessor {
 protected:
 	SmartPointer<SDL_Window> m_window;
 	SmartPointer<SDL_Renderer> m_renderer;
-	SmartPointer<SDL_Texture> m_videoTexture;
-	SmartPointer<SDL_Surface> m_videoSurface;
-	SmartPointer<SDL_Surface> m_videoBufferSurface;
+	SmartPointer<SDL_Texture> m_videoTexture;         // GPU texture we present
+	// Double-buffered across the thread boundary:
+	// the gameloop draws one while the main thread presents the other (flipBuffers).
+	SmartPointer<SDL_Surface> m_videoSurface;         // draw target (front)
+	SmartPointer<SDL_Surface> m_videoBufferSurface;   // committed frame (back)
+	SmartPointer<SDL_Surface> m_videoPresentSurface;  // composed full frame; main-thread only, no handoff (composePresentFrame)
+	SmartPointer<SDL_Surface> m_leftGap, m_rightGap; // precomputed side-gap fills (buildSideGaps)
+	Uint32 m_sideGapKey = 0; // change key: rebuild the gaps only when it changes
 	int m_screenWidth = 640;
-	// The width the current frame's content is laid out for. Either the full
-	// screenWidth() (local games) or the base menuWidth / 640 (menus and
-	// network games, so a wider screen gives no gameplay advantage). When it is
-	// narrower than screenWidth() the content is drawn into the left columns
-	// and presented horizontally centered, with black bars on the sides.
-	// Set per-frame by the menu / gameplay draw. See render() and the mouse
-	// handling, and displayScreenWidth()/displayScreenOffsetX() below.
+	// Width the current frame is laid out for: screenWidth() (local),
+	// or menuWidth (menus/net, composed centered). Set per-frame.
 	int m_displayScreenWidth = 640;
 	// Snapshot of m_displayScreenWidth taken when a drawn frame is committed
 	// (flipBuffers, under the video mutex) and handed to render() via process(),
@@ -97,7 +97,10 @@ protected:
 	int m_committedDisplayScreenWidth = 640; // flipBuffers writes, process reads (both under mutex)
 	int m_renderDisplayScreenWidth = 640;    // main-thread only: process writes, render reads
 	static VideoPostProcessor instance;
-	
+
+	// Build m_videoPresentSurface from the drawn frame. Main thread, from process().
+	static void composePresentFrame();
+
 public:
 	// IMPORTANT: Don't call this while anyone else calls/accesses anything else here.
 	static void flipBuffers();
@@ -115,6 +118,17 @@ public:
 
 	bool initWindow();
 	bool resetVideo(); // this is called from SetVideoMode
+
+	// Precompute the side-gap fills from a menuWidth-wide theme background.
+	void buildSideGaps(const SmartPointer<SDL_Surface>& bg);
+
+	// Hook to draw screen-space overlays (task bar, FPS) onto the full-width frame.
+	// Runs on the main thread from composePresentFrame (see cOverlayFont).
+	typedef void (*ScreenOverlayFn)(SDL_Surface* screen);
+	static void setScreenOverlay(ScreenOverlayFn fn) { screenOverlay = fn; }
+private:
+	static ScreenOverlayFn screenOverlay;
+public:
 	
 	int screenWidth() const { return m_screenWidth; }
 	int screenHeight() const { return 480; }

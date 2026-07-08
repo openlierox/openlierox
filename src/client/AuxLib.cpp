@@ -68,6 +68,7 @@
 #include "GfxPrimitives.h"
 #include "FindFile.h"
 #include "InputEvents.h"
+#include "Cursor.h"
 #include "StringUtils.h"
 #include "sound/SoundsBase.h"
 #include "Version.h"
@@ -344,6 +345,7 @@ void ProcessScreenshots()
 // ---------------- VideoPostProcessor ---------------------------------------------------------
 
 VideoPostProcessor VideoPostProcessor::instance;
+VideoPostProcessor::ScreenOverlayFn VideoPostProcessor::screenOverlay = NULL;
 
 
 bool VideoPostProcessor::initWindow() {
@@ -641,7 +643,16 @@ bool VideoPostProcessor::resetVideo() {
 			return false;
 		}
 	}
-	
+
+	// The frame we present (composePresentFrame); allocated once.
+	if(!m_videoPresentSurface.get()) {
+		m_videoPresentSurface = GetCopiedImage(m_videoSurface);
+		if(!m_videoPresentSurface.get()) {
+			errors << "failed to init video present surface: " << SDL_GetError() << endl;
+			return false;
+		}
+	}
+
 	return true;
 }
 
@@ -659,12 +670,148 @@ void VideoPostProcessor::flipBuffers() {
 
 void VideoPostProcessor::process() {
 	ProcessScreenshots();
-	
-	void* pixels = get()->m_videoBufferSurface->pixels;
-	SDL_UpdateTexture(get()->m_videoTexture.get(), NULL, pixels, get()->screenWidth() * sizeof (uint32_t));
+
 	// Hand the committed frame's layout width to the main-thread-only render().
 	// This runs under the video mutex; render() does not.
 	get()->m_renderDisplayScreenWidth = get()->m_committedDisplayScreenWidth;
+
+	// Pipeline: game draws m_videoSurface -> flip -> m_videoBufferSurface,
+	// composed here into m_videoPresentSurface, then uploaded to m_videoTexture.
+	composePresentFrame();
+
+	void* pixels = get()->m_videoPresentSurface->pixels;
+	SDL_UpdateTexture(get()->m_videoTexture.get(), NULL, pixels, get()->screenWidth() * sizeof (uint32_t));
+}
+
+// Fill a gap strip by extending a 1px edge column, cross-fading from sharp
+// (nearX, next to the band) to vertically blurred (farX, the screen edge).
+static void blurGapStrip(SDL_Surface* gap, SDL_Surface* col, int nearX, int farX) {
+	const int h = gap->h;
+	if(h > 512 || farX == nearX) return;
+
+	const int colPitch = col->pitch, gapPitch = gap->pitch;
+	const Uint8* colPix = (const Uint8*)col->pixels;
+	Uint8* gapPix = (Uint8*)gap->pixels;
+
+	// The edge column, and a vertically box-blurred copy of it.
+	Uint32 sharp[512], blurred[512];
+	for(int y = 0; y < h; y++)
+		sharp[y] = *(const Uint32*)(colPix + y*colPitch);
+	const int R = 40; // blur radius at the screen edge
+	for(int y = 0; y < h; y++) {
+		int sum[4] = {0,0,0,0}, cnt = 0;
+		for(int k = -R; k <= R; k++) {
+			int yy = y + k;
+			if(yy < 0 || yy >= h) continue;
+			const Uint8* p = (const Uint8*)&sharp[yy];
+			for(int c = 0; c < 4; c++) sum[c] += p[c];
+			cnt++;
+		}
+		Uint8* o = (Uint8*)&blurred[y];
+		for(int c = 0; c < 4; c++) o[c] = (Uint8)(sum[c] / cnt);
+	}
+
+	for(int x = 0; x < gap->w; x++) {
+		float t = (float)(x - nearX) / (float)(farX - nearX);
+		if(t < 0) t = 0; else if(t > 1) t = 1;
+		t *= t; // stay sharp near the band, blur harder toward the edge
+		const int t256 = (int)(t * 256.0f + 0.5f);
+		for(int y = 0; y < h; y++) {
+			const Uint8* a = (const Uint8*)&sharp[y];
+			const Uint8* b = (const Uint8*)&blurred[y];
+			Uint8* o = gapPix + y*gapPitch + x*4;
+			for(int c = 0; c < 4; c++)
+				o[c] = (Uint8)((a[c]*(256 - t256) + b[c]*t256) >> 8);
+		}
+	}
+}
+
+// Precompute the side-gap fills from a menuWidth-wide menu background.
+// Cheap to call every frame: rebuilds only when the edge columns or offset change.
+void VideoPostProcessor::buildSideGaps(const SmartPointer<SDL_Surface>& bg) {
+	const int offset = (m_screenWidth - menuWidth) / 2;
+	const int h = screenHeight();
+	if(!bg.get() || offset <= 0 || bg->w < menuWidth || bg->h < h
+	   || bg->format->BytesPerPixel != 4) {
+		m_leftGap = NULL; m_rightGap = NULL; m_sideGapKey = 0;
+		return;
+	}
+
+	// Change key: hash of the edge columns + offset; skip the rebuild if unchanged.
+	Uint32 key = 2166136261u ^ (Uint32)offset;
+	const Uint8* bgPix = (const Uint8*)bg->pixels;
+	const int lastX = menuWidth - 1;
+	for(int y = 0; y < h; y++) {
+		const Uint8* row = bgPix + y*bg->pitch;
+		key = (key ^ *(const Uint32*)(row)) * 16777619u;
+		key = (key ^ *(const Uint32*)(row + lastX*4)) * 16777619u;
+	}
+	if(key == m_sideGapKey && m_leftGap.get() && m_rightGap.get()) return;
+	m_sideGapKey = key;
+
+	// Pull the two edge columns into 1px surfaces of our format (converts once).
+	SmartPointer<SDL_Surface> leftCol = create_32bpp_sdlsurface__allegroformat(1, h);
+	SmartPointer<SDL_Surface> rightCol = create_32bpp_sdlsurface__allegroformat(1, h);
+	m_leftGap = create_32bpp_sdlsurface__allegroformat(offset, h);
+	m_rightGap = create_32bpp_sdlsurface__allegroformat(offset, h);
+	if(!leftCol.get() || !rightCol.get() || !m_leftGap.get() || !m_rightGap.get()) {
+		m_leftGap = NULL; m_rightGap = NULL;
+		return;
+	}
+	SDL_Rect ls = { 0, 0, 1, h }, cd = { 0, 0, 1, h };
+	SDL_BlitSurface(bg.get(), &ls, leftCol.get(), &cd);
+	SDL_Rect rs = { menuWidth - 1, 0, 1, h };
+	SDL_BlitSurface(bg.get(), &rs, rightCol.get(), &cd);
+
+	// Left gap: sharp at its inner edge (adjacent to the band), blurred at x=0.
+	blurGapStrip(m_leftGap.get(), leftCol.get(), offset - 1, 0);
+	// Right gap: sharp at x=0 (adjacent to the band), blurred at its outer edge.
+	blurGapStrip(m_rightGap.get(), rightCol.get(), 0, offset - 1);
+}
+
+// Compose the presented frame from the drawn m_videoBufferSurface. Main thread.
+void VideoPostProcessor::composePresentFrame() {
+	SDL_Surface* src = get()->m_videoBufferSurface.get();
+	SDL_Surface* dst = get()->m_videoPresentSurface.get();
+	if(!src || !dst) return;
+
+	const int w = get()->screenWidth();
+	const int h = get()->screenHeight();
+	int dw = get()->m_renderDisplayScreenWidth;
+	if(dw <= 0 || dw > w) dw = w;
+	int offset = (w - dw) / 2;
+	if(offset < 0) offset = 0;
+
+	if(offset == 0) {
+		// Content already fills the width (local game / 4:3): straight copy (cursor baked in).
+		DrawImageAdv(dst, src, 0, 0, 0, 0, w, h);
+	} else {
+		// Content is dw wide in the left columns; copy it to the center.
+		// The mouse is shifted by the same offset (HandleMouseState), so clicks line up.
+		DrawImageAdv(dst, src, 0, 0, offset, 0, dw, h);
+
+		// Fill the side gaps with the precomputed strips, or a plain edge stretch
+		// before the theme is loaded / on a size mismatch.
+		if(get()->m_leftGap.get() && get()->m_leftGap->w == offset && get()->m_rightGap.get()) {
+			CopySurface(dst, get()->m_leftGap,  0, 0, 0,           0, offset, h);
+			CopySurface(dst, get()->m_rightGap, 0, 0, offset + dw, 0, offset, h);
+		} else {
+			SDL_Rect ls = { 0, 0, 1, h }, ld = { 0, 0, offset, h };
+			SDL_BlitScaled(src, &ls, dst, &ld);
+			SDL_Rect rs = { dw - 1, 0, 1, h }, rd = { offset + dw, 0, w - (offset + dw), h };
+			SDL_BlitScaled(src, &rs, dst, &rd);
+		}
+	}
+
+	// Screen-space overlays (task bar, FPS), full width, on top.
+	if(screenOverlay) screenOverlay(dst);
+
+	// Draw the cursor on top at its true position, so it roams the gaps.
+	// (Centered frames skip the in-band bake; see Cursor.cpp.)
+	if(offset > 0) {
+		mouse_t* m = GetMouse();
+		DrawCursorAt(dst, m->X + offset, m->Y); // menu-local X -> screen X
+	}
 }
 
 void VideoPostProcessor::render() {
@@ -672,38 +819,12 @@ void VideoPostProcessor::render() {
 	//TestPolygonDrawing(psScreen);
 	//DrawLoadingAni(psScreen, 320, 260, 50, 50, Color(128,128,128), Color(128,128,128,128), LAT_CIRCLES);
 	//DrawLoadingAni(psScreen, 320, 260, 10, 10, Color(255,0,0), Color(0,255,0), LAT_CAKE);
-	
+
 	if(!get()->m_renderer.get()) return;
 
 	SDL_RenderClear(get()->m_renderer.get());
-	// Use the layout width captured for this frame (see process()), not the live
-	// displayScreenWidth(), which the game thread may already have moved on.
-	const int dw = get()->m_renderDisplayScreenWidth;
-	int centerOffset = (get()->m_screenWidth - dw) / 2;
-	if(centerOffset < 0) centerOffset = 0;
-	if(centerOffset > 0) {
-		// The frame's content (a menu, or a network game) is only dw wide
-		// and is drawn into the left dw columns of the (wider) video surface.
-		// Present just that region, centered,
-		// so it appears in the middle of the screen.
-		// The mouse is shifted by the same offset (see HandleMouseState)
-		// so clicks still line up.
-		const int h = get()->screenHeight();
-		// Fill the side gaps by stretching the frame's own edge columns outward,
-		// so the theme's background continues there instead of black bars.
-		SDL_Rect leftSrc = { 0, 0, 1, h };
-		SDL_Rect leftDst = { 0, 0, centerOffset, h };
-		SDL_RenderCopy(get()->m_renderer.get(), get()->m_videoTexture.get(), &leftSrc, &leftDst);
-		SDL_Rect rightSrc = { dw - 1, 0, 1, h };
-		SDL_Rect rightDst = { centerOffset + dw, 0, get()->screenWidth() - (centerOffset + dw), h };
-		SDL_RenderCopy(get()->m_renderer.get(), get()->m_videoTexture.get(), &rightSrc, &rightDst);
-
-		SDL_Rect src = { 0, 0, dw, h };
-		SDL_Rect dst = { centerOffset, 0, dw, h };
-		SDL_RenderCopy(get()->m_renderer.get(), get()->m_videoTexture.get(), &src, &dst);
-	} else {
-		SDL_RenderCopy(get()->m_renderer.get(), get()->m_videoTexture.get(), NULL, NULL);
-	}
+	// The texture already holds the full composed frame; blit it 1:1.
+	SDL_RenderCopy(get()->m_renderer.get(), get()->m_videoTexture.get(), NULL, NULL);
 	SDL_RenderPresent(get()->m_renderer.get());
 
 #ifdef __EMSCRIPTEN__
@@ -734,6 +855,11 @@ void VideoPostProcessor::cloneBuffer() {
 void VideoPostProcessor::uninit() {
 	instance.m_videoSurface = NULL; // should never be used before resetVideo() is called
 	instance.m_videoBufferSurface = NULL; // else a restart keeps the old frame
+	instance.m_videoPresentSurface = NULL; // same: else a restart presents the old frame
+	instance.m_leftGap = NULL; // rebuilt for the new theme/size by buildSideGaps
+	instance.m_rightGap = NULL;
+	instance.m_sideGapKey = 0; // force that rebuild after a restart/resize
+
 	instance.m_videoTexture = NULL;
 	instance.m_renderer = NULL;
 	instance.m_window = NULL;

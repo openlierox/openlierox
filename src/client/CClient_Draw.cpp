@@ -416,7 +416,7 @@ void CClient::DrawBox(SDL_Surface * dst, int x, int y, int w)
 void CClient::Draw(const SmartPointer<SDL_Surface>& bmpDest)
 {
 	// Widescreen games use the full screen width; others are constrained to the
-	// base menuWidth (presented centered, with black bars) so that a wider
+	// base menuWidth (composed centered, side gaps edge-filled) so that a wider
 	// screen gives no gameplay advantage. This also overrides the menuWidth set
 	// by Menu_Frame once we are in a widescreen game.
 	VideoPostProcessor::get()->setDisplayScreenWidth(

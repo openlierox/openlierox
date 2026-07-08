@@ -63,6 +63,7 @@ private:
 	void			Init(int type);
 public:
 	void			Draw(SDL_Surface *dst);
+	void			DrawAdv(SDL_Surface *dst, int mouseX, int mouseY); // at an explicit position
 	INLINE bool		IsAnimated()  { return bAnimated; }
 	INLINE int		GetType()  { return iType; }
 	INLINE void		SetType(int _t)  { iType = _t; }
@@ -77,6 +78,7 @@ void ShutdownCursors();
 void SetGameCursor(int c);
 void SetGameCursor(CCursor *c);
 void DrawCursor(SDL_Surface *dst);
+void DrawCursorAt(SDL_Surface *dst, int x, int y); // at an explicit position
 int GetCursorHeight(int c);
 int GetCursorWidth(int c);
 INLINE int GetMaxCursorHeight()  { return iMaxCursorHeight; }
