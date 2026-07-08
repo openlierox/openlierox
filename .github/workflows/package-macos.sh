@@ -133,6 +133,14 @@ if [ "$leaked" -ne 0 ]; then
     exit 1
 fi
 
+# Seal the whole bundle with a fresh ad-hoc signature, last of all.
+# dylibbundler signs the binary and its bundled libs and seals the bundle,
+# but we add libSDL3.dylib afterwards,
+# which invalidates that seal ("a sealed resource is missing or invalid"),
+# so a downloaded (quarantined) app reads as "damaged and can't be opened" to Gatekeeper.
+# Re-signing here, after everything is in place, makes the seal cover it all.
+codesign --force --deep --sign - "$APP"
+
 # Zip uses tilde instead of underscore so e.g. "beta9" sorts correctly.
 VERSION="$(./get_version.sh | tr '_' '~')"
 ZIP="openlierox_${VERSION}_macos.zip"
