@@ -680,13 +680,24 @@ void VideoPostProcessor::render() {
 	int centerOffset = (get()->m_screenWidth - dw) / 2;
 	if(centerOffset < 0) centerOffset = 0;
 	if(centerOffset > 0) {
-		// The frame's content (a menu, or a network game) is only dw wide and is
-		// drawn into the left dw columns of the (wider) video surface. Present
-		// just that region, centered, so it appears in the middle of the screen
-		// with black bars on the sides. The mouse is shifted by the same offset
-		// (see HandleMouseState) so clicks still line up.
-		SDL_Rect src = { 0, 0, dw, get()->screenHeight() };
-		SDL_Rect dst = { centerOffset, 0, dw, get()->screenHeight() };
+		// The frame's content (a menu, or a network game) is only dw wide
+		// and is drawn into the left dw columns of the (wider) video surface.
+		// Present just that region, centered,
+		// so it appears in the middle of the screen.
+		// The mouse is shifted by the same offset (see HandleMouseState)
+		// so clicks still line up.
+		const int h = get()->screenHeight();
+		// Fill the side gaps by stretching the frame's own edge columns outward,
+		// so the theme's background continues there instead of black bars.
+		SDL_Rect leftSrc = { 0, 0, 1, h };
+		SDL_Rect leftDst = { 0, 0, centerOffset, h };
+		SDL_RenderCopy(get()->m_renderer.get(), get()->m_videoTexture.get(), &leftSrc, &leftDst);
+		SDL_Rect rightSrc = { dw - 1, 0, 1, h };
+		SDL_Rect rightDst = { centerOffset + dw, 0, get()->screenWidth() - (centerOffset + dw), h };
+		SDL_RenderCopy(get()->m_renderer.get(), get()->m_videoTexture.get(), &rightSrc, &rightDst);
+
+		SDL_Rect src = { 0, 0, dw, h };
+		SDL_Rect dst = { centerOffset, 0, dw, h };
 		SDL_RenderCopy(get()->m_renderer.get(), get()->m_videoTexture.get(), &src, &dst);
 	} else {
 		SDL_RenderCopy(get()->m_renderer.get(), get()->m_videoTexture.get(), NULL, NULL);
