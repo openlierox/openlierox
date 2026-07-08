@@ -8,7 +8,7 @@ ADMIN_PREFIX = "!" # What kind of prefix you want for admin commands. Example: !
 SERVER_PORT = 23400 # What port to start server on, 23400 is the default
 
 # Where to log what is happening
-#NOTE: Do not specify path here, only file name. Path will be searched automatically based on Openlierox settings
+#NOTE: Do not specify path here, only file name. Path will be searched automatically based on OpenLieroX settings
 LOG_FILE = "dedicated_control.log"
 
 MIN_PLAYERS = 1
