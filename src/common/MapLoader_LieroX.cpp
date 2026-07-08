@@ -94,7 +94,11 @@ class ML_LieroX : public MapLoad {
 			return false;
 		}
 		destsize = (uint32_t) lng_dsize; // can only get smaller
-		if( destsize < Uint32(head.width * head.height * 3 * 2) )
+		// We read 7 bytes per pixel below:
+		// 3 (back image) + 3 (front image) + 1 (pixel flags).
+		// Require all of them, computed in 64-bit
+		// so a huge width*height cannot wrap the check.
+		if( destsize < Uint64(head.width) * Uint64(head.height) * 7 )
 		{
 			errors("CMap::LoadImageFormat(): image too small for Width*Height");
 			delete[] pSource;
