@@ -441,7 +441,7 @@ void CServerNetEngine::ParseChatText(CBytestream *bs) {
 	//Resize oversized messages and optionally kick the sender
 	//TODO: Implement check at lower level to drop packets without ever passing them to chat handler? Or would this cause problems or confusion?
 	//TODO: Limit message length client side too?
-	if (tLXOptions->bCheckChatMessageLength && buf.size() > tLXOptions->iMaxChatMessageLength){
+	if (tLXOptions->bCheckChatMessageLength && buf.size() > (size_t)tLXOptions->iMaxChatMessageLength){
 		buf.resize(tLXOptions->iMaxChatMessageLength);
 		if (tLXOptions->bKickOversizedMsgSenders){
 			server->DropClient(cl, CLL_KICK, "Attempt to send oversized message or command");
