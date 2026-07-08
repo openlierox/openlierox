@@ -888,6 +888,18 @@ begin = buffer;
 limit = buffer + newSize;
 }
 struct ParsingAborted : public std::exception { };
+enum { MaxParseDepth = 128 };
+// The expression and property rules below are recursive-descent
+// and recurse on nesting characters ('(', '[', '{')
+// that an untrusted script fully controls.
+// DepthGuard bounds that recursion,
+// so a deeply nested script aborts the parse
+// instead of overflowing the stack.
+struct DepthGuard {
+	TGrammar* g;
+	DepthGuard(TGrammar* g_) : g(g_) { ++g->depth; }
+	~DepthGuard() { --g->depth; }
+};
 void fatalError(std::string const& msg = "Syntax error") {
 self->reportError(msg, self->getLoc());
 throw ParsingAborted();
@@ -1037,6 +1049,8 @@ rule_term(b);
 }
 }
 void rule_leaf(TokenBase::ptr& a) {
+DepthGuard depthGuard(this);
+if(depth > MaxParseDepth) { fatalError("expression nested too deeply"); return; }
 if(cur == 1) {
 next();
  a.reset(new INTEGER(*self, 1)); 
@@ -1135,7 +1149,9 @@ rule_parameter(params);
 }
 }
 void rule_prop(std::string const& prefix = "") {
- TokenBase::ptr v; 
+DepthGuard depthGuard(this);
+if(depth > MaxParseDepth) { fatalError("property blocks nested too deeply"); return; }
+ TokenBase::ptr v;
 Location propLoc(self->getLoc());
 if(!matchToken(16)) return;
 std::unique_ptr<STRING> name(static_cast<STRING*>(curData.release()));
@@ -1182,7 +1198,7 @@ rule_leaf(b);
 bool set_1[26];
 bool set_3[26];
 bool set_17[26];
-TGrammar() : cur(-1), curp(0), limit(0), marker(0), begin(0), buffer(0), line(1), state(0), syncTokens(false), error(false) {
+TGrammar() : cur(-1), curp(0), limit(0), marker(0), begin(0), buffer(0), line(1), state(0), syncTokens(false), error(false), depth(0) {
 memset(set_1, 0, sizeof(bool)*26);
 set_1[1] = true;
 set_1[2] = true;
@@ -1209,6 +1225,7 @@ int line;
 int state;
 bool syncTokens;
 bool error;
+int depth;
 #undef self
 };
 }

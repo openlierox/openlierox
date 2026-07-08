@@ -838,7 +838,17 @@ TokenBase* Parser::getProperty(std::string const& a, std::string const& b)
 
 bool Parser::run()
 {
-	pimpl->rule_lines();
+	// The parser is recursive-descent over untrusted input.
+	// A depth guard in the rules aborts a too-deeply-nested script
+	// via fatalError, which throws ParsingAborted.
+	// Catch it here so a malformed or malicious script fails to load
+	// instead of propagating out as an uncaught exception.
+	try {
+		pimpl->rule_lines();
+	}
+	catch(ParserImpl::ParsingAborted&) {
+		return false;
+	}
 	return pimpl->full();
 }
 
