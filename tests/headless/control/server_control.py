@@ -26,7 +26,7 @@ import sys
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _olx_pipe import command, emit, game_state, worm_ids  # noqa: E402
+from _olx_pipe import command, emit, emit_worm_states, game_state, worm_ids  # noqa: E402
 
 
 def main():
@@ -56,9 +56,37 @@ def main():
     command("startlobby " + port)
     emit("SERVER_LOBBY")
 
+    # Optional bots, so a round can actually be played out with no human input.
+    bots = int(os.environ.get("OLX_BOTS", "0"))
+    if bots > 0:
+        # addBots adds nothing ("localClient not found") if the server's own
+        # local client is not ready yet, and it returns the ids of the bots it
+        # actually added (empty on failure). So retry until they are all in,
+        # but always ask only for the ones still missing -- that way a retry
+        # can never add too many, regardless of any delay. Give up loudly
+        # rather than starting a broken round.
+        added = set()
+        deadline = time.time() + 15
+        while len(added) < bots and time.time() < deadline:
+            if game_state() == "Lobby":
+                added.update(command("addBots %d" % (bots - len(added))))
+            if len(added) < bots:
+                time.sleep(0.3)
+        if len(added) < bots:
+            emit("SERVER_ERROR only %d/%d bots joined (state=%s)"
+                 % (len(added), bots, game_state()))
+            raise SystemExit("could not add %d bots" % bots)
+        emit("SERVER_ADDBOTS %d" % bots)
+
+    emit_state = os.environ.get("OLX_EMIT_STATE")
+    spawn_close = os.environ.get("OLX_SPAWN_CLOSE")
+
     start_when = int(os.environ.get("OLX_START_WHEN_WORMS", "1"))
     started = False
     playing = False
+    combat = False
+    dead_seen = set()
+    respawn_seen = False
     deadline = time.time() + int(os.environ.get("OLX_RUN_SECONDS", "90"))
     while time.time() < deadline:
         state = game_state()
@@ -71,6 +99,28 @@ def main():
         if state == "Playing" and not playing:
             emit("SERVER_PLAYING")
             playing = True
+            # Cluster the worms at one spot so they fight at once,
+            # rather than hoping random spawns bring them into range in time.
+            if spawn_close:
+                spot = command("findSpot")
+                if len(spot) >= 2:
+                    for wid in worms:
+                        command('spawnWorm %s "%s,%s"' % (wid, spot[0], spot[1]))
+                    emit("SERVER_SPAWN_CLOSE %s,%s" % (spot[0], spot[1]))
+        if playing and emit_state:
+            states = emit_worm_states("SERVER")
+            total_dmg = sum(s["dmg"] for s in states.values())
+            total_kills = sum(s["kills"] for s in states.values())
+            for wid, s in states.items():
+                if s["hp"] < 0:
+                    dead_seen.add(wid)
+                elif wid in dead_seen and not respawn_seen:
+                    respawn_seen = True
+                    emit("SERVER_RESPAWN id=%s" % wid)
+            if not combat and (total_dmg >= 40 or total_kills > 0 or dead_seen):
+                emit("SERVER_COMBAT dmg=%g kills=%d deaths=%d"
+                     % (total_dmg, total_kills, len(dead_seen)))
+                combat = True
         time.sleep(0.5)
     emit("SERVER_DONE")
 

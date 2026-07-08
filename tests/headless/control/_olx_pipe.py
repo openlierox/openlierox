@@ -59,3 +59,37 @@ def game_state():
 def worm_ids():
     """Return the worm ids currently known to this instance (as strings)."""
     return command("getwormlist")
+
+
+def worm_state(wid):
+    """Return a worm's replicated state as a dict, or None if unavailable.
+
+    ``getWormScore`` returns ``[lives, kills, damage, health]``
+    (health is -1 when the worm is dead), and ``getWormPos`` returns ``[x, y]``.
+    Both are read-only and work on a client as well as the server,
+    so the same view can be compared on both sides.
+    """
+    score = command("getWormScore " + str(wid))
+    if len(score) < 4:
+        return None
+    st = {"kills": int(score[1]), "dmg": float(score[2]), "hp": float(score[3])}
+    pos = command("getWormPos " + str(wid))
+    if len(pos) >= 2:
+        st["x"], st["y"] = float(pos[0]), float(pos[1])
+    return st
+
+
+def emit_worm_states(prefix):
+    """Emit one ``<prefix> STATE ...`` marker per worm; return ``{id: state}``.
+
+    The caller uses the returned states to detect combat, deaths and respawns.
+    """
+    states = {}
+    for wid in worm_ids():
+        st = worm_state(wid)
+        if st is None:
+            continue
+        emit("%s STATE id=%s hp=%g kills=%d dmg=%g"
+             % (prefix, wid, st["hp"], st["kills"], st["dmg"]))
+        states[wid] = st
+    return states

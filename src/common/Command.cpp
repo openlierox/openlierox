@@ -264,9 +264,9 @@ struct AutocompleteRequest {
 
 
 // TODO: Move this
-static CWorm* CheckWorm(CmdLineIntf* caller, int id, const std::string& request)
+static CWorm* CheckWorm(CmdLineIntf* caller, int id, const std::string& request, bool allowClient = false)
 {
-	if(game.isClient() || !cServer || !cServer->isServerRunning()) {
+	if(!allowClient && (game.isClient() || !cServer || !cServer->isServerRunning())) {
 		caller->writeMsg(request + " works only as server");
 		return NULL;
 	}
@@ -361,7 +361,20 @@ struct Command : CommandDesc {
 		}
 		return CheckWorm(caller, id, name);
 	}
-	
+
+	// Like getWorm(), but also allowed on a client.
+	// For read-only commands that just report a worm's (replicated) state,
+	// so a connected client can be queried the same way as the server.
+	CWorm* getWormReadonly(CmdLineIntf* caller, const std::string& param) {
+		bool fail = true;
+		int id = from_string<int>(param, fail);
+		if(fail) {
+			printUsage(caller);
+			return NULL;
+		}
+		return CheckWorm(caller, id, name, true);
+	}
+
 };
 
 typedef std::map<std::string, Command*, stringcaseless> CommandMap;
@@ -2052,7 +2065,7 @@ void Cmd_getWormTeam::exec(CmdLineIntf* caller, const std::vector<std::string>& 
 
 COMMAND(getWormScore, "get worm score", "id", 1, 1);
 void Cmd_getWormScore::exec(CmdLineIntf* caller, const std::vector<std::string>& params) {
-	CWorm* w = getWorm(caller, params[0]); if(!w) return;
+	CWorm* w = getWormReadonly(caller, params[0]); if(!w) return;
 	caller->pushReturnArg(itoa(w->getLives()));
 	caller->pushReturnArg(itoa(w->getScore()));
 	caller->pushReturnArg(ftoa(w->getDamage()));
@@ -2114,21 +2127,21 @@ void Cmd_getWormSkin::exec(CmdLineIntf* caller, const std::vector<std::string>& 
 
 COMMAND(getWormPos, "get worm position", "id", 1, 1);
 void Cmd_getWormPos::exec(CmdLineIntf* caller, const std::vector<std::string>& params) {
-	CWorm* w = getWorm(caller, params[0]); if(!w) return;	
+	CWorm* w = getWormReadonly(caller, params[0]); if(!w) return;	
 	caller->pushReturnArg(ftoa(w->getPos().x));
 	caller->pushReturnArg(ftoa(w->getPos().y));
 }
 
 COMMAND(getWormVelocity, "get worm velocity", "id", 1, 1);
 void Cmd_getWormVelocity::exec(CmdLineIntf* caller, const std::vector<std::string>& params) {
-	CWorm* w = getWorm(caller, params[0]); if(!w) return;	
+	CWorm* w = getWormReadonly(caller, params[0]); if(!w) return;	
 	caller->pushReturnArg(ftoa(w->velocity().get().x));
 	caller->pushReturnArg(ftoa(w->velocity().get().y));
 }
 
 COMMAND(getWormHealth, "get worm health", "id", 1, 1);
 void Cmd_getWormHealth::exec(CmdLineIntf* caller, const std::vector<std::string>& params) {
-	CWorm* w = getWorm(caller, params[0]); if(!w) return;	
+	CWorm* w = getWormReadonly(caller, params[0]); if(!w) return;	
 	caller->pushReturnArg(ftoa(w->getHealth()));
 }
 
