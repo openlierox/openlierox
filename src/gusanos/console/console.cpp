@@ -163,7 +163,7 @@ void Console::parseLine(const string &text, bool parseRelease)
 	{
 		addLogMsg(handler.block());
 	}
-	catch(SyntaxError error)
+	catch(const SyntaxError& error)
 	{
 		addLogMsg(text);
 		std::streamoff pos = handler.str.tellg();
