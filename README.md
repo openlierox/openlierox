@@ -22,6 +22,37 @@ OpenLieroX is based on Jason Boettcher's famous Liero Xtreme.
 
 Jason B. has released his work in 2006 under the zlib-licence and after some months of work, we ported and enhanced his work and got OpenLieroX.
 
+## Installing
+
+Prebuilt builds for Windows, macOS, Linux and Android are on the
+[releases page](https://github.com/openlierox/openlierox/releases).
+
+### macOS: first run
+
+The macOS build is not signed with an Apple Developer ID
+(that needs a paid Apple Developer account),
+so the first time you open it,
+macOS warns that OpenLieroX is from an "unidentified developer".
+It is safe; you just have to let macOS allow it once.
+The simplest way, in a terminal:
+
+```
+xattr -cr /path/to/OpenLieroX.app
+```
+
+then open the app normally.
+This removes the "quarantine" flag a browser download attaches,
+which is what triggers the warning.
+
+To avoid the warning entirely,
+download the zip from a terminal rather than the browser
+(files fetched with `curl` are never quarantined):
+
+```
+curl -L -o OpenLieroX.zip <url of the macOS .zip from the releases page>
+unzip OpenLieroX.zip
+```
+
 ## Compilation
 
 For more details, read here: <https://github.com/openlierox/openlierox/wiki/Compile-OpenLieroX>
