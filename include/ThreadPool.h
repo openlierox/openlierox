@@ -31,8 +31,9 @@ struct Action {
 	virtual Result handle() = 0;
 };
 
-// The handle returned by ThreadPool::start(). It represents one task
-// (one start() call), not the reused worker thread that runs it.
+// The handle returned by ThreadPool::start().
+// It represents one task (one start() call),
+// not the reused worker thread that runs it.
 // It is reference counted (held via SmartPointer),
 // so it stays alive as long as the caller or the running worker holds it,
 // and it can never be freed or reused under the caller.

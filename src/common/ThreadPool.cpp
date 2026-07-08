@@ -58,9 +58,10 @@ void getAllThreads(std::set<ThreadId>& ids) {
 }
 
 
-// The reused worker thread. The task it currently runs is a separate,
-// reference-counted ThreadPoolItem handle, so the caller never sees or holds
-// the worker and there is no lifetime coupling between the two.
+// The reused worker thread.
+// The task it currently runs is a separate, reference-counted ThreadPoolItem handle,
+// so the caller never sees or holds the worker
+// and there is no lifetime coupling between the two.
 struct ThreadWorker {
 	ThreadPool* pool;
 	SDL_Thread* thread;
@@ -90,11 +91,13 @@ ThreadPool::ThreadPool(unsigned int size) {
 ThreadPool::~ThreadPool() {
 	waitAll();
 
-	// All workers are idle now; tell them to quit and wait until every worker
-	// has actually returned from threadWrapper before we free anything. We wait
-	// on aliveWorkers rather than relying on SDL_WaitThread to block, because a
-	// worker that is still parked in SDL_CondWait must not be left touching the
-	// mutex/conds once we destroy them.
+	// All workers are idle now.
+	// Tell them to quit,
+	// and wait until every worker has actually returned from threadWrapper
+	// before we free anything.
+	// We wait on aliveWorkers rather than relying on SDL_WaitThread to block,
+	// because a worker still parked in SDL_CondWait
+	// must not be left touching the mutex/conds once we destroy them.
 	SDL_mutexP(mutex);
 	nextAction = NULL;
 	quitting = true;
@@ -163,8 +166,8 @@ int ThreadPool::threadWrapper(void* param) {
 		setCurThreadName("");
 	}
 
-	// Woken by ~ThreadPool: mark ourselves gone before releasing the mutex, so
-	// that once aliveWorkers hits 0 no worker can still touch the pool.
+	// Woken by ~ThreadPool: mark ourselves gone before releasing the mutex,
+	// so that once aliveWorkers hits 0 no worker can still touch the pool.
 	pool->aliveWorkers--;
 	SDL_CondSignal(pool->threadStatusChanged);
 	SDL_mutexV(pool->mutex);
