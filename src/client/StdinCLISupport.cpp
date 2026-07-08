@@ -21,6 +21,7 @@ Result initStdinCLISupport() {
 
 void quitStdinCLISupport() {}
 void activateStdinCLIHistory() {}
+void stdinCLIRestoreTerminal() {}
 
 StdinCLI_StdoutScope::StdinCLI_StdoutScope() {}
 StdinCLI_StdoutScope::~StdinCLI_StdoutScope() {}
@@ -174,6 +175,9 @@ void quitStdinCLISupport() {
 	SDL_WaitThread(stdinHandleThread, NULL);
 	stdinHandleThread = NULL;
 	hasStdinCLISupport = false;
+
+	// latch raw off now; teeStdoutQuit does the final restore once its thread is gone
+	linenoiseRestoreTerminal(linenoiseEnv.fd);
 }
 
 void activateStdinCLIHistory() {
@@ -182,6 +186,10 @@ void activateStdinCLIHistory() {
 	Mutex::ScopedLock lock(stdoutMutex);
 	linenoiseHistoryLoad(GetFullFileName(HistoryFilename));
 	historySupport = true;
+}
+
+void stdinCLIRestoreTerminal() {
+	linenoiseRestoreTerminal(linenoiseEnv.fd);
 }
 
 #endif // HAVE_LINENOISE

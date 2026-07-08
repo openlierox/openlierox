@@ -248,6 +248,10 @@ void teeStdoutQuit(bool wait) {
 			if(teeStdoutInfo.thread) SDL_WaitThread(teeStdoutInfo.thread, NULL);
 		}
 
+		// tee and CLI threads are gone now;
+		// restore cooked mode, else the raw terminal (ONLCR off) staircases the messages below
+		stdinCLIRestoreTerminal();
+
 		// Recover stdout/err
 		dup2(teeStdoutInfo.oldstdout, STDOUT_FILENO);
 		dup2(teeStdoutInfo.oldstderr, STDERR_FILENO);
