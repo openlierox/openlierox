@@ -191,6 +191,12 @@ protected:
 	CWormInputHandler* m_inputHandler;
 	bool            bPrepared;
 
+	// Test hook: when set,
+	// getInput() ignores the input handler (AI/keyboard) and applies this fixed input each frame,
+	// for deterministic physics tests.
+	bool            m_forceInput;
+	bool            m_forcedMove, m_forcedShoot, m_forcedJump, m_forcedCarve;
+
 public:
 	ATTR(CWorm, int32_t,	iTeam, 1, {serverside = true;})
 	ATTR(CWorm, std::string,	sName, 2, {serverside = false;})
@@ -405,6 +411,7 @@ public:
 
 
 	void		getInput();
+	void		setForcedInput(bool move, bool shoot, bool jump, bool carve);
 	void		clearInput();
 	void		initWeaponSelection();
 	void		doWeaponSelectionFrame(SDL_Surface * bmpDest, CViewport *v);

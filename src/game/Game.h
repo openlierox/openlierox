@@ -115,6 +115,13 @@ public:
 	}
 	AbsTime simulationAbsTime() const { return simulationTime; }
 
+	// Test hook: when manualStep is on,
+	// the simulation advances only by manualStepBudget frames (added via simStep),
+	// decoupled from the wall clock,
+	// so physics tests are frame-exact and reproducible.
+	bool manualStep;
+	int manualStepBudget;
+
 	bool hasHighSimulationDelay();
 	bool hasSeriousHighSimulationDelay();
 
