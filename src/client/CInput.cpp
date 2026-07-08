@@ -1028,18 +1028,16 @@ void CInput::handleKeyEvent(const KeyboardEvent& ev) {
 // Update down-once state for non-keyboard bindings (polled each frame)
 void CInput::updateDownOnceForNonKeyboard() {
 	for(std::vector<Binding>::iterator b = m_bindings.begin(); b != m_bindings.end(); ++b) {
-#ifdef __EMSCRIPTEN__
-		// On wasm keyboard bindings are also polled each frame via
-		// Binding::isDown (see the SDL_GetKeyboardState branch there), so
-		// they ride the same edge-derivation logic the gamepad uses. This
-		// is what makes held keys register the same frame the simulation
-		// runs, without the OLX mainQueue round-trip.
-		if(!b->isUsed())
-			continue;
-#else
+		// Skip keyboard bindings, on wasm too.
+		// Their edge state (nDownOnce/nUp/bDown) is derived from the key
+		// event queue in handleKeyEvent, which runs on all platforms.
+		// Re-deriving it here from the polled state double-counts every press:
+		// the wasUp() branch below fires again on release, so e.g. the rope
+		// would shoot once on key-down and once on key-up (#972).
+		// The wasm held-key latency shortcut lives in Binding::isDown, which
+		// still polls the keyboard directly; only the edges are event-driven.
 		if(!b->isUsed() || b->isKeyboard())
 			continue;
-#endif
 
 		// HINT: It is possible that wasUp() and !Down (a case which is not covered in further code)
 		if(b->wasUp() && !b->bDown) {
@@ -1079,15 +1077,9 @@ void CInput::updateDownOnceForNonKeyboard() {
 // Update up state for non-keyboard bindings (polled each frame)
 void CInput::updateUpForNonKeyboard() {
 	for(std::vector<Binding>::iterator b = m_bindings.begin(); b != m_bindings.end(); ++b) {
-#ifdef __EMSCRIPTEN__
-		// See updateDownOnceForNonKeyboard: keyboard bindings are polled
-		// each frame on wasm, so don't skip them here.
-		if(!b->isUsed())
-			continue;
-#else
+		// Skip keyboard bindings, on wasm too; see updateDownOnceForNonKeyboard.
 		if(!b->isUsed() || b->isKeyboard())
 			continue;
-#endif
 		if(b->isDown() && !b->bDown)
 			b->nUp++;
 	}
