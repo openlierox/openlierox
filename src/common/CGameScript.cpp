@@ -662,6 +662,15 @@ int CGameScript::Load(const std::string& dir, bool loadImagesAndSounds)
 	EndianSwap(NumWeapons);
 	//modLog("  NumWeapons = %i", NumWeapons);
 
+	// NumWeapons comes straight from the (possibly downloaded) mod file.
+	// Reject implausible values so we never do a negative or huge new[]
+	// (which would throw bad_array_new_length / bad_alloc and abort).
+	// 4096 is far above any real mod and keeps the allocation bounded.
+	if(NumWeapons < 0 || NumWeapons > 4096) {
+		SetError("CGameScript::Load(): implausible weapon count in mod");
+		return GSE_BAD;
+	}
+
 	// Do Allocations
 	Weapons = new weapon_t[NumWeapons];
 	if(Weapons == NULL) {
@@ -817,8 +826,13 @@ int CGameScript::Load(const std::string& dir, bool loadImagesAndSounds)
 
 ///////////////////
 // Load a projectile
-proj_t *CGameScript::LoadProjectile(FILE *fp, bool loadImagesAndSounds)
+proj_t *CGameScript::LoadProjectile(FILE *fp, bool loadImagesAndSounds, int depth)
 {
+	// Guard against a crafted mod nesting projectiles arbitrarily deep;
+	// the recursion below would otherwise overflow the stack. No real mod
+	// nests anywhere near this deep (LX56 has no cycle guard at all).
+	if(depth > 128)
+		return NULL;
 	int projIndex = -1;
 	if(Header.Version > GS_LX56_VERSION) {
 		fread_endian<int>(fp, projIndex);
@@ -877,6 +891,7 @@ proj_t *CGameScript::LoadProjectile(FILE *fp, bool loadImagesAndSounds)
 			proj->polygon.clear();
 			Uint32 NumPoints = 0;
 			fread_endian<Uint32>(fp, NumPoints);
+			if(NumPoints > 4096) NumPoints = 4096;  // clamp a malicious count before the read loop
 			proj->polygon.startPointAdding();
 			for(Uint32 i = 0; i < NumPoints; ++i) {
 				VectorD2<int> p;
@@ -893,6 +908,7 @@ proj_t *CGameScript::LoadProjectile(FILE *fp, bool loadImagesAndSounds)
 		{
 			Uint32 NumColours = 0;
 			fread_endian<int>(fp, NumColours);
+			if(NumColours > 4096) NumColours = 4096;  // clamp a malicious count before resize
 			proj->Colour.resize(NumColours);
 			
 			for(size_t i = 0; i < NumColours; ++i) {
@@ -1077,6 +1093,7 @@ proj_t *CGameScript::LoadProjectile(FILE *fp, bool loadImagesAndSounds)
 	if(Header.Version > GS_LX56_VERSION) {
 		Uint32 projHitC = 0;
 		fread_endian<Uint32>(fp, projHitC);
+		if(projHitC > 4096) projHitC = 4096;  // clamp a malicious count before resize
 		proj->actions.resize(projHitC);
 		for(Uint32 i = 0; i < projHitC; ++i) {
 			proj->actions[i].read(this, fp);
@@ -1100,7 +1117,7 @@ proj_t *CGameScript::LoadProjectile(FILE *fp, bool loadImagesAndSounds)
 		fread_compat(proj->GeneralSpawnInfo.SpeedVar,	sizeof(float),	1, fp);
 		EndianSwap(proj->GeneralSpawnInfo.SpeedVar);
 
-		proj->GeneralSpawnInfo.Proj = LoadProjectile(fp, loadImagesAndSounds);
+		proj->GeneralSpawnInfo.Proj = LoadProjectile(fp, loadImagesAndSounds, depth + 1);
 	}
 
 
@@ -1122,7 +1139,7 @@ proj_t *CGameScript::LoadProjectile(FILE *fp, bool loadImagesAndSounds)
 			fread_compat(proj->Trail.Proj.Spread,			sizeof(float),	1, fp);
 			EndianSwap(proj->Trail.Proj.Spread);
 
-			proj->Trail.Proj.Proj = LoadProjectile(fp, loadImagesAndSounds);
+			proj->Trail.Proj.Proj = LoadProjectile(fp, loadImagesAndSounds, depth + 1);
 		}
 		else { // new GS versions
 			proj->Trail.Proj.read(this, fp);

@@ -134,7 +134,7 @@ public:
 	bool		isLoaded() const { return loaded; }
 	
 private:
-	proj_t		*LoadProjectile(FILE *fp, bool loadImagesAndSounds = true);
+	proj_t		*LoadProjectile(FILE *fp, bool loadImagesAndSounds = true, int depth = 0);
 	bool		SaveProjectile(proj_t *proj, FILE *fp);
 
 public:
