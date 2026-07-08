@@ -209,7 +209,13 @@ static BOOL QuitSignalHandler( DWORD fdwCtrlType )
 	ev.type = SDL_QUIT;
 	mainQueue->push(ev);
 	tLX->bQuitCtrlC = true; // Set the special CTRL-C flag, so Dedicated Server won't try to close the non-existant pipe
-	game.state = Game::S_Quit;
+	// Don't set game.state here.
+	// This handler runs on a separate console-control-handler thread,
+	// so assigning the game.state Attr
+	// would run the attribute-update machinery off the gameloop thread,
+	// which is not allowed.
+	// The pushed SDL_QUIT event sets game.state = S_Quit via EvHndl_Quit,
+	// on the gameloop thread where ProcessEvents() dispatches it.
 	return TRUE;
 }
 
@@ -233,7 +239,18 @@ static void QuitSignalHandler(int sig)
 	} else {
 		warnings << "got quit-signal and mainQueue is not set" << endl;
 	}
-	game.state = Game::S_Quit;
+	// Don't set game.state here.
+	// This runs asynchronously in signal context,
+	// on whatever thread caught the signal,
+	// which is usually not the gameloop thread.
+	// game.state is an Attr,
+	// and assigning it runs the attribute-update machinery
+	// (locks, allocation, and a gameloop-thread assertion),
+	// which is neither reentrant nor async-signal-safe.
+	// Doing it here asserted or raced against the gameloop,
+	// and crashed on quit.
+	// The pushed SDL_QUIT event sets game.state = S_Quit via EvHndl_Quit,
+	// on the gameloop thread where ProcessEvents() dispatches it.
 }
 
 static void InitQuitSignalHandler()
