@@ -43,6 +43,9 @@ def test_bots_play_a_round_and_state_syncs_to_a_client(network_game):
         OLX_BOTS=3,              # three bots so combat is lively and reliable
         OLX_EMIT_STATE=1,        # report every worm's state each poll
         OLX_START_WHEN_WORMS=4,  # start once the three bots and the client are in
+        # Cluster worms at one spot so they fight at once;
+        # random spawns can delay the first kill past the timeout, causing flakes.
+        OLX_SPAWN_CLOSE=1,
         OLX_RUN_SECONDS=90,
     )
     assert server.wait_for("SERVER_LOBBY", timeout=30), server.read_log()
