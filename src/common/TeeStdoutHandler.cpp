@@ -29,8 +29,12 @@ void teeStdoutQuit(bool) {}
 #include <sys/types.h>
 #include <sys/mman.h>
 #include <fcntl.h>
+#include <thread>
+#include <system_error>
+#include "AuxLib.h" // setCurThreadName
 
 static char* teeOlxOutputFile = NULL;
+static bool teeOlxOutputFileIsMmap = false; // false: malloc'd (thread path), true: mmap'd (fork path)
 static const size_t MAXFILENAMESIZE = 2048;
 
 const char* GetLogFilename() { if(teeOlxOutputFile) return teeOlxOutputFile; return ""; }
@@ -54,11 +58,16 @@ static void teeOlxOutputToFileHandler(int c) {
 		fwrite(&ch, 1, 1, out);
 	else
 		buffer += c;
-	
-	if(ch == '\n' && currentOlxOutputFilename != teeOlxOutputFile) {
+
+	// teeStdoutQuit() can free teeOlxOutputFile and set it to NULL
+	// while an orphaned tee thread is still draining output through here.
+	// Read it once and skip the filename handling if it's gone:
+	// comparing the std::string against a NULL char* calls strlen(NULL) and crashes.
+	const char* outputFile = teeOlxOutputFile;
+	if(ch == '\n' && outputFile && currentOlxOutputFilename != outputFile) {
 		if(out) fclose(out);
 		out = NULL;
-		currentOlxOutputFilename = teeOlxOutputFile;
+		currentOlxOutputFilename = outputFile;
 		if(currentOlxOutputFilename != "") {
 			out = fopen(currentOlxOutputFilename.c_str(), "a");
 			if(out)
@@ -101,13 +110,13 @@ static void teeOlxOutputHandler(int in, int out) {
 }
 
 struct TeeStdoutInfo {
-	SDL_Thread* thread;
+	std::thread thread;
 	pid_t proc;
 	int pipestart;
 	int pipeend;
 	int oldstdout;
 	int oldstderr;
-	TeeStdoutInfo() : thread(NULL), proc(0), pipestart(-1), pipeend(-1), oldstdout(-1), oldstderr(-1) {}
+	TeeStdoutInfo() : proc(0), pipestart(-1), pipeend(-1), oldstdout(-1), oldstderr(-1) {}
 	void initPipeEnd(int pipeend_) {
 		pipeend = pipeend_;
 		oldstdout = dup(STDOUT_FILENO);
@@ -126,6 +135,7 @@ static TeeStdoutInfo teeStdoutInfo;
 #include <cstring>
 
 int threadedTeeStdout(void*) {
+	setCurThreadName("tee stdout");
 	while( true ) {
 		char buf[1024];
 		ssize_t num = read(teeStdoutInfo.pipestart, buf, sizeof(buf)/sizeof(char));
@@ -145,7 +155,7 @@ int threadedTeeStdout(void*) {
 void teeStdoutInit() {
 	// Idempotent: a theme-switch restart runs this again while the tee is still up.
 	// Re-initialising would orphan the old tee, which then crashes at exit on teeOlxOutputFile.
-	if(teeStdoutInfo.thread || teeStdoutInfo.proc)
+	if(teeStdoutInfo.thread.joinable() || teeStdoutInfo.proc)
 		return;
 
 	int pipe_to_handler[2];
@@ -159,7 +169,12 @@ void teeStdoutInit() {
 			errors << "teeStdout: not enough mem" << endl;
 			return;
 		}
-		*teeOlxOutputFile = 0;
+		// Zero the whole buffer, not just the first byte:
+		// the tee thread reads it via strlen while teeStdoutFile() rewrites it,
+		// and teeStdoutFile() never writes past MAXFILENAMESIZE - 1,
+		// so a zeroed tail guarantees a terminator within bounds even mid-write.
+		// (The mmap paths below are already zero-filled by the OS.)
+		memset(teeOlxOutputFile, 0, MAXFILENAMESIZE);
 
 		if(pipe(pipe_to_handler) != 0) { // error creating pipe
 			errors << "teeStdout: cannot create pipe: " << strerror(errno) << endl;
@@ -169,9 +184,14 @@ void teeStdoutInit() {
 		teeStdoutInfo.pipestart = pipe_to_handler[0];
 		teeStdoutInfo.initPipeEnd(pipe_to_handler[1]);
 
-		teeStdoutInfo.thread = SDL_CreateThread(threadedTeeStdout, "tee stdout", NULL);
-		if(!teeStdoutInfo.thread) {
-			errors << "teeStdout: failed to create thread" << endl;
+		// std::thread rather than SDL_CreateThread,
+		// so teeStdoutQuit() can join it reliably at exit:
+		// SDL_WaitThread can return early (see #989),
+		// and by then SDL_Quit() has already run.
+		try {
+			teeStdoutInfo.thread = std::thread(threadedTeeStdout, (void*)NULL);
+		} catch(const std::system_error& e) {
+			errors << "teeStdout: failed to create thread: " << e.what() << endl;
 			return;
 		}
 
@@ -195,6 +215,7 @@ void teeStdoutInit() {
 		errors << "teeStdout: cannot mmap: " << strerror(errno) << endl;
 		return;
 	}
+	teeOlxOutputFileIsMmap = true;
 	*teeOlxOutputFile = 0;
 
 	if(pipe(pipe_to_handler) != 0) { // error creating pipe
@@ -235,18 +256,24 @@ void teeStdoutFile(const std::string& file) {
 
 // NOTE: We are calling this also when we crashed, so be sure that we only do save operations here!
 void teeStdoutQuit(bool wait) {
-	if(teeStdoutInfo.proc || teeStdoutInfo.thread) {
+	if(teeStdoutInfo.proc || teeStdoutInfo.thread.joinable()) {
 		if(wait)
 			notes << "wait for teeStdout handler quit" << endl;
 		close(STDOUT_FILENO);
 		close(STDERR_FILENO);
 		if(teeStdoutInfo.pipestart >= 0) close(teeStdoutInfo.pipestart);
 		close(teeStdoutInfo.pipeend);
-		// The forked process should quit itself now.
+		// The forked process / thread should quit itself now.
 		if(wait) {
 			if(teeStdoutInfo.proc) waitpid(teeStdoutInfo.proc, NULL, 0);
-			if(teeStdoutInfo.thread) SDL_WaitThread(teeStdoutInfo.thread, NULL);
+			// A real join: unlike SDL_WaitThread it returns only once the
+			// thread has fully finished, so freeing below cannot race it.
+			if(teeStdoutInfo.thread.joinable()) teeStdoutInfo.thread.join();
 		}
+		// On the crash path we must not block; detach so the destructor of the
+		// static teeStdoutInfo cannot call std::terminate() on a joinable thread.
+		else if(teeStdoutInfo.thread.joinable())
+			teeStdoutInfo.thread.detach();
 
 		// Recover stdout/err
 		dup2(teeStdoutInfo.oldstdout, STDOUT_FILENO);
@@ -255,11 +282,11 @@ void teeStdoutQuit(bool wait) {
 		close(teeStdoutInfo.oldstderr);
 		printf("Standard Out/Err recovered\n");
 	}
-	
+
 	if(teeOlxOutputFile && wait /* otherwise unsafe */) {
-		if(teeStdoutInfo.proc)
+		if(teeOlxOutputFileIsMmap)
 			munmap(teeOlxOutputFile, MAXFILENAMESIZE);
-		else if(teeStdoutInfo.thread)
+		else
 			free(teeOlxOutputFile);
 		teeOlxOutputFile = NULL;
 	}
