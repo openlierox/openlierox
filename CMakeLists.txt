@@ -42,3 +42,20 @@ IF(PCH)
 	ADD_PRECOMPILED_HEADER(openlierox ${OLXROOTDIR}/include/PrecompiledHeader.hpp 1)
 ENDIF(PCH)
 
+# Dedicated unit-test executable, built only with -DOLX_TESTS=Yes.
+# It links the whole engine (its main() disabled via the OLX_UNITTEST
+# define) plus the tests/unit sources, which provide their own main(),
+# so a test can exercise any engine class directly.
+IF(OLX_TESTS)
+	INCLUDE_DIRECTORIES(${OLXROOTDIR}/tests/unit)
+	ADD_EXECUTABLE(olx_tests
+		${OLXROOTDIR}/tests/unit/test_main.cpp
+		${OLXROOTDIR}/tests/unit/test_CBytestream.cpp
+		${ALL_SRCS} ${OLX_WIN_RESOURCES})
+	SET_TARGET_PROPERTIES(olx_tests PROPERTIES
+		RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+		OUTPUT_NAME olx_tests
+		COMPILE_DEFINITIONS "OLX_UNITTEST")
+	TARGET_LINK_LIBRARIES(olx_tests ${LIBS})
+ENDIF(OLX_TESTS)
+

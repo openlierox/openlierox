@@ -34,3 +34,30 @@ jobs:
 
       - name: Run headless tests
         run: python3 -m pytest tests/headless -v
+
+  unit:
+    name: Unit tests (Linux)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install dependencies
+        run: |
+          # Drop broken pre-installed third-party apt repos (microsoft/azure); we don't use them.
+          sudo rm -f /etc/apt/sources.list.d/*microsoft* /etc/apt/sources.list.d/*azure*
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake build-essential \
+            libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev \
+            libxml2-dev libgd-dev zlib1g-dev libzip-dev libx11-dev \
+            libcurl4-openssl-dev libboost-dev libopenal-dev libalut-dev \
+            libvorbis-dev libyaml-cpp-dev binutils-dev libiberty-dev
+
+      - name: Build unit tests
+        run: |
+          cmake -S . -B build-tests -DCMAKE_BUILD_TYPE=Release -DHAWKNL_BUILTIN=Yes -DOLX_TESTS=Yes
+          cmake --build build-tests --target olx_tests -j$(nproc)
+
+      - name: Run unit tests
+        run: ./build-tests/bin/olx_tests

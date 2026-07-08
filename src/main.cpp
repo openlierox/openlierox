@@ -195,7 +195,9 @@ static bool afterCrashInformedUser = false;
 
 extern "C" int real_main(int argc, char *argv[]);
 
-#if !defined(__APPLE__) || defined(OLX_USE_STD_MAIN)
+// OLX_UNITTEST is defined for the olx_tests target, whose main() lives in
+// tests/unit/test_main.cpp; disable this one there to avoid two main()s.
+#if (!defined(__APPLE__) || defined(OLX_USE_STD_MAIN)) && !defined(OLX_UNITTEST)
 int main(int argc, char *argv[]) {
 	return real_main(argc, argv);
 }
