@@ -311,8 +311,18 @@ struct ExactFilenameCache {
 		Mutex::ScopedLock lock(mutex);
 		cache.insert(exactname);
 	}
+};
+
+// Leaky singleton: intentionally allocated once and never freed.
+// As a global with a non-trivial destructor it would otherwise be torn down
+// during static finalization at exit (__cxa_finalize),
+// where file-search worker threads may still be inserting into it;
+// destroying the hash_set under them crashes in free().
+// Never destructing it makes any such late access harmless.
+static ExactFilenameCache& exactFilenameCache() {
+	static ExactFilenameCache* instance = new ExactFilenameCache();
+	return *instance;
 }
-exactfilenamecache;
 
 
 // used by unix-GetExactFileName
@@ -345,7 +355,7 @@ bool CaseInsFindFile(const std::string& dir, const std::string& searchname, std:
 		// Cache fillup logic.
 		if(count >= CacheIgnoreNum) {
 			std::string dirSearchName = dir.empty() ? direntry->d_name : (dir + "/" + direntry->d_name);
-			exactfilenamecache.add_searchname(dirSearchName);
+			exactFilenameCache().add_searchname(dirSearchName);
 		}
 		count++;
 
@@ -398,7 +408,7 @@ bool GetExactFileName(const std::string& abs_searchname, std::string& filename) 
 	std::string rest;
 	while(true) {
 		rest = sname.substr(0,pos);
-		if(exactfilenamecache.has_searchname(rest, filename)) {
+		if(exactFilenameCache().has_searchname(rest, filename)) {
 			if(IsPathStatable(filename)) {
 				if(pos == sname.size()) // do we got the whole filename?
 					return true;
