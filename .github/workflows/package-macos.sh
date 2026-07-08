@@ -91,6 +91,48 @@ dylibbundler -od -b \
     -d "$APP/Contents/Frameworks" \
     -p "@executable_path/../Frameworks/"
 
+# Homebrew's "sdl2" is really sdl2-compat:
+# an SDL2-ABI shim that dlopens the real SDL3 at runtime.
+# Because that load goes through dlopen and not a link-time reference,
+# dylibbundler never sees SDL3 and leaves it out,
+# so the app dies at startup with "Failed loading SDL3 library."
+# Copy SDL3 in by hand, next to the bundled libSDL2,
+# under the name sdl2-compat looks for first (@loader_path/libSDL3.dylib).
+# SDL3 itself depends only on system frameworks,
+# so nothing else needs bundling.
+SDL3_SRC="$(brew --prefix sdl3 2>/dev/null || true)/lib/libSDL3.dylib"
+if [ ! -f "$SDL3_SRC" ]; then
+    SDL3_SRC="$(brew --prefix)/lib/libSDL3.dylib"
+fi
+if [ ! -f "$SDL3_SRC" ]; then
+    echo "ERROR: libSDL3.dylib not found -- sdl2-compat needs it at runtime" >&2
+    exit 1
+fi
+cp -L "$SDL3_SRC" "$APP/Contents/Frameworks/libSDL3.dylib"
+chmod u+w "$APP/Contents/Frameworks/libSDL3.dylib"
+install_name_tool -id "@executable_path/../Frameworks/libSDL3.dylib" \
+    "$APP/Contents/Frameworks/libSDL3.dylib"
+codesign --force --sign - "$APP/Contents/Frameworks/libSDL3.dylib"
+
+# The bundle must be self-contained:
+# a load path still pointing into /opt/homebrew or /usr/local
+# means a dependency was missed
+# and the app would fail on a machine without that library
+# (exactly the SDL3 bug above, which shipped silently).
+# Fail the build here instead.
+leaked=0
+for f in "$APP/Contents/MacOS/openlierox" "$APP/Contents/Frameworks/"*.dylib; do
+    refs="$(otool -L "$f" | tail -n +2 | grep -E '/opt/homebrew|/usr/local/' || true)"
+    if [ -n "$refs" ]; then
+        echo "ERROR: $f still references non-bundled libraries:" >&2
+        echo "$refs" >&2
+        leaked=1
+    fi
+done
+if [ "$leaked" -ne 0 ]; then
+    exit 1
+fi
+
 # Zip uses tilde instead of underscore so e.g. "beta9" sorts correctly.
 VERSION="$(./get_version.sh | tr '_' '~')"
 ZIP="openlierox_${VERSION}_macos.zip"
