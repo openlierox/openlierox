@@ -1085,8 +1085,14 @@ void GameServer::ParseGetChallenge(const SmartPointer<NetworkSocket>& tSocket, C
 	for (i = 0;i < MAX_CHALLENGES;i++) {
 
 		if (IsNetAddrValid(tChallenges[i].Address)) {
-			if (AreNetAddrEqual(adrFrom, tChallenges[i].Address))
-				continue;
+			if (AreNetAddrEqual(adrFrom, tChallenges[i].Address)) {
+				// We already have a challenge for this address, reuse the slot.
+				// (Skipping it instead would, once every slot holds this address,
+				// leave ChallengeToSet at -1 and i at MAX_CHALLENGES,
+				// so the tChallenges[i] read below would be out of bounds.)
+				ChallengeToSet = i;
+				break;
+			}
 			if (ChallengeToSet < 0 || tChallenges[i].fTime < OldestTime) {
 				OldestTime = tChallenges[i].fTime;
 				ChallengeToSet = i;
