@@ -29,50 +29,11 @@ void teeStdoutQuit(bool) {}
 #include <sys/types.h>
 #include <sys/mman.h>
 #include <fcntl.h>
-#include <cstring>
-#include <cstdint>
-#include <atomic>
 
+static char* teeOlxOutputFile = NULL;
 static const size_t MAXFILENAMESIZE = 2048;
 
-// The current log filename, shared between the main thread (the only writer,
-// via teeStdoutFile) and the tee reader. The reader runs either on another
-// thread (stdin CLI path) or in the forked tee process (default path), so it
-// cannot share a Mutex with the writer -- least of all across the fork's
-// shared-memory boundary. We guard it with a single-writer seqlock instead:
-// the reader takes a bounded, consistent snapshot without ever blocking or
-// running strlen off the end of a half-written buffer.
-// This is a POD so it lives happily in malloc'd or mmap'd (fork-shared) memory.
-struct TeeLogTarget {
-	volatile uint32_t seq; // odd while a write is in progress
-	volatile uint32_t len; // length of name, without the terminator
-	char name[MAXFILENAMESIZE];
-};
-
-static TeeLogTarget* teeLogTarget = NULL;
-
-// Copy the current log filename into out (at least MAXFILENAMESIZE bytes),
-// always NUL-terminated within bounds.
-// Returns false (out set to "") when there is no target,
-// or no consistent snapshot could be read.
-static bool readTeeLogFilename(char* out) {
-	if(!teeLogTarget) { out[0] = 0; return false; }
-	for(int tries = 0; tries < 4; ++tries) {
-		uint32_t s0 = teeLogTarget->seq;
-		if(s0 & 1u) continue; // a write is in progress
-		std::atomic_thread_fence(std::memory_order_acquire);
-		uint32_t n = teeLogTarget->len;
-		if(n >= MAXFILENAMESIZE) n = MAXFILENAMESIZE - 1; // clamp a torn length
-		memcpy(out, teeLogTarget->name, n);
-		out[n] = 0;
-		std::atomic_thread_fence(std::memory_order_acquire);
-		if(s0 == teeLogTarget->seq) return true; // name did not change under us
-	}
-	out[0] = 0;
-	return false;
-}
-
-const char* GetLogFilename() { if(teeLogTarget) return teeLogTarget->name; return ""; }
+const char* GetLogFilename() { if(teeOlxOutputFile) return teeOlxOutputFile; return ""; }
 
 #include <unistd.h>
 #include <signal.h>
@@ -94,16 +55,15 @@ static void teeOlxOutputToFileHandler(int c) {
 	else
 		buffer += c;
 
-	// The filename is written by another thread/process (teeStdoutFile),
-	// and torn down at exit (teeStdoutQuit),
-	// so take a safe snapshot rather than dereferencing the shared buffer directly:
-	// reading a half-written or freed name as a std::string
-	// would run strlen off the end and crash.
-	char currentFilename[MAXFILENAMESIZE];
-	if(ch == '\n' && readTeeLogFilename(currentFilename) && currentOlxOutputFilename != currentFilename) {
+	// teeStdoutQuit() can free teeOlxOutputFile and set it to NULL
+	// while an orphaned tee thread is still draining output through here.
+	// Read it once and skip the filename handling if it's gone:
+	// comparing the std::string against a NULL char* calls strlen(NULL) and crashes.
+	const char* outputFile = teeOlxOutputFile;
+	if(ch == '\n' && outputFile && currentOlxOutputFilename != outputFile) {
 		if(out) fclose(out);
 		out = NULL;
-		currentOlxOutputFilename = currentFilename;
+		currentOlxOutputFilename = outputFile;
 		if(currentOlxOutputFilename != "") {
 			out = fopen(currentOlxOutputFilename.c_str(), "a");
 			if(out)
@@ -189,7 +149,7 @@ int threadedTeeStdout(void*) {
 
 void teeStdoutInit() {
 	// Idempotent: a theme-switch restart runs this again while the tee is still up.
-	// Re-initialising would orphan the old tee, which then crashes at exit on the log target.
+	// Re-initialising would orphan the old tee, which then crashes at exit on teeOlxOutputFile.
 	if(teeStdoutInfo.thread || teeStdoutInfo.proc)
 		return;
 
@@ -199,12 +159,17 @@ void teeStdoutInit() {
 		// we must fall back to a saver teeStdout version which must be synced with the stdin CLI
 		notes << "teeStdout: save multithreaded fallback" << endl;
 
-		teeLogTarget = (TeeLogTarget*) malloc(sizeof(TeeLogTarget));
-		if(!teeLogTarget) {
+		teeOlxOutputFile = (char*) malloc(MAXFILENAMESIZE);
+		if(!teeOlxOutputFile) {
 			errors << "teeStdout: not enough mem" << endl;
 			return;
 		}
-		memset(teeLogTarget, 0, sizeof(TeeLogTarget));
+		// Zero the whole buffer, not just the first byte:
+		// the tee thread reads it via strlen while teeStdoutFile() rewrites it,
+		// and teeStdoutFile() never writes past MAXFILENAMESIZE - 1,
+		// so a zeroed tail guarantees a terminator within bounds even mid-write.
+		// (The mmap paths below are already zero-filled by the OS.)
+		memset(teeOlxOutputFile, 0, MAXFILENAMESIZE);
 
 		if(pipe(pipe_to_handler) != 0) { // error creating pipe
 			errors << "teeStdout: cannot create pipe: " << strerror(errno) << endl;
@@ -224,24 +189,23 @@ void teeStdoutInit() {
 	}
 	
 #ifdef __APPLE__
-	teeLogTarget = (TeeLogTarget*) mmap(0, sizeof(TeeLogTarget), PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANON, 0, 0);
-#else
+	teeOlxOutputFile = (char*) mmap(0, MAXFILENAMESIZE, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANON, 0, 0);
+#else	
 	int fd = open("/dev/zero", O_RDWR);
 	if(fd < 0) {
 		errors << "teeStdout: cannot open dummy file" << endl;
 		return;
 	}
-
-	teeLogTarget = (TeeLogTarget*) mmap(0, sizeof(TeeLogTarget), PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+	
+	teeOlxOutputFile = (char*) mmap(0, MAXFILENAMESIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
 #endif
-
-	if(!teeLogTarget || teeLogTarget == (TeeLogTarget*)-1) {
-		teeLogTarget = NULL;
+	
+	if(!teeOlxOutputFile || teeOlxOutputFile == (char*)-1) {
+		teeOlxOutputFile = NULL;
 		errors << "teeStdout: cannot mmap: " << strerror(errno) << endl;
 		return;
 	}
-	// The mapping is zero-filled, so seq/len/name start cleared;
-	// the fork below shares it with the tee process.
+	*teeOlxOutputFile = 0;
 
 	if(pipe(pipe_to_handler) != 0) { // error creating pipe
 		errors << "teeStdout: cannot create pipe: " << strerror(errno) << endl;		
@@ -266,24 +230,15 @@ void teeStdoutInit() {
 }
 
 void teeStdoutFile(const std::string& file) {
-	if(!teeLogTarget) return;
-
-	std::string name = file;
-	if(name.size() >= MAXFILENAMESIZE - 1) {
+	if(!teeOlxOutputFile) return;
+	
+	if(file.size() >= MAXFILENAMESIZE - 1) {
 		errors << "teeStdoutFile: filename " << file << " too big" << endl;
-		name.clear();
+		strcpy(teeOlxOutputFile, "");
+		return;
 	}
-
-	// Single-writer seqlock publish: bump seq odd, write the name, bump seq even.
-	// The release fences keep the reader from seeing the new name with a stale seq.
-	uint32_t s = teeLogTarget->seq;
-	teeLogTarget->seq = s + 1;
-	std::atomic_thread_fence(std::memory_order_release);
-	memcpy(teeLogTarget->name, name.data(), name.size());
-	teeLogTarget->name[name.size()] = 0;
-	teeLogTarget->len = (uint32_t) name.size();
-	std::atomic_thread_fence(std::memory_order_release);
-	teeLogTarget->seq = s + 2;
+	
+	strcpy(teeOlxOutputFile, file.c_str());
 }
 
 #include <sys/wait.h>
@@ -311,15 +266,12 @@ void teeStdoutQuit(bool wait) {
 		printf("Standard Out/Err recovered\n");
 	}
 	
-	if(teeLogTarget && wait /* otherwise unsafe */) {
-		// Publish NULL before releasing the memory, so a lingering tee reader
-		// sees readTeeLogFilename() bail out rather than a dangling pointer.
-		TeeLogTarget* toFree = teeLogTarget;
-		teeLogTarget = NULL;
+	if(teeOlxOutputFile && wait /* otherwise unsafe */) {
 		if(teeStdoutInfo.proc)
-			munmap(toFree, sizeof(TeeLogTarget));
+			munmap(teeOlxOutputFile, MAXFILENAMESIZE);
 		else if(teeStdoutInfo.thread)
-			free(toFree);
+			free(teeOlxOutputFile);
+		teeOlxOutputFile = NULL;
 	}
 }
 
