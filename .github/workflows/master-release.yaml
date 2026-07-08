@@ -144,9 +144,35 @@ jobs:
           # --prerelease=false is explicit: a release flagged as a prerelease
           # cannot also be marked --latest (GitHub returns "Latest release
           # cannot be draft or prerelease.").
-          gh release create "$VERSION" "${ASSETS[@]}" \
-            --title "OpenLieroX ${VERSION_FULL}" \
-            --notes "$NOTES" \
-            --prerelease=false \
-            --latest \
-            --target "$GITHUB_SHA"
+          publish() {
+            # Start each attempt from a clean slate:
+            # if an earlier attempt created the release but failed partway
+            # (e.g. a dropped asset upload),
+            # remove it so the retry is not rejected with "release already exists".
+            if gh release view "$VERSION" >/dev/null 2>&1; then
+              gh release delete "$VERSION" --yes --cleanup-tag
+            fi
+            gh release create "$VERSION" "${ASSETS[@]}" \
+              --title "OpenLieroX ${VERSION_FULL}" \
+              --notes "$NOTES" \
+              --prerelease=false \
+              --latest \
+              --target "$GITHUB_SHA"
+          }
+
+          # The releases API intermittently returns a spurious 403
+          # ("Resource not accessible by integration") even with the right permissions.
+          # Retry a few times with a growing backoff
+          # so a single hiccup does not lose the build's release.
+          attempt=1
+          max_attempts=5
+          until publish; do
+            if [ "$attempt" -ge "$max_attempts" ]; then
+              echo "gh release create failed after ${max_attempts} attempts" >&2
+              exit 1
+            fi
+            delay=$((attempt * 15))
+            echo "Publish attempt ${attempt}/${max_attempts} failed; retrying in ${delay}s..." >&2
+            sleep "$delay"
+            attempt=$((attempt + 1))
+          done
