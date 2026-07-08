@@ -105,6 +105,8 @@ static LinenoiseCompletionCallback *completionCallback = NULL;
 
 static struct termios orig_termios; /* in order to restore at exit */
 static int rawmode = 0; /* for atexit() function to check if restore is needed*/
+static int rawmode_everused = 0; /* whether orig_termios was ever captured */
+static int terminal_finalized = 0; /* once set, never go raw again (shutdown) */
 static int atexit_registered = 0; /* register atexit just 1 time */
 static size_t history_max_len = LINENOISE_DEFAULT_HISTORY_MAX_LEN;
 static std::vector<std::string> history;
@@ -124,6 +126,7 @@ bool linenoiseIsUnsupportedTerm() {
 int linenoiseEnableRawMode(int fd) {
     struct termios raw;
 
+	if (terminal_finalized) goto fatal; /* shutdown: never re-raw */
 	if (!isatty(fd)) goto fatal;
     if (!atexit_registered) {
         atexit(linenoiseAtExit);
@@ -137,6 +140,7 @@ int linenoiseEnableRawMode(int fd) {
 		orig_termios.c_iflag |= BRKINT | ICRNL | INPCK | ISTRIP | IXON;
 		orig_termios.c_oflag |= OPOST;
 		orig_termios.c_lflag |= ECHO | ICANON | IEXTEN | ISIG;
+		rawmode_everused = 1;
 	}
 
     raw = orig_termios;  /* modify the original mode */
@@ -167,6 +171,15 @@ fatal:
 void linenoiseDisableRawMode(int fd) {
     /* Don't even check the return value as it's too late. */
     if (rawmode && tcsetattr(fd,TCSAFLUSH,&orig_termios) != -1)
+        rawmode = 0;
+}
+
+/* Shutdown: restore cooked mode unconditionally,
+ * since the rawmode flag can desync across the CLI and tee threads,
+ * and latch raw off so nothing re-raws. */
+void linenoiseRestoreTerminal(int fd) {
+    terminal_finalized = 1;
+    if (rawmode_everused && tcsetattr(fd,TCSAFLUSH,&orig_termios) != -1)
         rawmode = 0;
 }
 

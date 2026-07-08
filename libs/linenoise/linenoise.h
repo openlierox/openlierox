@@ -55,6 +55,7 @@ int linenoiseHistoryLoad(const std::string& filename);
 
 int linenoiseEnableRawMode(int fd);
 void linenoiseDisableRawMode(int fd);
+void linenoiseRestoreTerminal(int fd);
 
 struct LinenoiseEnv {
 	int fd;
