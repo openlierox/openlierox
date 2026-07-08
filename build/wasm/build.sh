@@ -77,6 +77,21 @@ cp -f "$SHIM_SRC" "$DIST_DIR/coi-serviceworker.js"
     cp -f "$WASM_DIR/shell/coi-serviceworker.LICENSE" \
           "$DIST_DIR/coi-serviceworker.LICENSE"
 
+# Local-testing launcher. serve.py sets the COOP/COEP headers the threaded
+# build needs; a plain `python3 -m http.server` doesn't, and the engine then
+# hangs at startup with SharedArrayBuffer unavailable. run.command is a
+# double-clickable macOS wrapper that serves the bundle and opens a browser.
+cp -f "$WASM_DIR/serve.py" "$DIST_DIR/serve.py"
+cat > "$DIST_DIR/run.command" <<'EOF'
+#!/bin/sh
+# Double-click (macOS) to serve this OpenLieroX bundle locally with the
+# COOP/COEP headers the WebAssembly build requires, then open it in a browser.
+cd "$(dirname "$0")" || exit 1
+( sleep 1 && open "http://localhost:8000/" ) &
+exec python3 serve.py
+EOF
+chmod +x "$DIST_DIR/run.command"
+
 # PWA assets: web app manifest + icons referenced by the shell's <head>.
 # These make the bundle installable as a standalone web app out of the box
 # (the shell's "Install web app" button needs a manifest to get a real
@@ -156,7 +171,7 @@ json.dump({
         "index.html", "openlierox.js", "openlierox.wasm", "openlierox.data",
         "coi-serviceworker.js", "coi-serviceworker.LICENSE",
         "manifest.webmanifest", "icon-256.png", "icon-512.png",
-        "_headers", ".htaccess",
+        "_headers", ".htaccess", "serve.py", "run.command",
     ],
 }, open(sys.argv[1], "w"), indent=2)
 open(sys.argv[1], "a").write("\n")
@@ -181,3 +196,7 @@ echo "      Cross-Origin-Resource-Policy: same-origin"
 echo "  - Hosts without header config (GitHub Pages): coi-serviceworker.js"
 echo "    is wired into index.html and provides the headers client-side."
 echo "    First load triggers a one-time reload to activate the worker."
+echo
+echo "To test the bundle locally: run 'python3 serve.py' inside it (or"
+echo "double-click run.command on macOS), then open http://localhost:8000/."
+echo "Opening index.html as a file:// URL will not work."

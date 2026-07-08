@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 """Tiny static server for the OpenLieroX Wasm build.
 
-Serves build/wasm/output/ on http://localhost:8000 with:
+Serves the bundle on http://localhost:8000 with:
 - Correct MIME types for .wasm / .data / .js
 - Cross-Origin-Opener-Policy / Cross-Origin-Embedder-Policy headers,
   required by the -pthread build (SharedArrayBuffer).
+
+Serves build/wasm/output/ when run from the repo, or the directory it
+sits in when shipped inside a distributed bundle (next to index.html).
+Set OLX_WASM_ROOT to serve a different directory.
 
 Optional TLS, for testing on a phone over the LAN: SharedArrayBuffer
 needs a *secure context*, which over a LAN IP means HTTPS (localhost is
@@ -19,7 +23,16 @@ import os
 import ssl
 import sys
 
-ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output")
+_HERE = os.path.dirname(os.path.abspath(__file__))
+# Serve the bundle directory. Inside a distributed bundle this script sits next
+# to index.html; in the repo it sits in build/wasm/ with the artefacts under
+# output/. An explicit OLX_WASM_ROOT wins over both.
+if os.environ.get("OLX_WASM_ROOT"):
+    ROOT = os.environ["OLX_WASM_ROOT"]
+elif os.path.isfile(os.path.join(_HERE, "index.html")):
+    ROOT = _HERE
+else:
+    ROOT = os.path.join(_HERE, "output")
 PORT = int(os.environ.get("PORT", "8000"))
 CERTFILE = os.environ.get("CERTFILE")
 KEYFILE = os.environ.get("KEYFILE")  # may be None if cert.pem also holds the key
