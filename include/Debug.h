@@ -15,7 +15,7 @@
 #include "CodeAttributes.h"
 #include "util/StringConv.h"
 #include "util/IPrintOutFct.h"
-#include "ThreadPool.h" // ThreadId
+#include "ThreadId.h" // ThreadId
 
 // { these function should be safe to be called from everywhere, also from signalhandlers
 bool AmIBeingDebugged();

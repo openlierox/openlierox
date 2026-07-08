@@ -16,11 +16,8 @@
 #include <string>
 #include <boost/function.hpp>
 #include "util/Result.h"
+#include "ThreadId.h"
 #include "SmartPointer.h"
-
-// Under Win, it's HANDLE (which is void*).
-// Otherwise, it's pthread_t, which is also a ptr-type.
-typedef uintptr_t ThreadId;
 
 struct SDL_mutex;
 struct SDL_cond;

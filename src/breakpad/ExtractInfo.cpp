@@ -13,6 +13,7 @@
 
 #include "ExtractInfo.h"
 #include "Debug.h"
+#include "ThreadPool.h" // InitThreadPool, threadPool, UnInitThreadPool
 #include "Networking.h"
 #include "Options.h"
 #include "Version.h"

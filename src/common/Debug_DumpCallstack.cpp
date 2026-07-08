@@ -8,9 +8,11 @@
  */
 
 #include "Debug.h"
+#include "ThreadPool.h" // getAllThreads, getThreadName
 #include "util/macros.h"
 #include <vector>
 #include <string>
+#include <set>
 #include <cstdio>
 #include <cstdlib>
 
