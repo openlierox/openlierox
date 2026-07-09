@@ -761,8 +761,6 @@ struct ML_Teeworlds : MapLoad {
 				}
 				x += tiles[c].skip;
 			}
-
-		SaveSurface(img.image, "tiletex-" + itoa(group) + "-" + itoa(layer) + ".png", FMT_PNG, "");
 	}
 
 	void renderQuads(int group, int layer, TWLayer& l, int RenderFlags) {
@@ -776,9 +774,8 @@ struct ML_Teeworlds : MapLoad {
 			debugPrint(l);
 			return;
 		}
-		TWImage& img = images[l.quadLayer.image_id];
-
-		SaveSurface(img.image, "quads-" + itoa(group) + "-" + itoa(layer) + ".png", FMT_PNG, "");
+		// Quad layers are only background images;
+		// the loader draws them via createParalax, so there is nothing to render here.
 	}
 
 	void renderMap(int renderType, const SmartPointer<SDL_Surface>& surf) {
