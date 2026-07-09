@@ -79,3 +79,7 @@ build/android/output/
 __pycache__
 *.pyc
 .pytest_cache
+
+# Offscreen menu-render dev output
+.render-home/
+.render-out/

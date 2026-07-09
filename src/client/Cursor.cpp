@@ -17,6 +17,7 @@
 
 #include "FindFile.h"
 #include "InputEvents.h"
+#include "AuxLib.h"
 #include "GfxPrimitives.h"
 #include "ConfigHandler.h"
 #include "Cursor.h"
@@ -83,6 +84,8 @@ bool InitializeCursors()
 // Shutdown the cursors
 void ShutdownCursors()
 {
+	tCurrentCursor = NULL; // else it dangles past the free below (e.g. render())
+
 	// Free all the cursor structures
 	for (byte i=0; i<CURSOR_COUNT; i++)
 		if (tCursors[i])  {
@@ -93,6 +96,7 @@ void ShutdownCursors()
 	if (tAnimTimer)  {
 		tAnimTimer->stop();
 		delete tAnimTimer;
+		tAnimTimer = NULL;
 	}
 }
 
@@ -124,8 +128,26 @@ void SetGameCursor(CCursor *c)
 /////////////////
 // Draw game cursor
 void DrawCursor(SDL_Surface * dst) {
+	// On centered frames render() draws the cursor (see there),
+	// so skip the in-band bake here to keep the gap-filling edge columns clean.
+	if (VideoPostProcessor::get()->displayScreenOffsetX() > 0)
+		return;
 	if (tCurrentCursor)
 		tCurrentCursor->Draw(dst);
+}
+
+/////////////////
+// Draw game cursor on the renderer at an explicit screen position
+void DrawCursorOnRenderer(SDL_Renderer * renderer, int x, int y) {
+	if (tCurrentCursor)
+		tCurrentCursor->DrawOnRenderer(renderer, x, y);
+}
+
+// Drop cursor GPU textures before the renderer is destroyed (VideoPostProcessor::uninit).
+void InvalidateCursorTextures() {
+	for (byte i = 0; i < CURSOR_COUNT; i++)
+		if (tCursors[i])
+			tCursors[i]->InvalidateTexture();
 }
 
 ///////////////////
@@ -288,4 +310,66 @@ void CCursor::Draw(SDL_Surface * dst)
 
 	// Draw the cursor
 	DrawImageAdv(dst,bmpCursor,iFrame*iFrameWidth,0,X,Y,iFrameWidth,bmpCursor.get()->h);
+}
+
+//////////////////
+// Drop the GPU texture (recursive to the up/down states)
+void CCursor::InvalidateTexture()
+{
+	bmpCursorTex = NULL;
+	if (cDown) cDown->InvalidateTexture();
+	if (cUp) cUp->InvalidateTexture();
+}
+
+//////////////////
+// Draw the cursor on the renderer at an explicit screen position
+void CCursor::DrawOnRenderer(SDL_Renderer * renderer, int mouseX, int mouseY)
+{
+	if (!renderer || !bmpCursor.get())
+		return;
+
+	mouse_t *Mouse = GetMouse();
+
+	// Special states first (mirrors Draw)
+	if (Mouse->FirstDown) {
+		if (cDown) { cDown->DrawOnRenderer(renderer, mouseX, mouseY); return; }
+	}
+	else if (Mouse->Up) {
+		if (cUp) { cUp->DrawOnRenderer(renderer, mouseX, mouseY); return; }
+	}
+
+	// Lazily upload the (color-keyed) cursor surface to a texture.
+	if (!bmpCursorTex.get()) {
+		bmpCursorTex = SDL_CreateTextureFromSurface(renderer, bmpCursor.get());
+		if (!bmpCursorTex.get()) return;
+		SDL_SetTextureBlendMode(bmpCursorTex.get(), SDL_BLENDMODE_BLEND);
+	}
+
+	int X = mouseX;
+	int Y = mouseY;
+	switch (iType) {
+	case CUR_ARROW:
+	case CUR_TEXT:
+		break;
+	case CUR_SPLITTER:
+		X -= iFrameWidth / 2;
+		break;
+	case CUR_AIM:
+		X -= iFrameWidth / 2;
+		Y -= bmpCursor.get()->h / 2;
+		break;
+	default:
+		break;
+	}
+
+	// Process animating (mirrors Draw)
+	if ((tLX->currentTime - fAnimationSwapTime).seconds() >= fCursorFrameTime) {
+		iFrame++;
+		iFrame %= iNumFrames;
+		fAnimationSwapTime = tLX->currentTime;
+	}
+
+	SDL_Rect src = { iFrame*iFrameWidth, 0, iFrameWidth, bmpCursor.get()->h };
+	SDL_Rect dst = { X, Y, iFrameWidth, bmpCursor.get()->h };
+	SDL_RenderCopy(renderer, bmpCursorTex.get(), &src, &dst);
 }

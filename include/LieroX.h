@@ -46,6 +46,9 @@ struct lierox_t {
 							// it is not clamped unlike the above one
 	CFont	cFont;
 	CFont	cOutlineFont;
+	// Separate font copy for the main-thread screen overlay,
+	// so it never shares blit state with cFont (CFont is not thread-safe).
+	CFont	cOverlayFont;
 
 	bool	bVideoModeChanged;
 

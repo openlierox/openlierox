@@ -18,6 +18,9 @@
 #include <boost/shared_ptr.hpp>
 #include "ThreadPool.h"
 #include "Mutex.h"
+
+class CFont;
+struct SDL_Renderer;
 #include "RefCounter.h"
 #include "util/Result.h"
 
@@ -95,9 +98,9 @@ public:
 	void finishQueuedTasks();
 	void dumpState(CmdLineIntf& cli) const;
 	
-	// Prints all tasks with a status text on the surface.
-	// We do this in the menu. This function is implemented in MenuSystem.cpp.
-	void renderTasksStatus(SDL_Surface* s);
+	// Draws running task status on the renderer, with the given font.
+	// Implemented in MenuSystem.cpp.
+	void renderTasksStatus(SDL_Renderer* r, CFont& font);
 };
 
 extern TaskManager* taskManager;

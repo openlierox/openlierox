@@ -109,6 +109,8 @@ static bool Menu_InitSockets() {
 
 menu_t::menu_t() : cSkin(CGameSkin::WormSkin(), true) {}
 
+static void Menu_DrawScreenOverlay(SDL_Renderer* renderer); // registered in Menu_Initialize
+
 ///////////////////
 // Initialize the menu system
 bool Menu_Initialize()
@@ -142,6 +144,9 @@ bool Menu_Initialize()
 	tMenu->bmpMainBack_common = LoadGameImage("data/frontend/background_common.png");
 	if (!tMenu->bmpMainBack_common.get())
 		tMenu->bmpMainBack_common = tMenu->bmpMainBack_wob;
+
+	// Draw the task-status bar and FPS in screen space (full display width).
+	VideoPostProcessor::setScreenOverlay(&Menu_DrawScreenOverlay);
 
 
 	tMenu->bmpBuffer = gfxCreateSurface(640,480);
@@ -253,6 +258,77 @@ void Menu_SetSkipStart(int s)
     bSkipStart = s;
 }
 	
+// --- GPU overlay primitives -----------------------------------------------
+// Immediate-mode helpers for the screen overlay, main thread only:
+// a blended fill rect, and content-sized surfaces blitted as textures.
+
+static void overlayFillRect(SDL_Renderer* r, int x, int y, int w, int h, Color c) {
+	SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
+	SDL_SetRenderDrawColor(r, c.r, c.g, c.b, c.a);
+	SDL_Rect rect = { x, y, w, h };
+	SDL_RenderFillRect(r, &rect);
+}
+
+// Blit an alpha (transparent-background) surface as a texture at (x,y).
+// Raw upload into a matching-format texture (like the main video texture),
+// not CreateTextureFromSurface -- its conversion mis-renders on Metal (magenta text).
+static void overlayBlit(SDL_Renderer* r, const SmartPointer<SDL_Surface>& s, int x, int y) {
+	if(!s.get()) return;
+	SmartPointer<SDL_Texture> tex = SDL_CreateTexture(r, s->format->format,
+		SDL_TEXTUREACCESS_STREAMING, s->w, s->h);
+	if(!tex.get()) return;
+	SDL_SetTextureBlendMode(tex.get(), SDL_BLENDMODE_BLEND);
+	SDL_UpdateTexture(tex.get(), NULL, s->pixels, s->pitch);
+	SDL_Rect dst = { x, y, s->w, s->h };
+	SDL_RenderCopy(r, tex.get(), NULL, &dst);
+}
+
+// Fresh alpha surface cleared to the content colour at alpha 0,
+// not transparent black -- else AA edges blend their RGB toward black
+// and the text looks muddy.
+static SmartPointer<SDL_Surface> overlayScratch(int w, int h, Color col) {
+	SmartPointer<SDL_Surface> s = gfxCreateSurfaceAlpha(w, h);
+	if(s.get())
+		SDL_FillRect(s.get(), NULL, SDL_MapRGBA(s->format, col.r, col.g, col.b, 0));
+	return s;
+}
+
+static void overlayDrawText(SDL_Renderer* r, CFont& font, int x, int y, Color col, const std::string& text) {
+	if(text.empty()) return;
+	const int w = font.GetWidth(text), h = font.GetHeight();
+	if(w <= 0 || h <= 0) return;
+	SmartPointer<SDL_Surface> s = overlayScratch(w, h, col);
+	if(!s.get()) return;
+	font.Draw(s.get(), 0, 0, col, text);
+	overlayBlit(r, s, x, y);
+}
+
+// Draw the running-tasks loading ani centered at (cx,cy), radius rx/ry.
+static void overlayDrawLoadingAni(SDL_Renderer* r, int cx, int cy, int rx, int ry, Color fg, Color bg) {
+	SmartPointer<SDL_Surface> s = overlayScratch(2*rx + 2, 2*ry + 2, fg);
+	if(!s.get()) return;
+	DrawLoadingAni(s.get(), rx, ry, rx, ry, fg, bg, LAT_CIRCLES);
+	overlayBlit(r, s, cx - rx, cy - ry);
+}
+
+// Draw the task-status bar and FPS full width,
+// on the main thread (the VideoPostProcessor screen overlay).
+// Uses cOverlayFont, not cFont,
+// so it doesn't race the gameloop's font drawing (CFont is not thread-safe).
+static void Menu_DrawScreenOverlay(SDL_Renderer* renderer) {
+	if(!renderer || !tLX) return;
+	if(game.state >= Game::S_Preparing) return; // menus only, as before
+
+	if(taskManager)
+		taskManager->renderTasksStatus(renderer, tLX->cOverlayFont);
+
+#ifdef DEBUG
+	if(tLX->fDeltaTime != TimeDiff())
+		overlayDrawText(renderer, tLX->cOverlayFont, 0, 0, tLX->clWhite,
+			"FPS: " + itoa((int)(1.0f/tLX->fDeltaTime.seconds())));
+#endif
+}
+
 void Menu_Frame() {
 	if(bDedicated) {
 		ServerList::get()->process();
@@ -268,6 +344,10 @@ void Menu_Frame() {
 	// Menus are authored for menuWidth and presented centered on the screen.
 	// (Overwritten by the gameplay draw, see CClient::Draw.)
 	VideoPostProcessor::get()->setDisplayScreenWidth(VideoPostProcessor::menuWidth);
+
+	// Keep the side bars in sync with this menu's background.
+	// (buildSideGaps only rebuilds when the edges change; a game keeps the last.)
+	VideoPostProcessor::get()->buildSideGaps(tMenu->bmpBuffer);
 
 	// Check if user pressed screenshot key
 	if (tLX->cTakeScreenshot.isDownOnce())  {
@@ -319,16 +399,8 @@ void Menu_Frame() {
 	if(tMenu->iMenuType != MNU_NETWORK)
 		ServerList::get()->process();
 	
-	// DEBUG: show FPS
-#ifdef DEBUG
-	if(tLX->fDeltaTime != TimeDiff()) {
-		Menu_redrawBufferRect(0, 0, 100, 20);
-		tLX->cFont.Draw(VideoPostProcessor::videoSurface().get(), 0, 0, tLX->clWhite, "FPS: " + itoa((int)(1.0f/tLX->fDeltaTime.seconds())));
-	}
-#endif
+	// Task-status bar and FPS are drawn full width by Menu_DrawScreenOverlay, not here.
 
-	taskManager->renderTasksStatus(VideoPostProcessor::videoSurface().get());
-	
 	if (!tMenu->bForbidConsole)  {
 		Con_Process(tLX->fDeltaTime);
 		Con_Draw(VideoPostProcessor::videoSurface().get());
@@ -1509,9 +1581,9 @@ void Menu_Current_Shutdown() {
 
 
 
-void TaskManager::renderTasksStatus(SDL_Surface* s) {
+void TaskManager::renderTasksStatus(SDL_Renderer* r, CFont& font) {
 	std::list<std::string> statusTxts;
-	
+
 	static const unsigned int MaxEntries = 4;
 	{
 		ScopedLock lock(mutex);
@@ -1524,21 +1596,27 @@ void TaskManager::renderTasksStatus(SDL_Surface* s) {
 			}
 		}
 	}
-	
-	if(!statusTxts.empty()) {
-		static const int StatusLoadingLeft = 5;
-		static const int StatusLeft = 30;
-		static const int StatusTop = 5;
-		const int StatusHeight = tLX->cFont.GetHeight() + 5;
-		DrawRectFill(s, 0, 0, s->w, StatusTop + StatusHeight * (int)statusTxts.size(), Color(42,73,145,180));
-		
-		int y = StatusTop;
-		for(std::list<std::string>::iterator i = statusTxts.begin(); i != statusTxts.end(); ++i) {
-			tLX->cFont.Draw(s, StatusLeft, y, Color(255,255,255), *i);
-			y += StatusHeight;
-		}
-	
-		static const int StatusLoadingSize = 9;
-		DrawLoadingAni(s, StatusLoadingLeft + StatusLoadingSize, StatusHeight * (int)statusTxts.size() - StatusLoadingSize, StatusLoadingSize, StatusLoadingSize, Color(255,255,255), Color(128,128,128), LAT_CIRCLES);
+
+	if(statusTxts.empty()) return;
+
+	static const int StatusLoadingLeft = 5;
+	static const int StatusLeft = 30;
+	static const int StatusTop = 5;
+	static const int StatusLoadingSize = 9;
+	const int StatusHeight = font.GetHeight() + 5;
+	const int count = (int)statusTxts.size();
+	const int screenW = VideoPostProcessor::get()->screenWidth();
+
+	// Full-width translucent bar behind the status lines.
+	DeprecatedGUI::overlayFillRect(r, 0, 0, screenW, StatusTop + StatusHeight * count, Color(42,73,145,180));
+
+	int y = StatusTop;
+	for(std::list<std::string>::iterator i = statusTxts.begin(); i != statusTxts.end(); ++i) {
+		DeprecatedGUI::overlayDrawText(r, font, StatusLeft, y, Color(255,255,255), *i);
+		y += StatusHeight;
 	}
+
+	DeprecatedGUI::overlayDrawLoadingAni(r, StatusLoadingLeft + StatusLoadingSize,
+		StatusHeight * count - StatusLoadingSize, StatusLoadingSize, StatusLoadingSize,
+		Color(255,255,255), Color(128,128,128));
 }

@@ -1595,8 +1595,8 @@ void CClient::SetupViewports(CWorm *w1, CWorm *w2, int type1, int type2)
 	}
 	
 	// Non-widescreen games are constrained to the base menuWidth so that a
-	// wider screen gives no gameplay advantage (the narrower view is presented
-	// centered with black bars, see VideoPostProcessor::render). Widescreen
+	// wider screen gives no gameplay advantage (the narrower view is composed
+	// centered, side gaps edge-filled, see render()). Widescreen
 	// games use the full screen width. Set the display width up front so the
 	// viewports are sized from it (the gameplay draw keeps it updated too).
 	VideoPostProcessor::get()->setDisplayScreenWidth(
@@ -1718,7 +1718,7 @@ void CClient::SetupViewports(const std::vector<CWorm*>& worms, int type)
 	}
 
 	// See the note in the 2-arg overload: non-widescreen games are constrained
-	// to menuWidth (centered with black bars); widescreen uses the full width.
+	// to menuWidth (composed centered, side gaps edge-filled); widescreen uses the full width.
 	VideoPostProcessor::get()->setDisplayScreenWidth(
 		game.useWideScreen() ? VideoPostProcessor::get()->screenWidth()
 		                     : VideoPostProcessor::menuWidth);
