@@ -28,6 +28,9 @@ void test_ChallengeSurvivesStaleConnect();
 void test_ChallengeReissueIsIdempotent();
 void test_ChallengeConsumeRepeated();
 void test_KeyboardDownOnceFiresOncePerPress();
+void test_OmfgScriptDeepExpression();
+void test_OmfgScriptDeepPropertyBlocks();
+void test_OmfgScriptShallowOk();
 
 int main() {
 	printf("Running OLX unit tests...\n");
@@ -42,6 +45,9 @@ int main() {
 	test_ChallengeReissueIsIdempotent();
 	test_ChallengeConsumeRepeated();
 	test_KeyboardDownOnceFiresOncePerPress();
+	test_OmfgScriptDeepExpression();
+	test_OmfgScriptDeepPropertyBlocks();
+	test_OmfgScriptShallowOk();
 
 	if(g_olxTestFailures) {
 		printf("FAILED: %d check(s)\n", g_olxTestFailures);
