@@ -39,6 +39,7 @@
 #include "WeaponDesc.h"
 #include "sound/SoundsBase.h"
 #include "game/Game.h"
+#include "util/macros.h"
 
 #ifdef __MINGW32_VERSION
 // TODO: ugly hack, fix it - mingw stdlib seems to be broken
@@ -66,9 +67,13 @@ INLINE int CProjectile::ProjWormColl(CVec pos)
 	bool preventSelfShooting =
 		(this->getIgnoreWormCollBeforeTime() > this->fLastSimulationTime); // if the simulation is too early, ignore this worm col
 
-	for_each_iterator(CWorm*, w_, game.aliveWorms()) {
-		CWorm* w = w_->get();
-		
+	// Iterate the worm map directly rather than game.aliveWorms(),
+	// which heap-allocates a filter iterator on every call
+	// (this runs per checkstep of every projectile).
+	foreach(w_, game.wormMap()) {
+		CWorm* w = w_->second;
+		if(!w->getAlive()) continue;
+
 		if(preventSelfShooting && w == ownerWorm)
 			continue;
 
@@ -664,21 +669,25 @@ static VectorD2<float> objectAngleDiff(CGameObject* w, CGameObject* prj) {
 
 static CWorm* nearestWorm(CVec pos) {
 	CWorm* best = NULL;
-	for_each_iterator(CWorm*, w, game.aliveWorms()) {
-		if(best == NULL) { best = w->get(); continue; }
-		if((best->getPos() - pos).GetLength2() > (w->get()->getPos() - pos).GetLength2())
-			best = w->get();
+	foreach(it, game.wormMap()) {
+		CWorm* w = it->second;
+		if(!w->getAlive()) continue;
+		if(best == NULL) { best = w; continue; }
+		if((best->getPos() - pos).GetLength2() > (w->getPos() - pos).GetLength2())
+			best = w;
 	}
 	return best;
 }
 
 static CWorm* nearestOtherWorm(CVec pos, int worm) {
 	CWorm* best = NULL;
-	for_each_iterator(CWorm*, w, game.aliveWorms()) {
-		if(w->get()->getID() == worm) continue;
-		if(best == NULL) { best = w->get(); continue; }
-		if((best->getPos() - pos).GetLength2() > (w->get()->getPos() - pos).GetLength2())
-			best = w->get();
+	foreach(it, game.wormMap()) {
+		CWorm* w = it->second;
+		if(!w->getAlive()) continue;
+		if(w->getID() == worm) continue;
+		if(best == NULL) { best = w; continue; }
+		if((best->getPos() - pos).GetLength2() > (w->getPos() - pos).GetLength2())
+			best = w;
 	}
 	return best;
 }
@@ -686,12 +695,14 @@ static CWorm* nearestOtherWorm(CVec pos, int worm) {
 static CWorm* nearestEnemyWorm(CVec pos, int worm) {
 	const int team = game.ifWorm<int>(worm, &CWorm::getTeam, -1);
 	CWorm* best = NULL;
-	for_each_iterator(CWorm*, w, game.aliveWorms()) {
-		if(w->get()->getID() == worm) continue;
-		if(cClient->isTeamGame() && team == w->get()->getTeam()) continue;
-		if(best == NULL) { best = w->get(); continue; }
-		if((best->getPos() - pos).GetLength2() > (w->get()->getPos() - pos).GetLength2())
-			best = w->get();
+	foreach(it, game.wormMap()) {
+		CWorm* w = it->second;
+		if(!w->getAlive()) continue;
+		if(w->getID() == worm) continue;
+		if(cClient->isTeamGame() && team == w->getTeam()) continue;
+		if(best == NULL) { best = w; continue; }
+		if((best->getPos() - pos).GetLength2() > (w->getPos() - pos).GetLength2())
+			best = w;
 	}
 	return best;
 }
@@ -700,12 +711,14 @@ static CWorm* nearestTeamMate(CVec pos, int worm) {
 	if(!cClient->isTeamGame()) return NULL;
 	const int team = game.ifWorm<int>(worm, &CWorm::getTeam, -1);
 	CWorm* best = NULL;
-	for_each_iterator(CWorm*, w, game.aliveWorms()) {
-		if(w->get()->getID() == worm) continue;
-		if(team != w->get()->getTeam()) continue;
-		if(best == NULL) { best = w->get(); continue; }
-		if((best->getPos() - pos).GetLength2() > (w->get()->getPos() - pos).GetLength2())
-			best = w->get();
+	foreach(it, game.wormMap()) {
+		CWorm* w = it->second;
+		if(!w->getAlive()) continue;
+		if(w->getID() == worm) continue;
+		if(team != w->getTeam()) continue;
+		if(best == NULL) { best = w; continue; }
+		if((best->getPos() - pos).GetLength2() > (w->getPos() - pos).GetLength2())
+			best = w;
 	}
 	return best;
 }
