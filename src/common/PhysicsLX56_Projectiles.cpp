@@ -147,7 +147,7 @@ INLINE ProjCollisionType FinalWormCollisionCheck(CProjectile* proj, const CVec& 
 					FMOD(proj->vPos.write().x, (float)map->GetWidth());
 					FMOD(proj->vPos.write().y, (float)map->GetHeight());
 					FMOD(proj->vOldPos.x, (float)map->GetWidth());
-					FMOD(proj->vOldPos.y, (float)map->GetWidth());		
+					FMOD(proj->vOldPos.y, (float)map->GetHeight());
 				}
 				
 				return ProjCollisionType::Worm(ret);
