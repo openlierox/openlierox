@@ -224,7 +224,7 @@ simulateStart:
 
 ///////////////////
 // Explosion
-void CClient::Explosion(AbsTime time, CVec pos, float damage, int shake, int owner, std::string weapon)
+void CClient::Explosion(AbsTime time, CVec pos, float damage, int shake, int owner, const std::string& weapon)
 {	
 	bool    gotDirt = false;
 	Color	DirtEntityColour;
@@ -332,7 +332,7 @@ void CClient::Explosion(AbsTime time, CVec pos, float damage, int shake, int own
 
 ///////////////////
 // Injure a worm
-void CClient::InjureWorm(CWorm *w, float damage, int owner, std::string weapon)
+void CClient::InjureWorm(CWorm *w, float damage, int owner, const std::string& weapon)
 {
 	if (!w->getAlive())  // Injuring a dead worm makes no sense
 		return;
