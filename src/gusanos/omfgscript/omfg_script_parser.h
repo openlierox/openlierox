@@ -84,7 +84,13 @@ struct INTEGER : public Token {
 typedef std::unique_ptr<INTEGER> ptr;
 #define CONSTRUCT(b_, e_) INTEGER(T& g, char const* b_, char const* e_)
 
-	CONSTRUCT(b, e) : Token(g) { v = lexical_cast<int>(std::string(b, e)); }
+	// The literal comes from an untrusted mod. lexical_cast throws
+	// bad_lexical_cast when the value does not fit; degrade to a reported
+	// error and 0 rather than let the exception escape and crash the client.
+	CONSTRUCT(b, e) : Token(g), v(0) {
+		try { v = lexical_cast<int>(std::string(b, e)); }
+		catch(boost::bad_lexical_cast&) { g.semanticError("integer literal out of range"); }
+	}
 	
 	INTEGER(T& g, int i) : Token(g), v(i) {}
 	
@@ -114,7 +120,10 @@ struct NUMBER : public Token {
 typedef std::unique_ptr<NUMBER> ptr;
 #define CONSTRUCT(b_, e_) NUMBER(T& g, char const* b_, char const* e_)
 
-	CONSTRUCT(b, e) : Token(g) { v = lexical_cast<double>(std::string(b, e)); }
+	CONSTRUCT(b, e) : Token(g), v(0) {
+		try { v = lexical_cast<double>(std::string(b, e)); }
+		catch(boost::bad_lexical_cast&) { g.semanticError("number literal out of range"); }
+	}
 	
 	virtual double toDouble()
 	{ return v; }

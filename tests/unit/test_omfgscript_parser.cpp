@@ -46,3 +46,28 @@ void test_OmfgScriptShallowOk() {
 	Parser parser(ss, af, "test_shallow");
 	CHECK(parser.run());
 }
+
+// An out-of-range integer literal in a mod must not crash the parser.
+// lexical_cast<int> throws bad_lexical_cast, which used to escape uncaught
+// out of run(); now it degrades to a semantic error, so run() just returns.
+// (Reaching the end of the test without aborting is the assertion.)
+void test_OmfgScriptHugeIntegerLiteral() {
+	std::string src = "foo = 99999999999\n";
+	ActionFactory af;
+	std::istringstream ss(src);
+	Parser parser(ss, af, "test_huge_int");
+	parser.run();
+	CHECK(true);
+}
+
+// The same throw can happen while the parser constructor reads the first token,
+// before run() is ever called.
+// A file that starts with an out-of-range number must not crash during construction.
+void test_OmfgScriptHugeNumberFirstToken() {
+	std::string src = "999999999999999999999999999999\n";
+	ActionFactory af;
+	std::istringstream ss(src);
+	Parser parser(ss, af, "test_huge_first");
+	parser.run();
+	CHECK(true);
+}
