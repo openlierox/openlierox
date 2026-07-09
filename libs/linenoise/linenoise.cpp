@@ -191,7 +191,10 @@ static void linenoiseAtExit(void) {
 static int getColumns() {
     struct winsize ws;
 
-	if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1) return 80;
+	// A pty with no window size set reports ws_col == 0.
+	// refreshLine() below divides the line against cols and would spin forever
+	// on a zero (or absurdly small) width, so fall back to a sane default.
+	if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0) return 80;
     return ws.ws_col;
 }
 
@@ -201,12 +204,14 @@ void LinenoiseEnv::refreshLine() {
 
     char seq[64];
     
-	while(prompt.size() + pos >= cols) {
+	// pos and len are unsigned; guard against underflow so a small cols
+	// cannot turn these into endless loops.
+	while(pos > 0 && prompt.size() + pos >= cols) {
 		cbuf++;
         len--;
         pos--;
     }
-	while(prompt.size() + len > cols) {
+	while(len > 0 && prompt.size() + len > cols) {
         len--;
     }
 
