@@ -20,6 +20,7 @@
 #include "PixelFunctors.h"
 #include "Cache.h"
 #include <zlib.h>
+#include <vector>
 #ifndef DEDICATED_ONLY
 #include <gd.h>
 #endif
@@ -73,24 +74,17 @@ class ML_LieroX : public MapLoad {
 		EndianSwap(destsize);
 		
 		// Allocate the memory
-		uint8_t *pSource = new uint8_t[size];
-		uint8_t *pDest = new uint8_t[destsize];
-		
-		if(!pSource || !pDest) {
-			errors << "CMap::LoadImageFormat: not enough memory" << endl;
-			return false;
-		}
-		
-		if(fread(pSource, sizeof(uint8_t), size, fp) < size) {
+		std::vector<uint8_t> pSource(size);
+		std::vector<uint8_t> pDest(destsize);
+
+		if(fread(pSource.data(), sizeof(uint8_t), size, fp) < size) {
 			errors << "CMap::LoadImageFormat: cannot read data" << endl;
 			return false;
 		}
-		
+
 		ulong lng_dsize = destsize;
-		if( uncompress( pDest, &lng_dsize, pSource, size ) != Z_OK ) {
+		if( uncompress( pDest.data(), &lng_dsize, pSource.data(), size ) != Z_OK ) {
 			errors("Failed decompression\n");
-			delete[] pSource;
-			delete[] pDest;
 			return false;
 		}
 		destsize = (uint32_t) lng_dsize; // can only get smaller
@@ -101,12 +95,8 @@ class ML_LieroX : public MapLoad {
 		if( destsize < Uint64(head.width) * Uint64(head.height) * 7 )
 		{
 			errors("CMap::LoadImageFormat(): image too small for Width*Height");
-			delete[] pSource;
-			delete[] pDest;
 			return false;
 		}
-		
-		delete[] pSource;  // not needed anymore
 		
 		//
 		// Translate the data
@@ -173,9 +163,6 @@ class ML_LieroX : public MapLoad {
 		//SDL_SaveBMP(pxf, "mat.bmp");
 		//SDL_SaveBMP(m->bmpImage.get(), GetWriteFullFileName("debug-front.bmp",true).c_str());
 		//SDL_SaveBMP(m->bmpBackImage.get(), GetWriteFullFileName("debug-back.bmp",true).c_str());
-		
-		// Delete the data
-		delete[] pDest;
 		
 		// Try to load additional data (like hi-res images)
 		LoadAdditionalLevelData(m);

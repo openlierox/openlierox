@@ -17,6 +17,7 @@
 #include "Color.h"
 #include "FileUtils.h"
 #include "PixelFunctors.h"
+#include <vector>
 
 class ML_OrigLiero : public MapLoad {
 public:
@@ -63,40 +64,26 @@ public:
 		// Image type of map
 		m->Type = MPT_IMAGE;
 		
-		uchar *palette = new uchar[768];
-		if( palette == NULL) {
-			errors << "CMap::LoadOriginal: ERROR: not enough memory for palette" << endl;
-			return false;
-		}
-		
+		std::vector<uchar> palette(768);
+
 		// Load the palette
 		if(!Powerlevel) {
 			FILE *fpal = OpenGameFile("data/lieropal.act","rb");
 			if(!fpal) {
 				return false;
 			}
-			
-			if(fread(palette,sizeof(uchar),768,fpal) < 768) {
+
+			if(fread(&palette[0],sizeof(uchar),768,fpal) < 768) {
+				fclose(fpal);
 				return false;
 			}
 			fclose(fpal);
 		}
-		
+
 		// Load the image map
-	imageMapCreate:
-		uchar *bytearr = new uchar[Width*Height];
-		if(bytearr == NULL) {
-			errors << "CMap::LoadOriginal: ERROR: not enough memory for bytearr" << endl;
-			if(cCache.GetEntryCount() > 0) {
-				hints << "current cache size is " << cCache.GetCacheSize() << ", we are clearing it now" << endl;
-				cCache.Clear();
-				goto imageMapCreate;
-			}
-			delete[] palette;
-			return false;
-		}
-		
-		if(fread(bytearr,sizeof(uchar),Width*Height,fp) < Width*Height) {
+		std::vector<uchar> bytearr(Width*Height);
+
+		if(fread(&bytearr[0],sizeof(uchar),Width*Height,fp) < Width*Height) {
 			errors << "CMap::LoadOriginal: cannot read file" << endl;
 			return false;
 		}
@@ -107,13 +94,11 @@ public:
 			// Load id
 			fread_fixedwidthstr<10>(id,fp);
 			if(!stringcaseequal(id,"POWERLEVEL")) {
-				delete[] palette;
-				delete[] bytearr;
 				return false;
 			}
-			
+
 			// Load the palette
-			if(fread(palette,sizeof(uchar),768,fp) < 768) {
+			if(fread(&palette[0],sizeof(uchar),768,fp) < 768) {
 				return false;
 			}
 			
@@ -164,9 +149,6 @@ public:
 		m->unlockFlags();
 		UnlockSurface(m->bmpDrawImage);
 		UnlockSurface(m->bmpBackImageHiRes);
-		
-		delete[] palette;
-		delete[] bytearr;
 		
 		m->lxflagsToGusflags();
 		return true;
