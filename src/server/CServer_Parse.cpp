@@ -842,6 +842,12 @@ void CServerNetEngine::ParseGrabBonus(CBytestream *bs) {
 		return;
 	}
 
+	// A client may only grab bonuses for a worm it owns,
+	// like the other worm-addressed C2S handlers.
+	if( !cl->OwnsWorm(wormid) && !cl->isLocalClient() ) {
+		notes << "GameServer::ParseGrabBonus: worm " << wormid << " not owned by client." << endl;
+		return;
+	}
 
 	// Worm ID ok?
 	CWorm *w = game.wormById(wormid, false);
