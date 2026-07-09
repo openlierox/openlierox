@@ -7,7 +7,6 @@
 #include "../menu.h"
 #endif
 #include "../game_actions.h"
-#include "../parser.h"
 #include "util/macros.h"
 #include "game/CMap.h"
 #include "GfxPrimitives.h"

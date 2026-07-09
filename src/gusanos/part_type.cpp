@@ -15,7 +15,6 @@
 #include "util/angle.h"
 #include "util/macros.h"
 #include "util/log.h"
-#include "parser.h"
 #include "detect_event.h"
 #include "timer_event.h"
 #include "network.h"

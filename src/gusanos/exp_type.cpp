@@ -11,7 +11,6 @@
 #endif //DEDICATED_ONLY
 #include "util/text.h"
 #include "util/macros.h"
-#include "parser.h"
 #include "detect_event.h"
 #include "object_grid.h"
 

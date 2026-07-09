@@ -4,7 +4,6 @@
 
 //#include "gfx.h"
 //#include "util/text.h"
-//#include "parser.h"
 #include "sprite_set.h"
 #include "sprite.h"
 #include "omfgscript/omfg_script.h"
