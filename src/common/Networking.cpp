@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+#include <atomic>
 
 #include <curl/curl.h>
 
@@ -560,7 +561,7 @@ static void nlPrepareClose(NLsocket socket) {
 struct NetworkSocket::EventHandler {
 	struct SharedData {
 		Mutex mutex;
-		bool quitSignal;
+		std::atomic<bool> quitSignal;
 		NetworkSocket* sock;
 		NLint nlGroup;
 		
