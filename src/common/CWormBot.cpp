@@ -475,7 +475,7 @@ public:
 					if(trace) left++;
 				}
 				pt = start - dir; trace = true;
-				for(right = 0; trace && right < (wormsize-left); right++, pt -= dir) {
+				for(right = 0; trace && right < (wormsize-left); pt -= dir) {
 					trace = simpleTraceLine(pt, dist, PX_ROCK);
 					if(trace) right++;
 				}
