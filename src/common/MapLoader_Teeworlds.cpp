@@ -385,6 +385,33 @@ struct ML_Teeworlds : MapLoad {
 				teeHeader.m_NumRawData * 4; // uncompressed sizes
 	}
 
+	// The item/data counts and sizes come straight from the file header.
+	// A malicious map can declare huge counts to force an enormous resize
+	// (a bad_alloc, which terminates the process),
+	// so require the whole declared structure to fit within the actual file.
+	// Every term is non-negative, so this also bounds each count on its own.
+	Result validateHeaderSizes() {
+		if(teeHeader.m_NumItemTypes < 0 || teeHeader.m_NumItems < 0
+		   || teeHeader.m_NumRawData < 0
+		   || teeHeader.m_ItemSize < 0 || teeHeader.m_DataSize < 0)
+			return "Teeworlds header has a negative count or size";
+		if(fseek(fp, 0, SEEK_END) != 0)
+			return "Teeworlds header: cannot seek to end of file";
+		int64_t fileSize = ftell(fp);
+		if(fseek(fp, 36, SEEK_SET) != 0) // back to just after the 36-byte header
+			return "Teeworlds header: seek failed";
+		int64_t declared =
+				36 // CDatafileHeader
+				+ (int64_t)teeHeader.m_NumItemTypes * 12 // CDatafileItemType
+				+ (int64_t)teeHeader.m_NumItems * 4 // item offsets
+				+ (int64_t)teeHeader.m_NumRawData * 8 // data offsets + uncompressed sizes
+				+ (int64_t)teeHeader.m_ItemSize // item data
+				+ (int64_t)teeHeader.m_DataSize; // raw data
+		if(fileSize < 0 || declared > fileSize)
+			return "Teeworlds header declares more data than the file contains";
+		return true;
+	}
+
 	CDatafileItemType* getItemType(ItemType type) {
 		foreach(t, itemTypes) {
 			if(t->m_Type == type)
@@ -734,8 +761,6 @@ struct ML_Teeworlds : MapLoad {
 				}
 				x += tiles[c].skip;
 			}
-
-		SaveSurface(img.image, "tiletex-" + itoa(group) + "-" + itoa(layer) + ".png", FMT_PNG, "");
 	}
 
 	void renderQuads(int group, int layer, TWLayer& l, int RenderFlags) {
@@ -749,9 +774,8 @@ struct ML_Teeworlds : MapLoad {
 			debugPrint(l);
 			return;
 		}
-		TWImage& img = images[l.quadLayer.image_id];
-
-		SaveSurface(img.image, "quads-" + itoa(group) + "-" + itoa(layer) + ".png", FMT_PNG, "");
+		// Quad layers are only background images;
+		// the loader draws them via createParalax, so there is nothing to render here.
 	}
 
 	void renderMap(int renderType, const SmartPointer<SDL_Surface>& surf) {
@@ -1005,20 +1029,16 @@ struct ML_Teeworlds : MapLoad {
 		m->Type = MPT_IMAGE;
 		m->m_config = LevelConfig();
 
-		if(teeHeader.m_NumItemTypes < 0)
-			return "invalid numItemTypes";
+		if(NegResult r = validateHeaderSizes()) return r.res;
+
 		itemTypes.resize(teeHeader.m_NumItemTypes);
 		for(int i = 0; i < teeHeader.m_NumItemTypes; ++i)
 			itemTypes[i].read(fp);
 
-		if(teeHeader.m_NumItems < 0)
-			return "invalid numItems";
 		itemOffsets.resize(teeHeader.m_NumItems);
 		for(int i = 0; i < teeHeader.m_NumItems; ++i)
 			itemOffsets[i].read(fp);
 
-		if(teeHeader.m_NumRawData < 0)
-			return "invalid numRawData";
 		dataOffsets.resize(teeHeader.m_NumRawData);
 		for(int i = 0; i < teeHeader.m_NumRawData; ++i)
 			dataOffsets[i].read(fp);
