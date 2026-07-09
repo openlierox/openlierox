@@ -1499,6 +1499,14 @@ void CClientNetEngine::ParseSpawnBonus(CBytestream *bs)
 		return;
 	}
 
+	// wpn comes from the untrusted server
+	// and is used below as an offset into the weapon array in CBonus::Spawn.
+	// Bound it, like the server already does.
+	if (type == BNS_WEAPON && (wpn < 0 || wpn >= game.gameScript()->GetNumWeapons()))  {
+		warnings << "CClientNetEngine::ParseSpawnBonus: invalid weapon index (" << wpn << ")" << endl;
+		return;
+	}
+
 	CVec p = CVec( (float)x, (float)y );
 
 	client->cBonuses[id].Spawn(p, type, wpn, game.gameScript());
