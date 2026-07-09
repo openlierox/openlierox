@@ -63,9 +63,14 @@ int l_floor(lua_State* L)
 
 int l_round(lua_State* L)
 {
+	// d is the precision, taken from an untrusted mod.
+	// Clamp it, and use snprintf,
+	// so neither a huge precision nor a huge value can overflow the buffer.
 	int d = lua_tointeger(L, 2);
-	char buffer[256];
-	sprintf(buffer, "%.*f", d, lua_tonumber(L, 1));
+	if(d < 0) d = 0;
+	else if(d > 99) d = 99;
+	char buffer[512];
+	snprintf(buffer, sizeof(buffer), "%.*f", d, lua_tonumber(L, 1));
 	lua_pushstring(L, buffer);
 	return 1;
 }
