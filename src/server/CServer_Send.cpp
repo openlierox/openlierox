@@ -303,7 +303,7 @@ void CServerNetEngineBeta3::SendText(const std::string& text, int type)
 
 void CServerNetEngineBeta3::SendHideWorm(CWorm *worm, int forworm, bool show, bool immediate)
 {
-	CServerNetEngine::SendHideWorm(worm, show, immediate);  // Just the same as for old LX
+	CServerNetEngine::SendHideWorm(worm, forworm, show, immediate);  // Just the same as for old LX
 }
 
 void CServerNetEngineBeta8::SendText(const std::string& text, int type)
