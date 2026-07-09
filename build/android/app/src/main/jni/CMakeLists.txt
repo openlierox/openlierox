@@ -180,6 +180,7 @@ set(ALSOFT_INSTALL_EXAMPLES OFF CACHE BOOL "")
 set(ALSOFT_INSTALL_UTILS OFF CACHE BOOL "")
 set(ALSOFT_BACKEND_OPENSL ON CACHE BOOL "")
 set(ALSOFT_BACKEND_OBOE OFF CACHE BOOL "")
+set(ALSOFT_BACKEND_PIPEWIRE OFF CACHE BOOL "")
 add_subdirectory("${DEPS_DIR}/openal-soft"  "${CMAKE_BINARY_DIR}/openal-soft")
 
 # ---------------------------------------------------------------------
