@@ -22,7 +22,7 @@ import pytest
 
 from harness import GAMEDIR, SERVER_CONTROL, find_binary
 
-MARKER = b"Standard Out/Err recovered"
+MARKER = b"Good Bye and enjoy your day"
 PROMPT = b"OLX> "
 
 
@@ -109,13 +109,13 @@ def test_shutdown_messages_not_staircased(tmp_path):
     )
 
     idx = raw.find(MARKER)
-    assert idx >= 0, "shutdown recovery message never printed:\n" + repr(raw[-400:])
+    assert idx >= 0, "shutdown Good-Bye message never printed:\n" + repr(raw[-400:])
 
     # Cooked shutdown ends the line at column 0:
     # a CRLF (ONLCR on), or an explicit column-0 reset (ESC [ 0 G).
     # A bare "\n" means raw mode: staircased.
     nl = raw.find(b"\n", idx + len(MARKER))
-    assert nl >= 0, "no newline after the recovery message:\n" + repr(raw[idx:])
+    assert nl >= 0, "no newline after the shutdown message:\n" + repr(raw[idx:])
     segment = raw[idx + len(MARKER):nl]
     cooked = raw[nl - 1:nl] == b"\r" or b"\x1b[0G" in segment
     assert cooked, (
