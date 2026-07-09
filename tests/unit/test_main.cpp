@@ -31,6 +31,8 @@ void test_KeyboardDownOnceFiresOncePerPress();
 void test_OmfgScriptDeepExpression();
 void test_OmfgScriptDeepPropertyBlocks();
 void test_OmfgScriptShallowOk();
+void test_OmfgScriptHugeIntegerLiteral();
+void test_OmfgScriptHugeNumberFirstToken();
 
 int main() {
 	printf("Running OLX unit tests...\n");
@@ -48,6 +50,8 @@ int main() {
 	test_OmfgScriptDeepExpression();
 	test_OmfgScriptDeepPropertyBlocks();
 	test_OmfgScriptShallowOk();
+	test_OmfgScriptHugeIntegerLiteral();
+	test_OmfgScriptHugeNumberFirstToken();
 
 	if(g_olxTestFailures) {
 		printf("FAILED: %d check(s)\n", g_olxTestFailures);
