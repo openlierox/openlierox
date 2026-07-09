@@ -426,8 +426,8 @@ public:
 
 	void		SpawnProjectile(CVec pos, CVec vel, int rot, int owner, proj_t *_proj, int _random, AbsTime time, AbsTime ignoreWormCollBeforeTime);
     void        disableProjectile(CProjectile *prj);
-	void		Explosion(AbsTime time, CVec pos, float damage, int shake, int owner, std::string weapon = "");
-	void		InjureWorm(CWorm *w, float damage, int owner, std::string weapon = "");
+	void		Explosion(AbsTime time, CVec pos, float damage, int shake, int owner, const std::string& weapon = "");
+	void		InjureWorm(CWorm *w, float damage, int owner, const std::string& weapon = "");
 	void		LaserSight(CWorm *w, float Angle, bool highlightCrosshair = true);
 
 	void		processChatter();
