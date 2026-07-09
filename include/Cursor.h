@@ -51,6 +51,7 @@ public:
 	~CCursor();
 private:
 	SmartPointer<SDL_Surface>	bmpCursor;
+	SmartPointer<SDL_Texture>	bmpCursorTex; // GPU texture, lazily from bmpCursor
 	CCursor			*cDown;
 	CCursor			*cUp;
 	int				iFrame;
@@ -63,7 +64,8 @@ private:
 	void			Init(int type);
 public:
 	void			Draw(SDL_Surface *dst);
-	void			DrawAdv(SDL_Surface *dst, int mouseX, int mouseY); // at an explicit position
+	void			DrawOnRenderer(SDL_Renderer *renderer, int mouseX, int mouseY); // GPU, at a screen position
+	void			InvalidateTexture(); // drop the GPU texture before the renderer is destroyed
 	INLINE bool		IsAnimated()  { return bAnimated; }
 	INLINE int		GetType()  { return iType; }
 	INLINE void		SetType(int _t)  { iType = _t; }
@@ -78,7 +80,8 @@ void ShutdownCursors();
 void SetGameCursor(int c);
 void SetGameCursor(CCursor *c);
 void DrawCursor(SDL_Surface *dst);
-void DrawCursorAt(SDL_Surface *dst, int x, int y); // at an explicit position
+void DrawCursorOnRenderer(SDL_Renderer *renderer, int x, int y); // GPU, at a screen position
+void InvalidateCursorTextures(); // before the renderer is destroyed
 int GetCursorHeight(int c);
 int GetCursorWidth(int c);
 INLINE int GetMaxCursorHeight()  { return iMaxCursorHeight; }

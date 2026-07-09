@@ -75,14 +75,15 @@ class VideoPostProcessor {
 protected:
 	SmartPointer<SDL_Window> m_window;
 	SmartPointer<SDL_Renderer> m_renderer;
-	SmartPointer<SDL_Texture> m_videoTexture;         // GPU texture we present
+	SmartPointer<SDL_Texture> m_videoTexture;         // GPU texture: the drawn band, uploaded each frame
 	// Double-buffered across the thread boundary:
 	// the gameloop draws one while the main thread presents the other (flipBuffers).
 	SmartPointer<SDL_Surface> m_videoSurface;         // draw target (front)
 	SmartPointer<SDL_Surface> m_videoBufferSurface;   // committed frame (back)
-	SmartPointer<SDL_Surface> m_videoPresentSurface;  // composed full frame; main-thread only, no handoff (composePresentFrame)
-	SmartPointer<SDL_Surface> m_leftGap, m_rightGap; // precomputed side-gap fills (buildSideGaps)
-	Uint32 m_sideGapKey = 0; // change key: rebuild the gaps only when it changes
+	SmartPointer<SDL_Surface> m_leftGap, m_rightGap;  // precomputed side-gap fills (buildSideGaps)
+	SmartPointer<SDL_Texture> m_leftGapTex, m_rightGapTex; // the gaps as GPU textures
+	Uint32 m_sideGapKey = 0;    // change key: rebuild the gap surfaces only when it changes
+	Uint32 m_sideGapTexKey = 0; // last key uploaded to the gap textures
 	int m_screenWidth = 640;
 	// Width the current frame is laid out for: screenWidth() (local),
 	// or menuWidth (menus/net, composed centered). Set per-frame.
@@ -98,8 +99,8 @@ protected:
 	int m_renderDisplayScreenWidth = 640;    // main-thread only: process writes, render reads
 	static VideoPostProcessor instance;
 
-	// Build m_videoPresentSurface from the drawn frame. Main thread, from process().
-	static void composePresentFrame();
+	// Upload the gap surfaces to the gap textures when they changed. Main thread.
+	void updateSideGapTextures();
 
 public:
 	// IMPORTANT: Don't call this while anyone else calls/accesses anything else here.
@@ -122,9 +123,9 @@ public:
 	// Precompute the side-gap fills from a menuWidth-wide theme background.
 	void buildSideGaps(const SmartPointer<SDL_Surface>& bg);
 
-	// Hook to draw screen-space overlays (task bar, FPS) onto the full-width frame.
-	// Runs on the main thread from composePresentFrame (see cOverlayFont).
-	typedef void (*ScreenOverlayFn)(SDL_Surface* screen);
+	// Hook to draw screen-space overlays (task bar, FPS) on top of the frame.
+	// Runs on the main thread from render() (see cOverlayFont).
+	typedef void (*ScreenOverlayFn)(SDL_Renderer* renderer);
 	static void setScreenOverlay(ScreenOverlayFn fn) { screenOverlay = fn; }
 private:
 	static ScreenOverlayFn screenOverlay;

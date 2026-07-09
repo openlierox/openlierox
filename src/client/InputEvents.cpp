@@ -558,7 +558,7 @@ static void HandleMouseState() {
 		// The mouse coordinates are only translated in the mouse events.
 		// That is why we track the coordinates in there.
 		// The mouse can be in the side area outside the centered band;
-		// composePresentFrame() fills it and draws the cursor there.
+		// render() fills it and draws the cursor there.
 		// SDL_SetRelativeMouseMode is not an option here
 		// because it is somewhat buggy (seems like the mouse is captured)
 		// and it grabs the mouse in window mode which we don't want.

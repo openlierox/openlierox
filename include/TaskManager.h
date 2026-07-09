@@ -20,6 +20,7 @@
 #include "Mutex.h"
 
 class CFont;
+struct SDL_Renderer;
 #include "RefCounter.h"
 #include "util/Result.h"
 
@@ -97,9 +98,9 @@ public:
 	void finishQueuedTasks();
 	void dumpState(CmdLineIntf& cli) const;
 	
-	// Prints running task status on the surface, with the given font.
+	// Draws running task status on the renderer, with the given font.
 	// Implemented in MenuSystem.cpp.
-	void renderTasksStatus(SDL_Surface* s, CFont& font);
+	void renderTasksStatus(SDL_Renderer* r, CFont& font);
 };
 
 extern TaskManager* taskManager;
