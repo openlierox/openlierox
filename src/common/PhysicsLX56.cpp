@@ -91,9 +91,10 @@ static bool moveAndCheckWormCollision(AbsTime currentTime, float dt, CWorm* worm
 	// Can happen when starting a game
 	if (!game.gameMap())
 		return false;
+	CMap* map = game.gameMap();
 
 	// check if the vel is really too high (or infinity), in this case just ignore
-	if( (*vel*dt*worm->speedFactor()).GetLength2() > (float)game.gameMap()->GetWidth() * (float)game.gameMap()->GetHeight() )
+	if( (*vel*dt*worm->speedFactor()).GetLength2() > (float)map->GetWidth() * (float)map->GetHeight() )
 		return true;
 
 	// If the worm is going too fast, divide the speed by 2 and perform 2 collision checks
@@ -108,8 +109,8 @@ static bool moveAndCheckWormCollision(AbsTime currentTime, float dt, CWorm* worm
 	bool wrapAround = cClient->getGameLobby()[FT_InfiniteMap];
 	pos += *vel * dt * worm->speedFactor();
 	if(wrapAround) {
-		FMOD(pos.x, (float)game.gameMap()->GetWidth());
-		FMOD(pos.y, (float)game.gameMap()->GetHeight());
+		FMOD(pos.x, (float)map->GetWidth());
+		FMOD(pos.y, (float)map->GetHeight());
 	}
 	worm->pos() = pos;
 
@@ -119,7 +120,7 @@ static bool moveAndCheckWormCollision(AbsTime currentTime, float dt, CWorm* worm
 	short clip = 0; // 0x1=left, 0x2=right, 0x4=top, 0x8=bottom
 	bool coll = false;
 
-	if(y >= 0 && (uint)y < game.gameMap()->GetHeight()) {
+	if(y >= 0 && (uint)y < map->GetHeight()) {
 		for(x=-3;x<4;x++) {
 			// Optimize: pixelflag++
 
@@ -136,8 +137,8 @@ static bool moveAndCheckWormCollision(AbsTime currentTime, float dt, CWorm* worm
 			}
 
 			// Right side clipping
-			if(!wrapAround && (pos.x+x >= game.gameMap()->GetWidth())) {
-				worm->pos().write().x = (float)game.gameMap()->GetWidth() - 5;
+			if(!wrapAround && (pos.x+x >= map->GetWidth())) {
+				worm->pos().write().x = (float)map->GetWidth() - 5;
 				coll = true;
 				clip |= 0x02;
 				if(fabs(vel->x) > 40)
@@ -147,8 +148,8 @@ static bool moveAndCheckWormCollision(AbsTime currentTime, float dt, CWorm* worm
 				continue; // Note: This was break in LX56, but continue is really better here
 			}
 
-			int posx = (int)pos.x + x; if(wrapAround) { posx %= (int)game.gameMap()->GetWidth(); if(posx < 0) posx += game.gameMap()->GetWidth(); }
-			if(!(game.gameMap()->GetPixelFlag(posx,y) & PX_EMPTY)) {
+			int posx = (int)pos.x + x; if(wrapAround) { posx %= (int)map->GetWidth(); if(posx < 0) posx += map->GetWidth(); }
+			if(!(map->GetPixelFlag(posx,y) & PX_EMPTY)) {
 				coll = true;
 
 				// NOTE: Be carefull that you don't do any float->int->float conversions here.
@@ -173,7 +174,7 @@ static bool moveAndCheckWormCollision(AbsTime currentTime, float dt, CWorm* worm
 
 	// In case of this, it could be that we need to do a FMOD. Just do it to be sure.
 	if(wrapAround) {
-		FMOD(pos.x, (float)game.gameMap()->GetWidth());
+		FMOD(pos.x, (float)map->GetWidth());
 	}
 
 	worm->setOnGround( false );
@@ -181,7 +182,7 @@ static bool moveAndCheckWormCollision(AbsTime currentTime, float dt, CWorm* worm
 	bool hit = false;
 	x = (int)pos.x;
 
-	if(x >= 0 && (uint)x < game.gameMap()->GetWidth()) {
+	if(x >= 0 && (uint)x < map->GetWidth()) {
 		for(y=5;y>-5;y--) {
 			// Optimize: pixelflag + Width
 
@@ -200,8 +201,8 @@ static bool moveAndCheckWormCollision(AbsTime currentTime, float dt, CWorm* worm
 			}
 
 			// Bottom side clipping
-			if(!wrapAround && (pos.y+y >= game.gameMap()->GetHeight())) {
-				worm->pos().write().y = (float)game.gameMap()->GetHeight() - 5;
+			if(!wrapAround && (pos.y+y >= map->GetHeight())) {
+				worm->pos().write().y = (float)map->GetHeight() - 5;
 				clip |= 0x08;
 				coll = true;
 				worm->setOnGround( true );
@@ -212,8 +213,8 @@ static bool moveAndCheckWormCollision(AbsTime currentTime, float dt, CWorm* worm
 				continue; // Note: This was break in LX56, but continue is really better here
 			}
 
-			int posy = (int)pos.y + y; if(wrapAround) { posy %= (int)game.gameMap()->GetHeight(); if(posy < 0) posy += game.gameMap()->GetHeight(); }
-			if(!(game.gameMap()->GetPixelFlag(x,posy) & PX_EMPTY)) {
+			int posy = (int)pos.y + y; if(wrapAround) { posy %= (int)map->GetHeight(); if(posy < 0) posy += map->GetHeight(); }
+			if(!(map->GetPixelFlag(x,posy) & PX_EMPTY)) {
 				coll = true;
 
 				if(!hit && !jump) {
@@ -242,7 +243,7 @@ static bool moveAndCheckWormCollision(AbsTime currentTime, float dt, CWorm* worm
 
 	// In case of this, it could be that we need to do a FMOD. Just do it to be sure.
 	if(wrapAround) {
-		FMOD(pos.y, (float)game.gameMap()->GetHeight());
+		FMOD(pos.y, (float)map->GetHeight());
 	}
 
 	// If we are stuck in left & right or top & bottom, just don't move in that direction
