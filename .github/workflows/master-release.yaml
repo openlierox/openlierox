@@ -176,3 +176,28 @@ jobs:
             sleep "$delay"
             attempt=$((attempt + 1))
           done
+
+  # Once the release (with the -wasm.zip asset) is published, tell the website
+  # repo to refresh its playable web demo. That repo's update-wasm.yml listens
+  # for a repository_dispatch of type "update-wasm"; it pulls the just-published
+  # release, drops the new binaries into web-demo/, and its push redeploys the
+  # GitHub Pages site. This must run after "release" (not from package-wasm.yml)
+  # because the website fetches the published release, not the raw build artifact.
+  notify-website:
+    name: Trigger web-demo update
+    needs: [release]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Dispatch update-wasm to the website repo
+        env:
+          # GITHUB_TOKEN can't reach another repo, so this needs a token with
+          # write access to openlierox/openlierox.github.io (a fine-grained PAT
+          # with Contents: write, or a classic token with the "repo" scope),
+          # stored as the WEBSITE_DISPATCH_TOKEN secret in this repo.
+          GH_TOKEN: ${{ secrets.WEBSITE_DISPATCH_TOKEN }}
+        run: |
+          gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            /repos/openlierox/openlierox.github.io/dispatches \
+            -f event_type=update-wasm
