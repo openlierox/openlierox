@@ -3,7 +3,6 @@
 #include "events.h"
 #include "sprite_set.h"
 #include "util/text.h"
-#include "parser.h"
 #include "resource_base.h"
 #include "game_actions.h"
 #include "omfgscript/omfg_script.h"
