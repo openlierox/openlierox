@@ -796,18 +796,17 @@ void VideoPostProcessor::render() {
 	if(offset < 0) offset = 0;
 
 	if(offset > 0) {
-		SDL_Rect leftDst  = { 0, 0, offset, h };
-		SDL_Rect rightDst = { offset + dw, 0, w - (offset + dw), h };
+		// Side gaps: precomputed blurred strips.
+		// Until the first menu builds them the gaps stay black from the clear above;
+		// if they were built but somehow not uploaded, that is a bug -- stay black, note once.
 		if(get()->m_leftGapTex.get() && get()->m_rightGapTex.get()) {
-			// Precomputed blurred strips.
+			SDL_Rect leftDst  = { 0, 0, offset, h };
+			SDL_Rect rightDst = { offset + dw, 0, w - (offset + dw), h };
 			SDL_RenderCopy(r, get()->m_leftGapTex.get(),  NULL, &leftDst);
 			SDL_RenderCopy(r, get()->m_rightGapTex.get(), NULL, &rightDst);
-		} else {
-			// Fallback before the theme is loaded: stretch the band's edge columns.
-			SDL_Rect leftSrc  = { 0, 0, 1, h };
-			SDL_Rect rightSrc = { dw - 1, 0, 1, h };
-			SDL_RenderCopy(r, band, &leftSrc,  &leftDst);
-			SDL_RenderCopy(r, band, &rightSrc, &rightDst);
+		} else if(get()->m_sideGapKey != 0) {
+			static bool warned = false;
+			if(!warned) { warned = true; warnings << "side-gap textures missing; presenting black bars" << endl; }
 		}
 		// The band is dw wide in the left columns; present it centered.
 		// The mouse is shifted by the same offset (HandleMouseState), so clicks line up.
@@ -857,9 +856,10 @@ void VideoPostProcessor::cloneBuffer() {
 void VideoPostProcessor::uninit() {
 	instance.m_videoSurface = NULL; // should never be used before resetVideo() is called
 	instance.m_videoBufferSurface = NULL; // else a restart keeps the old frame
-	instance.m_leftGap = NULL; // rebuilt for the new theme/size by buildSideGaps
-	instance.m_rightGap = NULL;
-	instance.m_sideGapKey = 0; // force that rebuild after a restart/resize
+	// Keep the gap surfaces + key across a video reset (they are renderer-independent):
+	// buildSideGaps only re-runs in menus,
+	// so an in-game reset (Alt+Enter) would otherwise lose the bars for good.
+	// Only the textures below are renderer-owned; force them to re-upload.
 	instance.m_sideGapTexKey = 0;
 
 	// GPU textures below belong to m_renderer; drop them all before it dies.
