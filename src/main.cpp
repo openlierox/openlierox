@@ -451,6 +451,14 @@ static void ParseArguments_BeforeInit(int argc, char *argv[]) {
 }
 
 
+// Join the stdin-CLI and tee-stdout worker threads before an early exit():
+// exit() runs their static std::thread destructors,
+// and a still-joinable std::thread terminates the process.
+static void quitConsoleIOThreads() {
+	quitStdinCLISupport();
+	teeStdoutQuit();
+}
+
 static void ParseArguments_AfterInit(int argc, char *argv[])
 {
     // Parameters passed to OpenLieroX overwrite the loaded options
@@ -559,6 +567,7 @@ static void ParseArguments_AfterInit(int argc, char *argv[])
 			InitializeLieroX();
 			TestCChannelRobustness();
 			ShutdownLieroX();
+			quitConsoleIOThreads();
 			exit(0);
 		} else
 #endif
@@ -587,11 +596,13 @@ static void ParseArguments_AfterInit(int argc, char *argv[])
      		printf("   -version      Print the version and quit\n");
      		printf("   -help         Print this help and quit\n");
 
-			// Shutdown and quit
-			// ShutdownLieroX() works only correct when everything was inited because ProcessEvents() is used.
-			// Therefore we just ignore a good clean up and just quit here.
-			// This is not nice but still nicer than getting a segfault.
-			// It is not worth to fix this in a nicer way as it is fixed anyway when we use the new engine system.
+			// We are still before InitializeLieroX(),
+			// so the video, event, menu, sound and game subsystems are not up yet.
+			// ShutdownLieroX() tears those down and assumes they were inited,
+			// so we cannot run it here; just quit.
+			// We do need to join the console I/O threads first, though:
+			// exit() runs their static destructors, and a joinable std::thread aborts.
+			quitConsoleIOThreads();
      		exit(0);
         } else
 
