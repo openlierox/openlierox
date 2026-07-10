@@ -89,18 +89,21 @@ def _run_dedicated_on_pty(binary, home, port):
     return bytes(buf)
 
 
-def _run_args_on_pty(binary, home, args, deadline_s=60):
+def _run_args_on_pty(binary, home, args, deadline_s=60, env=None):
     """Run the binary with the given args on a pty until it exits.
 
     A pty makes stdin a terminal,
     so the interactive stdin CLI (and the threaded tee-stdout path) activate,
     which is the precondition for the early-exit crash below.
+    ``env`` adds or overrides environment variables for the child.
     Returns ``(status, output)``:
     the raw ``os.waitpid`` status and the raw terminal bytes collected.
     """
+    extra_env = env or {}
     env = dict(os.environ)
     env["HOME"] = home
     env["TERM"] = "xterm"  # so linenoise treats it as a supported terminal
+    env.update(extra_env)
 
     pid, fd = pty.fork()
     if pid == 0:
@@ -161,6 +164,50 @@ def test_help_exits_cleanly(tmp_path):
     )
     assert os.WEXITSTATUS(status) == 0, (
         "-help exited with non-zero status %d:\n" % os.WEXITSTATUS(status)
+        + repr(raw[-400:])
+    )
+
+
+def test_systemerror_stops_console_threads(tmp_path):
+    """A fatal SystemError() stops the console I/O threads before teardown.
+
+    SystemError() runs ShutdownLieroX() and then exit(-1).
+    On a real terminal the stdin-CLI and tee-stdout worker threads are up,
+    and neither ShutdownLieroX() nor this path stops them,
+    so exit() used to destroy their still-joinable std::threads,
+    which calls std::terminate() -> abort().
+    The atexit() handler now joins them on every exit() path.
+
+    An invalid SDL_VIDEODRIVER makes video init fail deterministically,
+    which is the earliest reliable SystemError() we can trigger from outside.
+    The crash handler is disabled so it does not stand in:
+    otherwise it catches the SIGABRT and itself stops the threads,
+    which would let this pass even without the fix.
+
+    We assert the threads are stopped (their quit markers are printed),
+    not a clean process exit:
+    ShutdownLieroX() here runs against half-initialized state and still
+    aborts during the rest of teardown on some libcs (see #1111),
+    which is a separate bug from the console-thread stop this covers.
+    """
+    binary = find_binary()
+    if binary is None:
+        pytest.fail("openlierox binary not found; build it first or set OLX_BINARY",
+                    pytrace=False)
+
+    _status, raw = _run_args_on_pty(
+        binary, str(tmp_path), ["-disablecrashhandler"],
+        env={"SDL_VIDEODRIVER": "olx-nonexistent-driver"})
+
+    # Both markers only print when quitConsoleIOThreads() runs, i.e. via the
+    # atexit() fix; without it the threads are never asked to quit and the
+    # still-joinable std::thread destructor aborts instead.
+    assert b"wait for StdinCLI quit" in raw, (
+        "stdin CLI thread was not stopped on the SystemError path:\n"
+        + repr(raw[-400:])
+    )
+    assert b"wait for teeStdout handler quit" in raw, (
+        "tee-stdout thread was not stopped on the SystemError path:\n"
         + repr(raw[-400:])
     )
 

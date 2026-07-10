@@ -9,6 +9,7 @@
 
 
 #include <cassert>
+#include <cstdlib> // for std::atexit
 #include <sstream> // for print_binary_string
 #include <set>
 #include <string>
@@ -82,6 +83,7 @@ static bool enableStdinCLI = true;
 
 static void ParseArguments_BeforeInit(int argc, char *argv[]);
 static void ParseArguments_AfterInit(int argc, char *argv[]);
+static void quitConsoleIOThreads();
 
 static std::list<std::string> startupCommands;
 
@@ -219,7 +221,13 @@ int real_main(int argc, char *argv[])
 	if(enableStdinCLI)
 		stdinCLIinitRes = initStdinCLISupport();
 	teeStdoutInit();
-	
+
+	// The two console I/O threads own static std::threads.
+	// Any exit() that skips the normal shutdown (e.g. SystemError())
+	// would otherwise destroy them still-joinable, which calls std::terminate().
+	// atexit runs before those static destructors, so join them here.
+	std::atexit(quitConsoleIOThreads);
+
 	mainThreadId = getCurrentThreadId();
 	assert(mainThreadId != (ThreadId)-1);
 	setCurThreadName("Main Thread");
@@ -451,9 +459,10 @@ static void ParseArguments_BeforeInit(int argc, char *argv[]) {
 }
 
 
-// Join the stdin-CLI and tee-stdout worker threads before an early exit():
+// Join the stdin-CLI and tee-stdout worker threads before exit():
 // exit() runs their static std::thread destructors,
 // and a still-joinable std::thread terminates the process.
+// Registered via atexit(), and also called directly on the early-exit paths.
 static void quitConsoleIOThreads() {
 	quitStdinCLISupport();
 	teeStdoutQuit();
