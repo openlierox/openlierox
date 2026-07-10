@@ -178,17 +178,20 @@ void CShootList::writeSingle( CBytestream *bs, const Version& receiverVer, int i
 	else
 		bs->writeByte( psShot->nAngle );
 
+	// Same structure as writeMulti() and readSingle():
+	// a large negative speed sets both flags, so the branches must be
+	// independent ifs, not an else-if that hides the large-and-negative case.
+	int speed = psShot->nSpeed;
 	if( flags & SMF_LARGESPEED )
-		bs->writeByte( psShot->nSpeed-255 );
-	else if( flags & SMF_NEGSPEED ) {
+		speed = psShot->nSpeed-255;
+	if( flags & SMF_NEGSPEED ) {
 		if(flags & SMF_LARGESPEED)
-			bs->writeByte( (-psShot->nSpeed)-255 );
+			speed = (-psShot->nSpeed)-255;
 		else
-			bs->writeByte( -psShot->nSpeed );
+			speed = -psShot->nSpeed;
 	}
-	else
-		bs->writeByte( psShot->nSpeed );
-	
+	bs->writeByte( speed );
+
 	if(receiverVer >= OLXBetaVersion(0,58,1)) {
 		bs->ResetBitPos();
 		bs->writeBit(psShot->release);
