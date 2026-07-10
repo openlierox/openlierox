@@ -89,6 +89,82 @@ def _run_dedicated_on_pty(binary, home, port):
     return bytes(buf)
 
 
+def _run_args_on_pty(binary, home, args, deadline_s=60):
+    """Run the binary with the given args on a pty until it exits.
+
+    A pty makes stdin a terminal,
+    so the interactive stdin CLI (and the threaded tee-stdout path) activate,
+    which is the precondition for the early-exit crash below.
+    Returns ``(status, output)``:
+    the raw ``os.waitpid`` status and the raw terminal bytes collected.
+    """
+    env = dict(os.environ)
+    env["HOME"] = home
+    env["TERM"] = "xterm"  # so linenoise treats it as a supported terminal
+
+    pid, fd = pty.fork()
+    if pid == 0:
+        os.chdir(GAMEDIR)
+        os.environ.clear()
+        os.environ.update(env)
+        os.execv(binary, [binary] + list(args))
+        os._exit(127)
+
+    buf = bytearray()
+    deadline = time.time() + deadline_s
+    got_eof = False
+    while time.time() < deadline:
+        r, _, _ = select.select([fd], [], [], 0.5)
+        if r:
+            try:
+                data = os.read(fd, 4096)
+            except OSError:
+                got_eof = True
+                break
+            if not data:
+                got_eof = True
+                break
+            buf += data
+
+    if not got_eof:
+        try:
+            os.kill(pid, signal.SIGKILL)
+        except OSError:
+            pass
+    _, status = os.waitpid(pid, 0)
+    return status, bytes(buf)
+
+
+def test_help_exits_cleanly(tmp_path):
+    """``-help`` prints its usage and exits cleanly, even with the stdin CLI active.
+
+    Regression test for the -help crash:
+    -help calls exit(0) directly,
+    which runs the static destructors of the stdin-CLI and tee-stdout worker threads.
+    On a real terminal those threads are up and joinable,
+    and destroying a joinable std::thread calls std::terminate() -> abort().
+    The early-exit path must join them first.
+    """
+    binary = find_binary()
+    if binary is None:
+        pytest.fail("openlierox binary not found; build it first or set OLX_BINARY",
+                    pytrace=False)
+
+    status, raw = _run_args_on_pty(binary, str(tmp_path), ["-help"])
+
+    assert b"available parameters" in raw, (
+        "-help did not print its usage banner:\n" + repr(raw[-400:])
+    )
+    assert not os.WIFSIGNALED(status), (
+        "-help crashed instead of exiting cleanly (killed by signal %d):\n"
+        % os.WTERMSIG(status) + repr(raw[-400:])
+    )
+    assert os.WEXITSTATUS(status) == 0, (
+        "-help exited with non-zero status %d:\n" % os.WEXITSTATUS(status)
+        + repr(raw[-400:])
+    )
+
+
 def test_shutdown_messages_not_staircased(tmp_path):
     """The final shutdown message prints at column 0, not staircased.
 
