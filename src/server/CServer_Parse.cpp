@@ -997,6 +997,16 @@ void CServerNetEngineBeta9::ParseReportDamage(CBytestream *bs)
 */
 
 
+// Send a "lx::badconnect" refusal (a connectionless packet) to a connecting peer.
+static void sendBadConnect(const SmartPointer<NetworkSocket>& sock, const std::string& reason) {
+	CBytestream bs;
+	bs.writeInt(-1, 4);
+	bs.writeString("lx::badconnect");
+	bs.writeString(reason);
+	bs.Send(sock);
+}
+
+
 ///////////////////
 // Parses connectionless packets
 void GameServer::ParseConnectionlessPacket(const SmartPointer<NetworkSocket>& tSocket, CBytestream *bs, const std::string& ip) {
@@ -1042,11 +1052,7 @@ void GameServer::ParseGetChallenge(const SmartPointer<NetworkSocket>& tSocket, C
 		client_version = bs_in->readString(128);
 
 	if( Version(client_version).isBanned() ) {
-		// TODO: move this out here
-		bs.writeInt(-1, 4);
-		bs.writeString("lx::badconnect");
-		bs.writeString("Your " + client_version + " support was dropped, please download a new version at http://openlierox.net/");
-		bs.Send(tSocket);
+		sendBadConnect(tSocket, "Your " + client_version + " support was dropped, please download a new version at http://openlierox.net/");
 		notes << "GameServer::ParseGetChallenge: client has version " + client_version + " which is not supported." << endl;
 		return;
 	}
@@ -1054,32 +1060,21 @@ void GameServer::ParseGetChallenge(const SmartPointer<NetworkSocket>& tSocket, C
 	if( tLXOptions->bForceCompatibleConnect ) {
 		std::string incompReason;
 		if(!isVersionCompatible(Version(client_version), &incompReason)) {
-			// TODO: move this out here
-			bs.writeInt(-1, 4);
-			bs.writeString("lx::badconnect");
-			bs.writeString("Your " + client_version + " is incompatible with the server, please download a new version at http://openlierox.net/.\n"
+			sendBadConnect(tSocket, "Your " + client_version + " is incompatible with the server, please download a new version at http://openlierox.net/.\n"
 						   "Incompatibility reason: " + incompReason);
-			bs.Send(tSocket);
 			notes << "GameServer::ParseGetChallenge: client has incompatible version " << client_version << ": " << incompReason << endl;
 			return;			
 		}
 	}
 	
 	if(game.isLocalGame() && bLocalClientConnected) {
-		bs.writeInt(-1, 4);
-		bs.writeString("lx::badconnect");
-		bs.writeString("This game is local.");
-		bs.Send(tSocket);
+		sendBadConnect(tSocket, "This game is local.");
 		return;
 	}
 
 	// If were in the game, deny challenges
 	if ( game.state != Game::S_Lobby && !serverAllowsConnectDuringGame() ) {
-		// TODO: move this out here
-		bs.writeInt(-1, 4);
-		bs.writeString("lx::badconnect");
-		bs.writeString(OldLxCompatibleString(networkTexts->sGameInProgress));
-		bs.Send(tSocket.get());
+		sendBadConnect(tSocket, OldLxCompatibleString(networkTexts->sGameInProgress));
 		notes << "GameServer::ParseGetChallenge: Client from " << tSocket->debugString() << " cannot join, the game is in progress." << endl;
 		return;
 	}
@@ -1157,11 +1152,7 @@ void GameServer::ParseConnect(const SmartPointer<NetworkSocket>& net_socket, CBy
 			buf = " ";
 
 		// Wrong protocol version, don't connect client
-		CBytestream bytestr;
-		bytestr.writeInt(-1, 4);
-		bytestr.writeString("lx::badconnect");
-		bytestr.writeString(OldLxCompatibleString(buf));
-		bytestr.Send(net_socket.get());
+		sendBadConnect(net_socket, OldLxCompatibleString(buf));
 		hints << "GameServer::ParseConnect: Wrong protocol version" << endl;
 		return;
 	}
@@ -1172,11 +1163,7 @@ void GameServer::ParseConnect(const SmartPointer<NetworkSocket>& net_socket, CBy
 	// Is this IP banned?
 	if (getBanList()->isBanned(szAddress))  {
 		hints << "Banned client " << szAddress << " was trying to connect" << endl;
-		CBytestream bytestr;
-		bytestr.writeInt(-1, 4);
-		bytestr.writeString("lx::badconnect");
-		bytestr.writeString(OldLxCompatibleString(networkTexts->sYouAreBanned));
-		bytestr.Send(net_socket.get());
+		sendBadConnect(net_socket, OldLxCompatibleString(networkTexts->sYouAreBanned));
 		return;
 	}
 
@@ -1192,11 +1179,7 @@ void GameServer::ParseConnect(const SmartPointer<NetworkSocket>& net_socket, CBy
 	//Block attempts to join without worms - this fixes the "empty name join glitch"
 	//NOTE: The local client should be allowed to connect without worms in dedicated mode??
 	if (numworms<=0 && !(addrFromStr.find("127.0.0.1")==0)){
-		CBytestream sKickmsg;
-		sKickmsg.writeInt(-1, 4);
-		sKickmsg.writeString("lx::badconnect");
-		sKickmsg.writeString(OldLxCompatibleString("Connection failed - you must have a name"));
-		sKickmsg.Send(net_socket.get());
+		sendBadConnect(net_socket, OldLxCompatibleString("Connection failed - you must have a name"));
 		return;
 	}
 	
@@ -1216,11 +1199,7 @@ void GameServer::ParseConnect(const SmartPointer<NetworkSocket>& net_socket, CBy
 
 		if (!reconnectFrom && !validChallenge) {
 			notes << "No connection verification for client found" << endl;
-			CBytestream bytestr;
-			bytestr.writeInt(-1, 4);
-			bytestr.writeString("lx::badconnect");
-			bytestr.writeString(OldLxCompatibleString(networkTexts->sNoIpVerification));
-			bytestr.Send(net_socket.get());
+			sendBadConnect(net_socket, OldLxCompatibleString(networkTexts->sNoIpVerification));
 			return;
 		}
 
@@ -1267,11 +1246,7 @@ void GameServer::ParseConnect(const SmartPointer<NetworkSocket>& net_socket, CBy
 		notes << "currentTime is " << (tLX->currentTime - AbsTime()).seconds() << " Numplayers is " << game.worms()->size() << endl;
 		std::string msg;
 
-		CBytestream bytestr;
-		bytestr.writeInt(-1, 4);
-		bytestr.writeString("lx::badconnect");
-		bytestr.writeString(OldLxCompatibleString(networkTexts->sNoEmptySlots));
-		bytestr.Send(net_socket.get());
+		sendBadConnect(net_socket, OldLxCompatibleString(networkTexts->sNoEmptySlots));
 		return;
 	}
 
@@ -1279,11 +1254,7 @@ void GameServer::ParseConnect(const SmartPointer<NetworkSocket>& net_socket, CBy
 	size_t max_players = ((game.isServer() && !game.isLocalGame()) && tLXOptions->iMaxPlayers > 0) ? tLXOptions->iMaxPlayers : MAX_WORMS; // No limits (almost) for local play
 	if (!newcl->isLocalClient() && game.worms()->size() + numworms > max_players) {
 		notes << "I am full, so the new client cannot join" << endl;
-		CBytestream bytestr;
-		bytestr.writeInt(-1, 4);
-		bytestr.writeString("lx::badconnect");
-		bytestr.writeString(OldLxCompatibleString(networkTexts->sServerFull));
-		bytestr.Send(net_socket.get());
+		sendBadConnect(net_socket, OldLxCompatibleString(networkTexts->sServerFull));
 		return;
 	}
 
@@ -1313,11 +1284,7 @@ void GameServer::ParseConnect(const SmartPointer<NetworkSocket>& net_socket, CBy
 		if(! newcl->createChannel( std::min(clientVersion, GetGameVersion() ) ) )
 		{	// This should not happen - just in case
 			errors << "Cannot create CChannel for client - invalid client version " << clientVersion.asString() << endl;
-			CBytestream bytestr;
-			bytestr.writeInt(-1, 4);
-			bytestr.writeString("lx::badconnect");
-			bytestr.writeString(OldLxCompatibleString("Your client is incompatible to this server"));
-			bytestr.Send(net_socket.get());
+			sendBadConnect(net_socket, OldLxCompatibleString("Your client is incompatible to this server"));
 			return;
 		}
 
@@ -1349,11 +1316,7 @@ void GameServer::ParseConnect(const SmartPointer<NetworkSocket>& net_socket, CBy
 		std::string msg;
 		if(!checkVersionCompatibility(newcl, false, false, &msg)) {
 			notes << "ParseConnect: " << newcl->debugName(false) << " is too old: " << msg << endl;
-			CBytestream bytestr;
-			bytestr.writeInt(-1, 4);
-			bytestr.writeString("lx::badconnect");
-			bytestr.writeString(OldLxCompatibleString("Your OpenLieroX version is too old, please update.\n" + msg));
-			bytestr.Send(net_socket.get());
+			sendBadConnect(net_socket, OldLxCompatibleString("Your OpenLieroX version is too old, please update.\n" + msg));
 			RemoveClient(newcl, "version too old (while connecting)");
 			return;
 		}
@@ -1422,11 +1385,7 @@ void GameServer::ParseConnect(const SmartPointer<NetworkSocket>& net_socket, CBy
 		// If bots aren't allowed, disconnect the client
 		if (newWorms[i].m_type == PRF_COMPUTER && !tLXOptions->bAllowRemoteBots && !strincludes(szAddress, "127.0.0.1"))  {
 			hints << "Bot was trying to connect from " << newcl->debugName() << endl;
-			CBytestream bytestr;
-			bytestr.writeInt(-1, 4);
-			bytestr.writeString("lx::badconnect");
-			bytestr.writeString(OldLxCompatibleString(networkTexts->sBotsNotAllowed));
-			bytestr.Send(net_socket.get());
+			sendBadConnect(net_socket, OldLxCompatibleString(networkTexts->sBotsNotAllowed));
 			
 			RemoveClient(newcl, "bot tried to connect");
 			return;
