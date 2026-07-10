@@ -261,14 +261,18 @@ void teeStdoutQuit(bool wait) {
 			notes << "wait for teeStdout handler quit" << endl;
 		close(STDOUT_FILENO);
 		close(STDERR_FILENO);
-		if(teeStdoutInfo.pipestart >= 0) close(teeStdoutInfo.pipestart);
 		close(teeStdoutInfo.pipeend);
-		// The forked process / thread should quit itself now.
+		// Closing the write ends above already makes the tee thread's read()
+		// return EOF; it then drains the buffered output (the message above
+		// included) and exits. Closing the read end (pipestart) here would race
+		// that drain and could discard those final messages, so we close it only
+		// after the join below.
 		if(wait) {
 			if(teeStdoutInfo.proc) waitpid(teeStdoutInfo.proc, NULL, 0);
 			// A real join: unlike SDL_WaitThread it returns only once the
 			// thread has fully finished, so freeing below cannot race it.
 			if(teeStdoutInfo.thread.joinable()) teeStdoutInfo.thread.join();
+			if(teeStdoutInfo.pipestart >= 0) close(teeStdoutInfo.pipestart);
 		}
 		// On the crash path we must not block; detach so the destructor of the
 		// static teeStdoutInfo cannot call std::terminate() on a joinable thread.
