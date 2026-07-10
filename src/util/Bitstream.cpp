@@ -59,7 +59,7 @@ void BitStream::addSignedInt(int32_t n, int bits) {
 	if( n >= 0)
 		addInt(n, bits - 1);
 	else
-		addInt((1 << (bits - 1)) - n, bits - 1);
+		addInt(((uint32_t)1 << (bits - 1)) - n, bits - 1);
 }
 
 void BitStream::addFloat(float f, int bits) {
@@ -103,8 +103,14 @@ bool BitStream::getBool() {
 
 uint32_t BitStream::getInt(int bits) {
 	uint32_t ret = 0;
-	for(int i = 0; i < bits; ++i)
-		if(getBool()) ret |= 1 << i;
+	for(int i = 0; i < bits; ++i) {
+		bool b = getBool();
+		// Bits beyond 32 cannot fit the result; still consume them from the
+		// stream, but keep the shift below the width to avoid the undefined
+		// behaviour of shifting a 32-bit value by >= 32 (bits is caller- or,
+		// via elias-gamma, stream-controlled).
+		if(b && i < 32) ret |= (uint32_t)1 << i;
+	}
 	return ret;
 }
 
@@ -114,7 +120,7 @@ int32_t BitStream::getSignedInt(int bits) {
 	if( !sign /*n >= 0*/ )
 		return getInt(bits - 1);
 	else
-		return (1 << (bits - 1)) - getInt(bits - 1);
+		return ((uint32_t)1 << (bits - 1)) - getInt(bits - 1);
 }
 
 float BitStream::getFloat(int bits) {
@@ -165,7 +171,7 @@ bool BitStream::testInt()
 {
 	reset();
 	for (int i = 0; i < 32; i++)
-		addInt(1 << i, i + 1);
+		addInt((uint32_t)1 << i, i + 1);
 	for (int i = 0; i < 32; i++)
 		if (getInt(i + 1) != (uint32_t(1) << i))
 			return false;

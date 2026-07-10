@@ -99,7 +99,10 @@ INLINE unsigned int decodeEliasGamma(BitStream& stream)
 	
 	// prefix = number of prefixed zeroes
 	
-	return stream.getInt(prefix) | (1 << prefix);
+	// prefix comes from the (untrusted) stream and can exceed 31,
+	// which would make 1 << prefix undefined; a bit that high does not fit
+	// the unsigned-int result anyway, so drop it.
+	return stream.getInt(prefix) | (prefix < 32 ? ((uint32_t)1 << prefix) : 0u);
 }
 
 INLINE void encodeEliasDelta(BitStream& stream, unsigned int n)
@@ -120,7 +123,10 @@ INLINE unsigned int decodeEliasDelta(BitStream& stream)
 		// error - probably end reached
 		return 0;
 	
-	return stream.getInt(prefix) | (1 << prefix);
+	// prefix comes from the (untrusted) stream and can exceed 31,
+	// which would make 1 << prefix undefined; a bit that high does not fit
+	// the unsigned-int result anyway, so drop it.
+	return stream.getInt(prefix) | (prefix < 32 ? ((uint32_t)1 << prefix) : 0u);
 }
 
 struct VectorEncoding
