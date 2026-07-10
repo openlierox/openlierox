@@ -2,7 +2,7 @@ name: Headless tests
 
 on:
   pull_request:
-  # Called by master-release.yaml so a release is only published when the tests pass.
+  # Called by master-build.yaml so a release is only published when the tests pass.
   workflow_call:
 
 jobs:
