@@ -1,5 +1,6 @@
 #include <thread>
 #include <system_error>
+#include <algorithm> // std::min
 #include "StdinCLISupport.h"
 #include "ThreadPool.h"
 #include "Mutex.h"
@@ -114,7 +115,9 @@ bool linenoiseCompletionCallbackFunc(const std::string& buf, LinenoiseCompletion
 	if(!fail) {
 		Mutex::ScopedLock lock(stdoutMutex);
 		linenoiseEnv.buf = newState.text;
-		linenoiseEnv.pos = newState.pos;
+		// a completion can return a buffer shorter than the old cursor,
+		// so keep the pos <= buf.size() invariant, else the next edit throws
+		linenoiseEnv.pos = std::min(newState.pos, linenoiseEnv.buf.size());
 		linenoiseEnv.refreshLine();
 		return true;
 	}
