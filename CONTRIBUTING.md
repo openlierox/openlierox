@@ -18,8 +18,10 @@
 - Subject: imperative mood, <= 50 chars, capitalized, no trailing period.
 - Then a blank line and a body wrapped at ~72, explaining what and why.
 - Keep commits small and focused; it makes review and later bisecting easy.
-- Don't force-push a published commit; a new change is a new commit.
-  Only rewrite/force-push your own not-yet-merged commits (or when asked to).
+- Once a commit is pushed, don't force-push or rewrite it;
+  a new change -- even a small follow-up on an open PR -- is a new commit.
+- Force-push or rewrite history only to undo a history mistake you already pushed,
+  to rebase onto master, or when explicitly asked; don't squash commits together.
 - No `Co-authored-by:` lines crediting an LLM or AI agent.
 
 ## C++ style
