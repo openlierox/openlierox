@@ -297,7 +297,7 @@ stages a curated subset under `output/preload/gamedir/`:
 cfg/ data/ scripts/ gui_skins/ themes/ skins/ games/
 Classic/ Gusanos/  [MW 1.0/ promode/ if present]
 GeoIP.dat  startup.lua
-levels/{747, Base Fight, BetaBoxDE, Castle Strike, Dirt Level}.lxl
+levels/{747, Base Fight, BetaBoxDE, CastleStrike, Dirt Level}.lxl
 *.gamesettings
 ```
 
