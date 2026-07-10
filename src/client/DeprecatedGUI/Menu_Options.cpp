@@ -525,7 +525,7 @@ bool Menu_OptionsInitialize()
 
 	// Put the combo box after the other widgets to get around the problem with widget layering
 	cOpt_System.Add( new CCombobox(), os_NetworkSpeed, 170, starty + 155 - 3, 130,17);
-	cOpt_System.Add( new CCombobox(), os_ScreenshotFormat, 365, starty + 250 - 2, 70,17);
+	cOpt_System.Add( new CCombobox(), os_ScreenshotFormat, 365, starty + 225, 70,17);
 	cOpt_System.Add( new CCombobox(), os_ColourDepth, 275, starty + 20, 145, 17);
 
 	// Set the values
