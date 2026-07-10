@@ -71,6 +71,13 @@ void doVppOperation(Action* act);
 // Use this function instead of SDL_ShowCursor()
 void EnableSystemMouseCursor(bool enable = true);
 
+// Apply the wanted OS cursor visibility (set via EnableSystemMouseCursor).
+// Most platforms just hide it through SDL;
+// macOS drives the hardware cursor directly,
+// so it must be re-applied from the main thread whenever a gate input changes:
+// the mouse enters or leaves the window, or the window focus flips.
+void EnforceSystemMouseCursor();
+
 class VideoPostProcessor {
 protected:
 	SmartPointer<SDL_Window> m_window;

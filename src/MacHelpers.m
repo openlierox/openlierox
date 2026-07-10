@@ -1,8 +1,9 @@
 /*
-    Cocoa helpers used by the OLX C++ side (clipboard + user-attention
-    notifications). The legacy src/MacMain.m also defines these, but it
-    carries an SDL 1.x main() that the cmake build replaces, so this
-    file is the source of truth for the cmake build.
+    Cocoa helpers used by the OLX C++ side
+    (clipboard + user-attention notifications, OS cursor).
+    The legacy src/MacMain.m also defines the clipboard/notification ones,
+    but it carries an SDL 1.x main() that the cmake build replaces,
+    so this file is the source of truth for the cmake build.
 */
 
 #import <Cocoa/Cocoa.h>
@@ -27,4 +28,20 @@ void mac__NotifyUserOnEvent(void) {
 }
 
 void mac__ClearUserNotify(void) {
+}
+
+// Force the hardware OS cursor hidden or shown.
+// CGDisplayHideCursor keeps a global hide count that, unlike the cursor rects
+// SDL_ShowCursor relies on, is not reset when the mouse re-enters the window,
+// so the cursor stays hidden until we balance it with CGDisplayShowCursor.
+// Keep the calls balanced with our own state and call on the main thread.
+void mac__EnforceSystemCursorHidden(int hidden) {
+    static int applied = 0;  // whether we currently hold the cursor hidden
+    if (hidden && !applied) {
+        CGDisplayHideCursor(kCGDirectMainDisplay);
+        applied = 1;
+    } else if (!hidden && applied) {
+        CGDisplayShowCursor(kCGDirectMainDisplay);
+        applied = 0;
+    }
 }

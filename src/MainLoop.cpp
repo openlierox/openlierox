@@ -304,6 +304,20 @@ static bool handleSDLEvent(SDL_Event& ev) {
 		Clipboard_handleSysWmEvent(ev);
 		return true;
 	}
+	if( ev.type == SDL_WINDOWEVENT ) {
+		// The gate for the OS cursor just changed
+		// (the mouse crossed the window edge, or the window focus flipped).
+		// SDL has already updated its focus state,
+		// so re-assert here on the main thread rather than polling every frame.
+		switch(ev.window.event) {
+		case SDL_WINDOWEVENT_ENTER:
+		case SDL_WINDOWEVENT_LEAVE:
+		case SDL_WINDOWEVENT_FOCUS_GAINED:
+		case SDL_WINDOWEVENT_FOCUS_LOST:
+			EnforceSystemMouseCursor();
+			break;
+		}
+	}
 	// mainQueue could be unset at very early or late calls here
 	if(mainQueue)
 		mainQueue->push(ev);
