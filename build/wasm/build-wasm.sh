@@ -132,7 +132,7 @@ if [ "$SKIP_DATA" -eq 0 ]; then
     # levels (and the empty `levels/` dir) for the introduction
     # game's level lookup to succeed.
     mkdir -p "$SD/levels"
-    for lvl in "747.lxl" "Base Fight.lxl" "BetaBoxDE.lxl" "Castle Strike.lxl" \
+    for lvl in "747.lxl" "Base Fight.lxl" "BetaBoxDE.lxl" "CastleStrike.lxl" \
                "Dirt Level.lxl"; do
         if [ -f "$GD/levels/$lvl" ]; then
             cp -f "$GD/levels/$lvl" "$SD/levels/$lvl"
