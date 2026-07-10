@@ -390,6 +390,10 @@ void	Menu_MainShutdown();
 void	Menu_MainFrame();
 void	Menu_MainDrawTitle(int x, int y, int id, int selected);
 
+// Open the Options menu straight on the System tab (used as a startFunction),
+// e.g. after a video-mode restart, or from OLX_START_MENU for offscreen renders.
+bool	Menu_StartWithSysOptionsMenu(void* data);
+
 
 // Local menu
 void	Menu_LocalInitialize();

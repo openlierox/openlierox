@@ -465,6 +465,20 @@ bool VideoPostProcessor::initWindow() {
 			warnings << "could not query desktop display mode (" << SDL_GetError()
 				<< "), falling back to " << m_screenWidth << "x" << screenHeight() << endl;
 		}
+
+		// Dev hook: force the screen width
+		// (normally derived from the desktop aspect ratio).
+		// Lets an offscreen render exercise a widescreen layout under the dummy video driver,
+		// which otherwise reports a 4:3 desktop.
+		// See tests/headless/render_offscreen.sh.
+		if(const char* fw = getenv("OLX_FORCE_SCREEN_WIDTH")) {
+			int w = atoi(fw);
+			if(w >= 320) {
+				m_screenWidth = w & ~1;
+				notes << "OLX_FORCE_SCREEN_WIDTH: using " << m_screenWidth
+					<< "x" << screenHeight() << endl;
+			}
+		}
 	}
 
 setvideomode:
@@ -671,6 +685,19 @@ void VideoPostProcessor::process() {
 	SDL_UpdateTexture(get()->m_videoTexture.get(), NULL, pixels, get()->screenWidth() * sizeof (uint32_t));
 
 	get()->updateSideGapTextures();
+
+	// Dev hook: dump the composed frame (the surface a screenshot saves) to a PNG for offscreen menu-render tests.
+	// Enabled by OLX_DUMP_FRAME under SDL_VIDEODRIVER=dummy.
+	// Rewrites every frame past OLX_DUMP_FRAME_AT (default 3):
+	// a settled menu sleeps on events, so the last write is the settled frame.
+	// See tests/headless/render_offscreen.sh.
+	static const char* dumpPath = getenv("OLX_DUMP_FRAME");
+	if(dumpPath) {
+		static int frame = 0;
+		static const int dumpAt = getenv("OLX_DUMP_FRAME_AT") ? atoi(getenv("OLX_DUMP_FRAME_AT")) : 3;
+		if(++frame >= dumpAt && get()->m_videoBufferSurface.get())
+			SaveSurface(get()->m_videoBufferSurface.get(), dumpPath, FMT_PNG, "");
+	}
 }
 
 // Upload the precomputed gap strips to textures when buildSideGaps produced new ones.

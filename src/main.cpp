@@ -9,6 +9,7 @@
 
 
 #include <cassert>
+#include <cstdlib> // for getenv (dev hooks)
 #include <sstream> // for print_binary_string
 #include <set>
 #include <string>
@@ -359,6 +360,16 @@ startpoint:
 	}
 
 	game.init();
+
+	// Dev hook: jump straight to a submenu on startup,
+	// so an offscreen render (SDL_VIDEODRIVER=dummy) can capture a menu past the main one.
+	// See tests/headless/render_offscreen.sh.
+	if(const char* startMenu = getenv("OLX_START_MENU")) {
+		if(std::string(startMenu) == "options-system")
+			startFunction = &DeprecatedGUI::Menu_StartWithSysOptionsMenu;
+		else if(std::string(startMenu) != "main")
+			warnings << "OLX_START_MENU: unknown menu '" << startMenu << "'" << endl;
+	}
 
 	if(startFunction != NULL) {
 		if(!startFunction(startFunctionData)) {

@@ -10,6 +10,7 @@
 
 
 #include <set>
+#include <cstdlib> // for getenv/atoi (dev hooks)
 
 #include "Clipboard.h"
 #include "LieroX.h"
@@ -572,7 +573,16 @@ static void HandleMouseState() {
 		// wider screen), shift the mouse into that centered space so clicks line
 		// up with the drawn widgets.
 		Mouse.X -= VideoPostProcessor::get()->displayScreenOffsetX();
-		
+
+		// Dev hook: pin the software cursor to a fixed spot
+		// (e.g. a corner, out of the way of the widgets being captured)
+		// for deterministic offscreen renders.
+		// See tests/headless/render_offscreen.sh.
+		static const char* forceX = getenv("OLX_FORCE_MOUSE_X");
+		static const char* forceY = getenv("OLX_FORCE_MOUSE_Y");
+		if(forceX) Mouse.X = atoi(forceX);
+		if(forceY) Mouse.Y = atoi(forceY);
+
 		Mouse.deltaX = Mouse.X-oldX;
 		Mouse.deltaY = Mouse.Y-oldY;
 		Mouse.Up = 0;
