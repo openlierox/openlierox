@@ -72,8 +72,8 @@ void doVppOperation(Action* act);
 void EnableSystemMouseCursor(bool enable = true);
 
 // Re-assert the wanted OS cursor visibility against the window server.
-// macOS keeps re-showing the OS cursor on window re-entry and app activation,
-// so call this regularly from the main thread.
+// Call from the main thread whenever a gate input changes:
+// the mouse enters or leaves the window, or the window gains or loses focus.
 // It is a cheap no-op on other platforms.
 void EnforceSystemMouseCursor();
 

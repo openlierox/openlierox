@@ -521,6 +521,7 @@ setvideomode:
 	// and that should be the only cursor the player ever sees.
 	// We are on the main thread here, so apply it directly.
 	applySystemMouseCursor();
+	EnforceSystemMouseCursor();
 
 #ifdef WIN32
 	// Hint: Reset the mouse state - this should avoid the mouse staying pressed
@@ -1276,6 +1277,7 @@ void EnableSystemMouseCursor(bool enable)
 		Result handle()
 		{
 			applySystemMouseCursor();
+			EnforceSystemMouseCursor();
 			return true;
 		}
 	};
