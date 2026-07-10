@@ -63,6 +63,7 @@ private:
 		int		Data;
 		int		SdlIndex;
 		int		JoystickIndex; // 0-based pad index for INP_JOYSTICK
+		std::string m_name; // the config token this binding parsed from (e.g. "j1_button_south")
 		ModifiersState m_modifiers; // required modifier keys for keyboard bindings
 
 		// HINT: currently these are only used for keyboard exept nDownOnce
@@ -127,6 +128,8 @@ public:
 	int		wasUp(); // checks if there was an keyup-event; returns the count of up-events
 
 	std::string getEventName() { return m_EventName; }
+	// onlyAvailable drops bindings that can't currently fire (e.g. an absent gamepad)
+	std::string getEventName(bool onlyAvailable) const;
 
 	// event handling, called from the global input-event dispatchers
 	void	handleKeyEvent(const KeyboardEvent& ev);

@@ -632,6 +632,7 @@ bool CInput::Binding::setup(const std::string& string)
 	Data = 0;
 	SdlIndex = 0;
 	JoystickIndex = 0;
+	m_name = string;
 	m_modifiers.clear();
 
 	// Parse optional modifier prefixes: "alt+", "ctrl+", "shift+"
@@ -981,6 +982,22 @@ bool CInput::isKeyboard() const {
 	for(std::vector<Binding>::const_iterator it = m_bindings.begin(); it != m_bindings.end(); ++it)
 		if(it->isKeyboard()) return true;
 	return false;
+}
+
+std::string CInput::getEventName(bool onlyAvailable) const {
+	if(!onlyAvailable) return m_EventName;
+	std::string res;
+	for(std::vector<Binding>::const_iterator it = m_bindings.begin(); it != m_bindings.end(); ++it) {
+		if(it->m_name.empty()) continue;
+		// A joystick binding for a pad that isn't plugged in can't fire; hide it.
+		if(it->isJoystick() && !isPadPresent(it->JoystickIndex)) continue;
+		if(!res.empty()) res += ", ";
+		res += it->m_name;
+	}
+	// Nothing usable (unbound, or bound only to an absent pad):
+	// say so explicitly rather than render a blank.
+	if(res.empty()) return "<none>";
+	return res;
 }
 
 bool CInput::usesKeyboardKey(int sym) const {
