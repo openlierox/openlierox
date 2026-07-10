@@ -89,18 +89,21 @@ def _run_dedicated_on_pty(binary, home, port):
     return bytes(buf)
 
 
-def _run_args_on_pty(binary, home, args, deadline_s=60):
+def _run_args_on_pty(binary, home, args, deadline_s=60, env=None):
     """Run the binary with the given args on a pty until it exits.
 
     A pty makes stdin a terminal,
     so the interactive stdin CLI (and the threaded tee-stdout path) activate,
     which is the precondition for the early-exit crash below.
+    ``env`` adds or overrides environment variables for the child.
     Returns ``(status, output)``:
     the raw ``os.waitpid`` status and the raw terminal bytes collected.
     """
+    extra_env = env or {}
     env = dict(os.environ)
     env["HOME"] = home
     env["TERM"] = "xterm"  # so linenoise treats it as a supported terminal
+    env.update(extra_env)
 
     pid, fd = pty.fork()
     if pid == 0:
@@ -162,6 +165,40 @@ def test_help_exits_cleanly(tmp_path):
     assert os.WEXITSTATUS(status) == 0, (
         "-help exited with non-zero status %d:\n" % os.WEXITSTATUS(status)
         + repr(raw[-400:])
+    )
+
+
+def test_systemerror_exits_cleanly(tmp_path):
+    """A fatal SystemError() exits cleanly, even with the stdin CLI active.
+
+    SystemError() runs ShutdownLieroX() and then exit(-1),
+    and ShutdownLieroX() does not stop the console I/O threads.
+    On a real terminal the stdin-CLI and tee-stdout worker threads are up,
+    so exit() used to destroy their still-joinable std::threads,
+    which calls std::terminate() -> abort().
+    An invalid SDL_VIDEODRIVER makes video init fail deterministically,
+    which is the earliest reliable SystemError() we can trigger from outside.
+    The crash handler is disabled so the abort surfaces as a real signal:
+    otherwise it catches the SIGABRT, dumps a callstack and exits 255,
+    which would hide the crash from this test.
+    """
+    binary = find_binary()
+    if binary is None:
+        pytest.fail("openlierox binary not found; build it first or set OLX_BINARY",
+                    pytrace=False)
+
+    status, raw = _run_args_on_pty(
+        binary, str(tmp_path), ["-disablecrashhandler"],
+        env={"SDL_VIDEODRIVER": "olx-nonexistent-driver"})
+
+    assert not os.WIFSIGNALED(status), (
+        "SystemError aborted instead of exiting cleanly (killed by signal %d):\n"
+        % os.WTERMSIG(status) + repr(raw[-400:])
+    )
+    # SystemError() ends with exit(-1), i.e. status 255.
+    assert os.WEXITSTATUS(status) == 255, (
+        "expected exit(-1) from SystemError, got status %d:\n"
+        % os.WEXITSTATUS(status) + repr(raw[-400:])
     )
 
 
