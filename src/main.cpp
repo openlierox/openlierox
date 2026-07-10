@@ -462,7 +462,7 @@ static void ParseArguments_BeforeInit(int argc, char *argv[]) {
 // Join the stdin-CLI and tee-stdout worker threads before exit():
 // exit() runs their static std::thread destructors,
 // and a still-joinable std::thread terminates the process.
-// Registered via atexit(), and also called directly on the early-exit paths.
+// Registered via atexit(), so it covers every exit() path.
 static void quitConsoleIOThreads() {
 	quitStdinCLISupport();
 	teeStdoutQuit();
@@ -576,7 +576,6 @@ static void ParseArguments_AfterInit(int argc, char *argv[])
 			InitializeLieroX();
 			TestCChannelRobustness();
 			ShutdownLieroX();
-			quitConsoleIOThreads();
 			exit(0);
 		} else
 #endif
@@ -609,9 +608,7 @@ static void ParseArguments_AfterInit(int argc, char *argv[])
 			// so the video, event, menu, sound and game subsystems are not up yet.
 			// ShutdownLieroX() tears those down and assumes they were inited,
 			// so we cannot run it here; just quit.
-			// We do need to join the console I/O threads first, though:
-			// exit() runs their static destructors, and a joinable std::thread aborts.
-			quitConsoleIOThreads();
+			// The console I/O threads are joined by the atexit() handler.
      		exit(0);
         } else
 
