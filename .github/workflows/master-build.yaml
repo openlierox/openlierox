@@ -1,9 +1,9 @@
-name: Latest master
+name: Master build
 
 # Runs whenever a PR is merged (i.e. a push lands) on a release branch.
 # It builds every platform by reusing the existing package-* pipelines,
-# then publishes a single GitHub release per build, tagged with the version
-# and flagged "Latest". Releases from previous builds are left untouched.
+# then publishes a single GitHub prerelease per build, tagged with the
+# version. Releases from previous builds are left untouched.
 on:
   push:
     branches:
@@ -54,7 +54,7 @@ jobs:
     uses: ./.github/workflows/headless-tests.yml
 
   release:
-    name: Publish latest master release
+    name: Publish master prerelease
     needs: [android, linux-bundle, linux-deb, mac, windows, wasm, headless-tests]
     runs-on: ubuntu-24.04
     steps:
@@ -84,7 +84,7 @@ jobs:
           echo "Artifacts to publish:"
           ls -la dist
 
-      - name: Publish latest master release
+      - name: Publish master prerelease
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.meta.outputs.version }}
@@ -135,15 +135,13 @@ jobs:
           echo "Publishing assets:"
           printf '  %s\n' "${ASSETS[@]}"
 
-          # One release per build, tagged with the bare version and flagged as
-          # GitHub's "Latest". The version is derived from the (always
-          # increasing) commit count, so the tag is unique to this build and a
-          # release can never already exist for it. Releases from previous
-          # builds are left untouched.
+          # One prerelease per build, tagged with the bare version. The version
+          # is derived from the (always increasing) commit count, so the tag is
+          # unique to this build and a release can never already exist for it.
+          # Releases from previous builds are left untouched.
           #
-          # --prerelease=false is explicit: a release flagged as a prerelease
-          # cannot also be marked --latest (GitHub returns "Latest release
-          # cannot be draft or prerelease.").
+          # --prerelease flags the build as a GitHub prerelease; it is
+          # deliberately not marked --latest.
           publish() {
             # Start each attempt from a clean slate:
             # if an earlier attempt created the release but failed partway
@@ -155,8 +153,7 @@ jobs:
             gh release create "$VERSION" "${ASSETS[@]}" \
               --title "OpenLieroX ${VERSION_FULL}" \
               --notes "$NOTES" \
-              --prerelease=false \
-              --latest \
+              --prerelease \
               --target "$GITHUB_SHA"
           }
 

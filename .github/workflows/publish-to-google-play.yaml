@@ -1,7 +1,7 @@
 name: Publish to Google Play
 
 # Publishes the signed Android App Bundle to the Play Store beta track.
-# This only runs on merges to master (invoked by master-release.yaml via
+# This only runs on merges to master (invoked by master-build.yaml via
 # workflow_call), never on pull requests, so PRs build the bundle but
 # never publish it. The bundle is produced by package-android.yml and
 # passed across as the "openlierox-aab" artifact within the same run.
