@@ -15,6 +15,7 @@
 
 
 #include <assert.h>
+#include <fstream> // for DumpLayout (dev hook)
 
 
 #include "LieroX.h"
@@ -218,6 +219,24 @@ void CGuiLayout::Draw(SDL_Surface * bmpDest)
 	
 	if(tooltip.get())
 		tooltip->draw(bmpDest);
+}
+
+
+/////////////////
+// Dev hook: write each widget's "id type x y w h" (one per line) to a file,
+// so an offscreen render can assert a menu's layout.
+// See tests/headless/test_menu_layout.py.
+void CGuiLayout::DumpLayout(const std::string& path)
+{
+	std::ofstream f(path.c_str());
+	if(!f) {
+		warnings << "DumpLayout: could not open " << path << endl;
+		return;
+	}
+	for( std::list<CWidget *>::iterator w = cWidgets.begin() ; w != cWidgets.end() ; w++)
+		f << (*w)->getID() << " " << (int)(*w)->getType() << " "
+			<< (*w)->getX() << " " << (*w)->getY() << " "
+			<< (*w)->getWidth() << " " << (*w)->getHeight() << "\n";
 }
 
 

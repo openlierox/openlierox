@@ -14,6 +14,8 @@
 // Jason Boettcher
 
 
+#include <cstdlib> // for getenv (dev hook)
+
 #include "LieroX.h"
 #include "sound/SoundsBase.h"
 #include "Music.h"
@@ -641,6 +643,10 @@ bool Menu_OptionsInitialize()
 	cOpt_Game.SendMessage( og_BloodAmount,  SLM_SETVALUE, tLXOptions->iBloodAmount, 0);
 	//cOpt_Game.SendMessage( og_AIDifficulty, SLM_SETVALUE, tLXOptions->iAIDifficulty, 0);
 
+	// Dev hook: dump the System-tab layout for an offscreen layout test.
+	// See tests/headless/test_menu_layout.py.
+	if(const char* p = getenv("OLX_DUMP_LAYOUT"))
+		cOpt_System.DumpLayout(p);
 
 	return true;
 }

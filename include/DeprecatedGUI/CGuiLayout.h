@@ -116,6 +116,9 @@ public:
 	void		FocusWidget(int id);
 	CWidget		*getWidget(int id);
     void        removeWidget(int id);
+	// Dev hook: write each widget's "id type x y w h" to a file,
+	// so an offscreen render can assert a menu's layout (see tests/headless).
+	void		DumpLayout(const std::string& path);
 	int			GetIdByName(const std::string& Name);
 	void		Error(int ErrorCode, const std::string& text);
 
