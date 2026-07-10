@@ -24,6 +24,7 @@
 #include <vector>
 #include <string>
 #include <map>
+#include <atomic>
 #include <stdio.h>  // for FILE
 #include "ThreadPool.h"
 #include <SDL_mutex.h>
@@ -152,7 +153,7 @@ private:
 	size_t						 iActiveDownloads;
 
 	friend Result ManagerMain(void *param);
-	volatile bool				bBreakThread;
+	std::atomic<bool>			bBreakThread;
 
 public:
 	void						ProcessDownloads();
