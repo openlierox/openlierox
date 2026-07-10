@@ -536,7 +536,11 @@ static bool checkLXSourceMod(const std::string& dir, bool abs_filename, ModInfo&
 
 static bool checkGusMod(const std::string& dir, bool abs_filename, ModInfo& info) {
 	std::string basefn = GetBaseFilename(dir);
-	
+
+	// Skip hidden dirs like .git, whose objects/ subdir would match below.
+	if(!basefn.empty() && basefn[0] == '.')
+		return false;
+
 	// TODO: absfn
 	// there is no better way to check that
 	if(IsDirectory(basefn + "/objects")) {
