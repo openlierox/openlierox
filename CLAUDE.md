@@ -16,5 +16,6 @@ Rules that are easy to miss when working as an AI agent:
   not at a fixed column.
 - Code must build and pass the headless tests (`./tests/headless/run.sh`) before you push,
   and a change is verified by running it, not only by reading the diff.
-- Don't force-push a published commit;
-  a new change is a new commit.
+- Once a commit is pushed, don't force-push, amend, or squash it;
+  a new change -- even a small follow-up on an open PR -- is a new commit.
+  Rewrite history only to rebase onto master, or when explicitly asked.
