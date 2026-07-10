@@ -20,8 +20,8 @@
 - Keep commits small and focused; it makes review and later bisecting easy.
 - Once a commit is pushed, don't force-push or rewrite it;
   a new change -- even a small follow-up on an open PR -- is a new commit.
-- Force-push or rewrite history only to undo a history mistake you already pushed,
-  to rebase onto master, or when explicitly asked; don't squash commits together.
+- Force-push or rewrite history only to rebase onto master,
+  or when explicitly asked; don't squash commits together.
 - No `Co-authored-by:` lines crediting an LLM or AI agent.
 
 ## C++ style

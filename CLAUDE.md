@@ -18,5 +18,4 @@ Rules that are easy to miss when working as an AI agent:
   and a change is verified by running it, not only by reading the diff.
 - Once a commit is pushed, don't force-push, amend, or squash it;
   a new change -- even a small follow-up on an open PR -- is a new commit.
-  Rewrite history only to undo a mistake you already pushed,
-  to rebase onto master, or when explicitly asked.
+  Rewrite history only to rebase onto master, or when explicitly asked.
