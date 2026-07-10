@@ -188,7 +188,14 @@ size_t GetFreeSysMemory() {
 	count = HOST_VM_INFO_COUNT;
 
 	host_statistics (mach_host_self(), HOST_VM_INFO,(host_info_t)&page_info, &count);
-	return page_info.free_count * pagesize;
+	// macOS keeps most RAM occupied by reclaimable caches,
+	// so free_count alone is always tiny and misleading.
+	// Count the inactive and purgeable pages too,
+	// matching the free+cache semantics of the Linux path below.
+	// (speculative pages are already part of free_count, so don't add them.)
+	return ((size_t)page_info.free_count
+			+ (size_t)page_info.inactive_count
+			+ (size_t)page_info.purgeable_count) * pagesize;
 #elif defined(__WIN64__)
 	MEMORYSTATUSEX memStatex;
 	memStatex.dwLength = sizeof (memStatex);
