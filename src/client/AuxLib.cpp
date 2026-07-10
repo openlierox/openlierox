@@ -21,6 +21,7 @@
 #endif
 
 
+#include <atomic>
 #include <iomanip>
 #include <time.h>
 #include <SDL.h>
@@ -82,6 +83,8 @@
 
 
 Null null;	// Used in timer class
+
+static void applySystemMouseCursor();  // apply the wanted OS cursor visibility, main thread only
 
 
 
@@ -513,11 +516,11 @@ setvideomode:
 		return false;
 	}
 	
-	// Hide the operating-system / browser cursor. OpenLieroX draws its own
-	// software cursor where one is wanted (menus), and that should be the only
-	// cursor the player ever sees — on the web too (SDL maps this to
-	// `canvas { cursor: none }`).
-	SDL_ShowCursor(SDL_DISABLE);
+	// Hide the operating-system / browser cursor.
+	// OpenLieroX draws its own software cursor where one is wanted (menus),
+	// and that should be the only cursor the player ever sees.
+	// We are on the main thread here, so apply it directly.
+	applySystemMouseCursor();
 
 #ifdef WIN32
 	// Hint: Reset the mouse state - this should avoid the mouse staying pressed
@@ -1219,28 +1222,62 @@ bool lierox_t::isAnyControlKeyDown() const {
 }
 
 
+// Whether the player should currently see the OS cursor.
+// The menus and game hide it (OpenLieroX draws its own software cursor);
+// the console and error dialogs show it.
+static std::atomic<bool> systemMouseCursorWanted(false);
+
+static void applySystemMouseCursor()
+{
+	// Should be called from the main thread, or you'll get a race condition with libX11.
+	SDL_ShowCursor(systemMouseCursorWanted ? SDL_ENABLE : SDL_DISABLE);
+}
+
+#ifdef __APPLE__
+// macOS re-shows the OS cursor on its own (window re-entry, app activation),
+// and SDL_ShowCursor(SDL_DISABLE) rides on cursor rects
+// that the window server applies unreliably,
+// so the arrow keeps flickering back over the window.
+// Enforce the wanted state at the hardware level instead,
+// gated on whether the mouse is over our window
+// so the arrow still shows over the title bar and menu bar.
+extern "C" void mac__EnforceSystemCursorHidden(int hidden);
+#endif
+
+void EnforceSystemMouseCursor()
+{
+#ifdef __APPLE__
+	if( bDedicated )
+		return;
+	// Hold the cursor hidden only while OLX is active
+	// and the mouse is over our window,
+	// so the normal arrow still shows over the title bar, the menu bar and other apps.
+	// Losing either balances the hide back out (see the helper).
+	const bool wantHidden = !systemMouseCursorWanted;
+	const bool active = SDL_GetKeyboardFocus() != NULL;
+	const bool mouseOverWindow = SDL_GetMouseFocus() != NULL;
+	mac__EnforceSystemCursorHidden(wantHidden && active && mouseOverWindow);
+#endif
+}
+
 void EnableSystemMouseCursor(bool enable)
 {
 	if( bDedicated )
 		return;
+#ifdef __EMSCRIPTEN__
+	// Web build: never show the operating-system / browser cursor.
+	// OpenLieroX's own software cursor is the only cursor the player
+	// should ever see, so ignore requests to show the OS one.
+	enable = false;
+#endif
+	systemMouseCursorWanted = enable;
 	struct EnableMouseCursor: public Action
 	{
-		bool Enable;
-		
-		EnableMouseCursor(bool b): Enable(b) {};
 		Result handle()
 		{
-#ifdef __EMSCRIPTEN__
-			// Web build: never show the operating-system / browser cursor.
-			// OpenLieroX's own software cursor is the only cursor the player
-			// should ever see, so ignore requests to show the OS one.
-			(void)Enable;
-			SDL_ShowCursor(SDL_DISABLE);
-#else
-			SDL_ShowCursor(Enable ? SDL_ENABLE : SDL_DISABLE ); // Should be called from main thread, or you'll get race condition with libX11
-#endif
+			applySystemMouseCursor();
 			return true;
 		}
 	};
-	doActionInMainThread( new EnableMouseCursor(enable) );
+	doActionInMainThread( new EnableMouseCursor() );
 };

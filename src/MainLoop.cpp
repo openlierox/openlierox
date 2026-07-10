@@ -335,6 +335,11 @@ bool handleSDLEvents(bool wait) {
 			return false;
 	}
 
+	// The mouse may just have moved back over the window,
+	// where macOS re-shows the OS cursor on its own;
+	// re-assert the wanted state now, on the main thread.
+	EnforceSystemMouseCursor();
+
 	return true;
 }
 

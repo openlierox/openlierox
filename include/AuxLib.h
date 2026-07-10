@@ -71,6 +71,12 @@ void doVppOperation(Action* act);
 // Use this function instead of SDL_ShowCursor()
 void EnableSystemMouseCursor(bool enable = true);
 
+// Re-assert the wanted OS cursor visibility against the window server.
+// macOS keeps re-showing the OS cursor on window re-entry and app activation,
+// so call this regularly from the main thread.
+// It is a cheap no-op on other platforms.
+void EnforceSystemMouseCursor();
+
 class VideoPostProcessor {
 protected:
 	SmartPointer<SDL_Window> m_window;
