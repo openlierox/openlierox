@@ -442,6 +442,11 @@ static void ParseArguments_BeforeInit(int argc, char *argv[]) {
 			hints.minCoutVerb = 2;
 			warnings.minCoutVerb = 1;
 		}
+		// -version prints the version and quits, before any init
+		else if( stricmp(a, "-version") == 0 || stricmp(a, "--version") == 0 ) {
+			printf("%s\n", GetFullGameName());
+			exit(0);
+		}
 	}
 }
 
@@ -530,7 +535,7 @@ static void ParseArguments_AfterInit(int argc, char *argv[])
 
 		if( stricmp(a, "-aftercrash") == 0) {
 			afterCrash = true;
-		}
+		} else
 
 #ifdef WIN32
 		// -console
@@ -547,6 +552,17 @@ static void ParseArguments_AfterInit(int argc, char *argv[])
 		} else
 #endif
 
+#ifdef DEBUG
+		// -nettest
+		// Test CChannel reliability, then quit
+		if( !stricmp(a, "-nettest") ) {
+			InitializeLieroX();
+			TestCChannelRobustness();
+			ShutdownLieroX();
+			exit(0);
+		} else
+#endif
+
 		// -help
 		// Displays help and quits
         if( !stricmp(a, "-h") || !stricmp(a, "-help") || !stricmp(a, "--help") || !stricmp(a, "/?")) {
@@ -556,6 +572,7 @@ static void ParseArguments_AfterInit(int argc, char *argv[])
      		printf("   -opengl       OpenLieroX will use OpenGL for drawing\n");
      		printf("   -noopengl     Explicitly disable using OpenGL\n");
      		printf("   -dedicated    Dedicated mode\n");
+     		printf("   -script scr   Run a dedicated server with the given script\n");
      		printf("   -nojoystick   Disable Joystick support\n");
      		printf("   -nosound      Disable sound\n");
      		printf("   -window       Run in window mode\n");
@@ -566,8 +583,9 @@ static void ParseArguments_AfterInit(int argc, char *argv[])
 			#ifdef DEBUG
      		printf("   -nettest      Test CChannel reliability\n");
 			#endif
-     		printf("   -skin         Turns on new skinned GUI - it's unfinished yet\n");
-     		printf("   -noskin       Turns off new skinned GUI\n");
+     		printf("   -silent       Reduce the console verbosity\n");
+     		printf("   -version      Print the version and quit\n");
+     		printf("   -help         Print this help and quit\n");
 
 			// Shutdown and quit
 			// ShutdownLieroX() works only correct when everything was inited because ProcessEvents() is used.
@@ -575,16 +593,14 @@ static void ParseArguments_AfterInit(int argc, char *argv[])
 			// This is not nice but still nicer than getting a segfault.
 			// It is not worth to fix this in a nicer way as it is fixed anyway when we use the new engine system.
      		exit(0);
-        }
-		#ifdef DEBUG
-		if( !stricmp(a, "-nettest") )
-		{
-			InitializeLieroX();
-			TestCChannelRobustness();
-			ShutdownLieroX();
-     		exit(0);
-		}
-		#endif
+        } else
+
+		// handled in ParseArguments_BeforeInit; recognized here so they don't warn
+		if( !stricmp(a, "-disablestdincli") || !stricmp(a, "-disablecrashhandler") || !stricmp(a, "-silent") ) {
+			// nothing to do
+		} else
+
+			warnings << "unknown option: " << a << endl;
     }
 }
 
