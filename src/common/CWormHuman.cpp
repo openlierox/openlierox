@@ -919,16 +919,20 @@ void CWormHumanInputHandler::doWeaponSelectionFrame(SDL_Surface * bmpDest, CView
 	
 	// list current key settings
 	// TODO: move this out here
+	// One left-aligned column so the labels line up; a two-column layout
+	// overlapped once binding names grew wide. getEventName(true) hides bindings
+	// that can't fire (e.g. an absent gamepad). " / " is spaced so it doesn't
+	// blur into the "/" in tokens.
+	int keyx = centrex - 150;
 	y += 20;
 	tLX->cFont.DrawCentre(bmpDest, centrex, y += 15, tLX->clWeaponSelectionTitle, "~ Key settings ~");
-	tLX->cFont.Draw(bmpDest, centrex - 150, y += 15, tLX->clWeaponSelectionTitle, "up/down: " + cUp.getEventName() + "/" + cDown.getEventName());
-	tLX->cFont.Draw(bmpDest, centrex - 150, y += 15, tLX->clWeaponSelectionTitle, "left/right: " + cLeft.getEventName() + "/" + cRight.getEventName());
-	tLX->cFont.Draw(bmpDest, centrex - 150, y += 15, tLX->clWeaponSelectionTitle, "shoot: " + cShoot.getEventName());
-	y -= 45;
-	tLX->cFont.Draw(bmpDest, centrex, y += 15, tLX->clWeaponSelectionTitle, "jump/ninja: " + cJump.getEventName() + "/" + cInpRope.getEventName());
-	tLX->cFont.Draw(bmpDest, centrex, y += 15, tLX->clWeaponSelectionTitle, "select weapon: " + cSelWeapon.getEventName());
-	tLX->cFont.Draw(bmpDest, centrex, y += 15, tLX->clWeaponSelectionTitle, "strafe: " + cStrafe.getEventName());
-	tLX->cFont.Draw(bmpDest, centrex, y += 15, tLX->clWeaponSelectionTitle, "quick select weapon: " + cWeapons[0].getEventName() + " " + cWeapons[1].getEventName() + " " + cWeapons[2].getEventName() + " " + cWeapons[3].getEventName() + " " + cWeapons[4].getEventName() );
+	tLX->cFont.Draw(bmpDest, keyx, y += 15, tLX->clWeaponSelectionTitle, "up/down: " + cUp.getEventName(true) + " / " + cDown.getEventName(true));
+	tLX->cFont.Draw(bmpDest, keyx, y += 15, tLX->clWeaponSelectionTitle, "left/right: " + cLeft.getEventName(true) + " / " + cRight.getEventName(true));
+	tLX->cFont.Draw(bmpDest, keyx, y += 15, tLX->clWeaponSelectionTitle, "shoot: " + cShoot.getEventName(true));
+	tLX->cFont.Draw(bmpDest, keyx, y += 15, tLX->clWeaponSelectionTitle, "jump/ninja: " + cJump.getEventName(true) + " / " + cInpRope.getEventName(true));
+	tLX->cFont.Draw(bmpDest, keyx, y += 15, tLX->clWeaponSelectionTitle, "select weapon: " + cSelWeapon.getEventName(true));
+	tLX->cFont.Draw(bmpDest, keyx, y += 15, tLX->clWeaponSelectionTitle, "strafe: " + cStrafe.getEventName(true));
+	tLX->cFont.Draw(bmpDest, keyx, y += 15, tLX->clWeaponSelectionTitle, "quick select weapon: " + cWeapons[0].getEventName(true) + " " + cWeapons[1].getEventName(true) + " " + cWeapons[2].getEventName(true) + " " + cWeapons[3].getEventName(true) + " " + cWeapons[4].getEventName(true) );
 	
 	
 	if(!bChat_Typing) {
