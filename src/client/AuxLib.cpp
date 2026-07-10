@@ -84,8 +84,6 @@
 
 Null null;	// Used in timer class
 
-static void applySystemMouseCursor();  // apply the wanted OS cursor visibility, main thread only
-
 
 
 // TODO: is this the best format? why? comment that.
@@ -520,7 +518,6 @@ setvideomode:
 	// OpenLieroX draws its own software cursor where one is wanted (menus),
 	// and that should be the only cursor the player ever sees.
 	// We are on the main thread here, so apply it directly.
-	applySystemMouseCursor();
 	EnforceSystemMouseCursor();
 
 #ifdef WIN32
@@ -1228,36 +1225,30 @@ bool lierox_t::isAnyControlKeyDown() const {
 // the console and error dialogs show it.
 static std::atomic<bool> systemMouseCursorWanted(false);
 
-static void applySystemMouseCursor()
-{
-	// Should be called from the main thread, or you'll get a race condition with libX11.
-	SDL_ShowCursor(systemMouseCursorWanted ? SDL_ENABLE : SDL_DISABLE);
-}
-
 #ifdef __APPLE__
-// macOS re-shows the OS cursor on its own (window re-entry, app activation),
-// and SDL_ShowCursor(SDL_DISABLE) rides on cursor rects
-// that the window server applies unreliably,
-// so the arrow keeps flickering back over the window.
-// Enforce the wanted state at the hardware level instead,
-// gated on whether the mouse is over our window
-// so the arrow still shows over the title bar and menu bar.
 extern "C" void mac__EnforceSystemCursorHidden(int hidden);
 #endif
 
 void EnforceSystemMouseCursor()
 {
+	// Should be called from the main thread, or you'll get a race condition with libX11.
 #ifdef __APPLE__
-	if( bDedicated )
-		return;
-	// Hold the cursor hidden only while OLX is active
-	// and the mouse is over our window,
+	// On macOS, SDL_ShowCursor(SDL_DISABLE) rides on AppKit cursor rects
+	// that the window server applies unreliably on window re-entry,
+	// so the arrow keeps flickering back over the window.
+	// Drive the hardware cursor directly instead of through SDL,
+	// gated on OLX being active with the mouse over its window,
 	// so the normal arrow still shows over the title bar, the menu bar and other apps.
 	// Losing either balances the hide back out (see the helper).
+	if( bDedicated )
+		return;
 	const bool wantHidden = !systemMouseCursorWanted;
 	const bool active = SDL_GetKeyboardFocus() != NULL;
 	const bool mouseOverWindow = SDL_GetMouseFocus() != NULL;
 	mac__EnforceSystemCursorHidden(wantHidden && active && mouseOverWindow);
+#else
+	// Every other window manager hides the cursor reliably through SDL.
+	SDL_ShowCursor(systemMouseCursorWanted ? SDL_ENABLE : SDL_DISABLE);
 #endif
 }
 
@@ -1276,7 +1267,6 @@ void EnableSystemMouseCursor(bool enable)
 	{
 		Result handle()
 		{
-			applySystemMouseCursor();
 			EnforceSystemMouseCursor();
 			return true;
 		}
