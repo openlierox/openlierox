@@ -12,14 +12,13 @@
 #include "CShootList.h"
 
 // Regression for #1115:
-// a single shot with a large negative relative speed (nSpeed < -255)
-// sets both SMF_LARGESPEED and SMF_NEGSPEED.
-// writeSingle() used an else-if that hid the large-and-negative branch,
-// so it sent nSpeed-255 while readSingle() expects (-nSpeed)-255,
-// and the shot decoded with the wrong speed.
-// writeSingle() and readSingle() must round-trip every speed.
+// a single shot with a large negative speed (nSpeed < -255)
+// sets both SMF_LARGESPEED and SMF_NEGSPEED,
+// which writeSingle() once mis-encoded.
+// Every speed must round-trip writeSingle() -> readSingle().
 void test_CShootListSpeedRoundtrip() {
-	const Version ver = OLXBetaVersion(0,57,0);  // before the release bit; keeps the packet simple
+	// before the release bit; keeps the packet simple
+	const Version ver = OLXBetaVersion(0,57,0);
 	const int max_weapon_id = 10;
 
 	const int speeds[] = { 0, 50, 255, 400, -100, -255, -300, -510 };

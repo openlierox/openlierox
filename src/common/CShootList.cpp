@@ -178,18 +178,14 @@ void CShootList::writeSingle( CBytestream *bs, const Version& receiverVer, int i
 	else
 		bs->writeByte( psShot->nAngle );
 
-	// Same structure as writeMulti() and readSingle():
-	// a large negative speed sets both flags, so the branches must be
-	// independent ifs, not an else-if that hides the large-and-negative case.
+	// Speed byte: negate for SMF_NEGSPEED,
+	// then drop the 255 offset for SMF_LARGESPEED.
+	// readSingle() inverts this (add 255, then negate).
 	int speed = psShot->nSpeed;
+	if( flags & SMF_NEGSPEED )
+		speed = -speed;
 	if( flags & SMF_LARGESPEED )
-		speed = psShot->nSpeed-255;
-	if( flags & SMF_NEGSPEED ) {
-		if(flags & SMF_LARGESPEED)
-			speed = (-psShot->nSpeed)-255;
-		else
-			speed = -psShot->nSpeed;
-	}
+		speed -= 255;
 	bs->writeByte( speed );
 
 	if(receiverVer >= OLXBetaVersion(0,58,1)) {
@@ -286,15 +282,10 @@ void CShootList::writeMulti( CBytestream *bs, const Version& receiverVer, int in
 		bs->writeByte( psShot->nAngle );
 
 	int speed = psShot->nSpeed;
-
+	if( flags & SMF_NEGSPEED )
+		speed = -speed;
 	if( flags & SMF_LARGESPEED )
-		speed = psShot->nSpeed-255;
-	if( flags & SMF_NEGSPEED ) {
-		if(flags & SMF_LARGESPEED)
-			speed = (-psShot->nSpeed)-255;
-		else
-			speed = -psShot->nSpeed;
-	}
+		speed -= 255;
 
 	bs->writeByte( speed );
 	
@@ -462,19 +453,15 @@ void CShootList::readSingle( CBytestream *bs, const Version& senderVer, int max_
 
 	psShot->nAngle = bs->readByte();
 	int speed = bs->readByte();
-	psShot->nSpeed = speed;
 
 	if( flags & SMF_LARGEANGLE )
 		psShot->nAngle += 255;
 
 	if( flags & SMF_LARGESPEED )
-		psShot->nSpeed = speed+255;
-	if( flags & SMF_NEGSPEED ) {
-		if( flags & SMF_LARGESPEED )
-			psShot->nSpeed = -(speed+255);
-		else
-			psShot->nSpeed = -speed;
-	}
+		speed += 255;
+	if( flags & SMF_NEGSPEED )
+		speed = -speed;
+	psShot->nSpeed = speed;
 
 
 	// Convert the pos
@@ -521,19 +508,15 @@ void CShootList::readMulti( CBytestream *bs, const Version& senderVer, int max_w
 
 	psShot->nAngle = bs->readByte();
 	int speed = bs->readByte();
-	psShot->nSpeed = speed;
 
 	if( flags & SMF_LARGEANGLE )
 		psShot->nAngle += 255;
 
 	if( flags & SMF_LARGESPEED )
-		psShot->nSpeed = speed+255;
-	if( flags & SMF_NEGSPEED ) {
-		if( flags & SMF_LARGESPEED )
-			psShot->nSpeed = -(speed+255);
-		else
-			psShot->nSpeed = -speed;
-	}
+		speed += 255;
+	if( flags & SMF_NEGSPEED )
+		speed = -speed;
+	psShot->nSpeed = speed;
 
 	// Convert the pos
 	psShot->cPos = CVec( (float)x, (float)y );
