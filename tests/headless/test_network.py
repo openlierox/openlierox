@@ -128,15 +128,18 @@ def test_late_joiner_terrain_matches_server(network_game):
     assert c2.wait_for("CLIENT[c2] PLAYING", timeout=25), c2.read_log()
     assert c2.wait_for("CLIENT[c2] MAPCHK", timeout=15), c2.read_log()
 
-    # The joiner emits a checksum every poll,
-    # and the terrain sync arrives shortly after it starts playing,
-    # so wait for its checksum to converge on the server's
-    # (which is stable -- only the server carved).
-    # Without the fix it never matches.
-    server_chk = _last_mapchk(server)
-    c2_chk = None
-    deadline = time.time() + 15
+    # Both sides emit a checksum every poll,
+    # and the joiner catches up shortly after it starts playing,
+    # so wait until the two agree.
+    # Re-read the server's value each pass, not just once:
+    # its terrain can settle a moment later (e.g. a spawn hole),
+    # and the joiner converges on that newer value,
+    # so a single up-front read would be stale and fail even once they match.
+    # Without the fix the joiner stays on the pristine map and never agrees.
+    server_chk = c2_chk = None
+    deadline = time.time() + 30
     while time.time() < deadline:
+        server_chk = _last_mapchk(server)
         c2_chk = _last_mapchk(c2)
         if c2_chk is not None and c2_chk == server_chk:
             break
