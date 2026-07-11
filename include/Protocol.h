@@ -101,6 +101,7 @@ enum S2C_MESSAGES {
 	S2C_GUSANOSUPDATE	= 36, // >=0.59 beta5
 	S2C_GAMEATTRUPDATE	= 37, // >=0.59 beta10
 	S2C_MAPSYNCDATA		= 38, // >=0.59 beta11: server sends the terrain material of the regions a client asked to resync (#827)
+	S2C_MAPCHECKSUM		= 39, // >=0.59 beta11: server publishes its whole-map terrain checksum so clients can detect drift and re-pull (#827)
 };
 
 

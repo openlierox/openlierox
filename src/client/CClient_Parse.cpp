@@ -661,6 +661,10 @@ bool CClientNetEngine::ParsePacket(CBytestream *bs)
 				ParseMapSyncData(bs);
 				break;
 
+			case S2C_MAPCHECKSUM:
+				ParseMapChecksum(bs);
+				break;
+
 			default:
 #if !defined(FUZZY_ERROR_TESTING_S2C)
 				warnings << "cl: Unknown packet " << (unsigned)cmd << endl;
@@ -1491,6 +1495,20 @@ void CClientNetEngine::ParseMapSyncData(CBytestream *bs)
 		m->CalculateDirtCount();
 		notes << "map sync: applied " << applied << " terrain region(s)" << endl;
 	}
+}
+
+
+///////////////////
+// Parse the server's terrain checksum:
+// if our map differs, pull the regions that changed (#827).
+void CClientNetEngine::ParseMapChecksum(CBytestream *bs)
+{
+	Uint32 serverCrc = (Uint32)bs->readInt(4);
+	CMap* m = game.gameMap();
+	if(!m || !m->isLoaded())
+		return;
+	if(m->getMaterialChecksum() != serverCrc)
+		SendRequestMapSync();
 }
 
 

@@ -102,6 +102,7 @@ protected:
     void		 ParseDropped(CBytestream *bs);
     void		 ParseSendFile(CBytestream *bs);
 	void		 ParseMapSyncData(CBytestream *bs);
+	void		 ParseMapChecksum(CBytestream *bs);
 	virtual void ParseFlagInfo(CBytestream* bs);
 	virtual void ParseTeamScoreUpdate(CBytestream* bs);
 	virtual void ParseWormProps(CBytestream* bs);
