@@ -18,6 +18,8 @@
 #include "IRC.h"
 #include "CrashHandler.h"
 #include "Clipboard.h"
+#include "TeeStdoutHandler.h"
+#include "client/StdinCLISupport.h"
 
 
 
@@ -385,6 +387,10 @@ void SetCrashHandlerReturnPoint(const char* name) {
 		hints << "returned from sigsetjmp in " << name << endl;
 		if(!tLXOptions) {
 			notes << "we already have tLXOptions uninitialised, exiting now" << endl;
+			// Stop the console I/O threads before exit() destroys the statics
+			// they use, else the tee thread hits a use-after-free (#1111).
+			quitStdinCLISupport();
+			teeStdoutQuit();
 			exit(10);
 			return;
 		}

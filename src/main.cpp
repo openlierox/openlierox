@@ -223,10 +223,12 @@ int real_main(int argc, char *argv[])
 		stdinCLIinitRes = initStdinCLISupport();
 	teeStdoutInit();
 
-	// The two console I/O threads own static std::threads.
-	// Any exit() that skips the normal shutdown (e.g. SystemError())
-	// would otherwise destroy them still-joinable, which calls std::terminate().
-	// atexit runs before those static destructors, so join them here.
+	// Last-resort join for the two console I/O threads (they own static std::threads),
+	// covering any exit() path that doesn't stop them first.
+	// Not sufficient on its own: the tee thread uses function-local statics that
+	// exit() may destroy before this atexit runs (see #1111),
+	// so the real shutdown paths join the threads explicitly (ShutdownEverything);
+	// this only backstops paths that reach exit() with the threads still up.
 	std::atexit(quitConsoleIOThreads);
 
 	mainThreadId = getCurrentThreadId();
@@ -850,7 +852,7 @@ void ShutdownLieroX()
 
 	// Options
 	// Save already here in case some other method crashes
-	if(!bDedicated) // only save if not in dedicated mode
+	if(!bDedicated && tLXOptions) // only save if not dedicated and options are loaded
 		tLXOptions->SaveToDisc();
 		
 	DeprecatedGUI::CChatWidget::GlobalDestroy();	
@@ -930,7 +932,7 @@ void ShutdownLieroX()
 
 	// HINT: save the options again because some could get changed in CServer/CClient destructors and shutdown functions
 	// TODO: like what changes? why are there options saved both in CServer/CClient structure and in options?
-	if(!bDedicated) // only save if not in dedicated mode
+	if(!bDedicated && tLXOptions) // only save if not dedicated and options are loaded
 		tLXOptions->SaveToDisc();
 
 	ShutdownOptions();
@@ -957,9 +959,10 @@ void ShutdownLieroX()
 
 // Full ordered teardown: subsystems, then worker threads,
 // task manager, network, tLX, and finally the console I/O threads.
-// Each step guards itself, so it is safe on a partial init.
-// So an error or early exit shuts down as cleanly as a normal quit
-// instead of racing a live thread at exit (#1111).
+// Reached from error and early-exit paths on partially-initialized state,
+// so each step skips or no-ops when its subsystem was never brought up.
+// Joining the console threads here, before returning to exit(),
+// keeps them from racing exit()'s static destruction (#1111).
 void ShutdownEverything()
 {
 	ShutdownLieroX();
