@@ -209,6 +209,7 @@ void updateFileListCaches();
 // Main Routines
 bool	InitializeLieroX();
 void	ShutdownLieroX();
+void	ShutdownEverything();
 void	GameLoopFrame();
 void	GotoLocalMenu();
 void	GotoNetMenu();
