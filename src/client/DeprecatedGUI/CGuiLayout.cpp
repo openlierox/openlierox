@@ -240,6 +240,45 @@ bool CGuiLayout::Build()
 }
 
 
+////////////////////
+// Widget an arrow key would move focus to, or NULL for no navigation
+CWidget *CGuiLayout::keyboardNavigationTarget(int keysym) const
+{
+	// A widget that uses the arrow keys itself (e.g. a textbox cursor) keeps them;
+	// menu navigation must not steal them (#815).
+	if (!bCanFocus || cFocused == NULL || !cFocused->CanLoseFocus() || cFocused->handlesArrowKeys())
+		return NULL;
+
+	CWidget *selected = NULL;
+	if (keysym == SDLK_UP || keysym == SDLK_LEFT) {
+		int posmin = 0;
+		int posmax = cFocused->getX() + cFocused->getY() * 0x10000 + cFocused->getKeyboardNavigationOrder() * 0x10000000;
+		for(auto widget: cWidgets) {
+			if (!widget->getEnabled() || widget == cFocused || widget->getType() == wid_Label)
+				continue;
+			int pos = widget->getX() + widget->getY() * 0x10000 + widget->getKeyboardNavigationOrder() * 0x10000000;
+			if (posmin < pos && posmax > pos) {
+				posmin = pos;
+				selected = widget;
+			}
+		}
+	} else if (keysym == SDLK_DOWN || keysym == SDLK_RIGHT) {
+		int posmin = cFocused->getX() + cFocused->getY() * 0x10000 + cFocused->getKeyboardNavigationOrder() * 0x10000000;
+		int posmax = INT_MAX;
+		for(auto widget: cWidgets) {
+			if (!widget->getEnabled() || widget == cFocused || widget->getType() == wid_Label)
+				continue;
+			int pos = widget->getX() + widget->getY() * 0x10000 + widget->getKeyboardNavigationOrder() * 0x10000000;
+			if (posmin < pos && posmax > pos) {
+				posmax = pos;
+				selected = widget;
+			}
+		}
+	}
+	return selected;
+}
+
+
 ///////////////////
 // Process all the widgets
 gui_event_t *CGuiLayout::Process()
@@ -359,37 +398,9 @@ gui_event_t *CGuiLayout::Process()
 			if (kbev.down && (kbev.sym == SDLK_UP || kbev.sym == SDLK_LEFT || kbev.sym == SDLK_DOWN || kbev.sym == SDLK_RIGHT)) {
 
 				bKeyboardNavigation = true;
-				CWidget * selected = NULL;
+				CWidget * selected = keyboardNavigationTarget(kbev.sym);
 
-				if (!bCanFocus || cFocused == NULL || !cFocused->CanLoseFocus()) {
-					// Do nothing
-				} else if (kbev.sym == SDLK_UP || kbev.sym == SDLK_LEFT) {
-					int posmin = 0;
-					int posmax = cFocused->getX() + cFocused->getY() * 0x10000 + cFocused->getKeyboardNavigationOrder() * 0x10000000;
-					for(auto widget: cWidgets) {
-						if (!widget->getEnabled() || widget == cFocused || widget->getType() == wid_Label)
-							continue;
-						int pos = widget->getX() + widget->getY() * 0x10000 + widget->getKeyboardNavigationOrder() * 0x10000000;
-						if (posmin < pos && posmax > pos) {
-							posmin = pos;
-							selected = widget;
-						}
-					}
-				} else if (kbev.sym == SDLK_DOWN || kbev.sym == SDLK_RIGHT) {
-					int posmin = cFocused->getX() + cFocused->getY() * 0x10000 + cFocused->getKeyboardNavigationOrder() * 0x10000000;
-					int posmax = INT_MAX;
-					for(auto widget: cWidgets) {
-						if (!widget->getEnabled() || widget == cFocused || widget->getType() == wid_Label)
-							continue;
-						int pos = widget->getX() + widget->getY() * 0x10000 + widget->getKeyboardNavigationOrder() * 0x10000000;
-						if (posmin < pos && posmax > pos) {
-							posmax = pos;
-							selected = widget;
-						}
-					}
-				}
-
-				if (cFocused && selected && cFocused != selected) {
+				if (selected && cFocused != selected) {
 					cFocused->setFocused(false);
 					cFocused = selected;
 					widgetSelectedWithKeyboard = true;

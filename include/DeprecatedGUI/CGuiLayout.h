@@ -120,6 +120,8 @@ public:
 	void		Error(int ErrorCode, const std::string& text);
 
 	gui_event_t	*Process();
+	// Widget an arrow key would move focus to, or NULL for no navigation.
+	CWidget		*keyboardNavigationTarget(int keysym) const;
 	void		Draw(SDL_Surface * bmpDest);
 	// Shift every widget by (dx,dy). Used to center an in-game popup layout
 	// on a wider-than-640 screen (see VideoPostProcessor::popupCenterOffsetX).

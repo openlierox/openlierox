@@ -136,6 +136,8 @@ public:
 	int		KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate);
 	int		KeyUp(UnicodeChar c, int keysym, const ModifiersState& modstate);
 
+	bool	handlesArrowKeys() const override		{ return true; }
+
 	void	Draw(SDL_Surface * bmpDest);
 
 	uintptr_t	SendMessage(int iMsg, uintptr_t Param1, uintptr_t Param2);
