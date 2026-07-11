@@ -130,6 +130,7 @@ public:
 	AbsTime		getLastWrite()			{ return m_fLastWrite; }
 
 	friend void test_CShootListSpeedRoundtrip();  // unit test: writeSingle/readSingle
+	friend void test_CShootListMultiRoundtrip();  // unit test: writeMulti/readMulti run length
 };
 
 

@@ -226,7 +226,9 @@ void CShootList::writeMulti( CBytestream *bs, const Version& receiverVer, int in
 			abs(m_psShoot[i].nSpeed - m_psShoot[i-1].nSpeed) > 255 ||
 			abs((int)m_psShoot[i].cWormVel.x - (int)m_psShoot[i-1].cWormVel.x) > 255 ||
 			abs((int)m_psShoot[i].cWormVel.y - (int)m_psShoot[i-1].cWormVel.y) > 255 ||
-			num > 255) {
+			// the count goes out as one byte,
+			// and the receiver caps it at MAX_SHOOTINGS-1
+			num >= 255) {
 
 			break;
 		}
