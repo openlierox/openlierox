@@ -45,6 +45,7 @@
 #include "Music.h"
 #include "Debug.h"
 #include "TaskManager.h"
+#include "HTTP.h"
 #include "CGameMode.h"
 #include "ConversationLogger.h"
 #include "OLXCommand.h"
@@ -397,7 +398,11 @@ startpoint:
 
 	notes << "waiting for all left threads and tasks" << endl;
 	taskManager->finishQueuedTasks();
+	// A hung HTTP request (e.g. an unresponsive master server) would otherwise
+	// block waitAll forever; tell any in-flight transfer to abort now.
+	SetHttpTransfersAborting(true);
 	threadPool->waitAll(); // do that before uniniting task manager because some threads could access it
+	SetHttpTransfersAborting(false); // in case we restart the game below
 
 	// do that after shutting down the timers and other threads
 	ShutdownEventQueue();

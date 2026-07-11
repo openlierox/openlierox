@@ -18,6 +18,7 @@
 
 
 #include <cassert>
+#include <atomic>
 #ifdef WIN32
 	#include <windows.h>
 	#include <wininet.h>
@@ -43,6 +44,13 @@
 // Some basic defines
 #define		HTTP_TIMEOUT	10	// Filebase became laggy lately, so increased that from 5 seconds
 //#define		BUFFER_LEN		8192
+
+// Set on shutdown to make every running transfer return promptly.
+static std::atomic<bool> httpTransfersAborting(false);
+
+void SetHttpTransfersAborting(bool aborting) {
+	httpTransfersAborting = aborting;
+}
 
 
 //
@@ -153,29 +161,33 @@ void AutoSetupHTTPProxy()
 
 
 
-struct CurlThread : Action {	
-	
+struct CurlThread : Action {
+
 	CurlThread( CHttp * parent, CURL * _curl ) :
 		parent( parent ),
 		curl( _curl ),
-		curlForm( NULL )
+		curlForm( NULL ),
+		aborted( false )
 	{
 		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, CurlReceiveCallback);
 		curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)this);
-		//curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0);
-		//curl_easy_setopt(curl, CURLOPT_PROGRESSFUNCTION, CurlProgressCallback);
-		//curl_easy_setopt(curl, CURLOPT_PROGRESSDATA, (void *)this);	
+		// The progress callback runs about once a second even while the transfer
+		// is stalled, so it is the only place we can abort a hung request from.
+		curl_easy_setopt(curl, CURLOPT_NOPROGRESS, (long) 0);
+		curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, CurlProgressCallback);
+		curl_easy_setopt(curl, CURLOPT_XFERINFODATA, (void *)this);
 	}
-	
+
 	Result handle();
 
 	CHttp *			parent;
 	CURL *			curl;
 	curl_httppost *	curlForm;
 	Mutex			Lock;
-	
+	std::atomic<bool> aborted; // set by CancelProcessing to interrupt curl_easy_perform
+
 	static size_t CurlReceiveCallback(void *ptr, size_t size, size_t nmemb, void *data);
-	//static int CurlProgressCallback(void *clientp, double dltotal, double dlnow, double ultotal, double ulnow);
+	static int CurlProgressCallback(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow);
 };
 
 CHttp::CHttp()
@@ -207,17 +219,16 @@ size_t CurlThread::CurlReceiveCallback(void *ptr, size_t size, size_t nmemb, voi
 	return realsize;
 }
 
-/*
-int	CurlThread::CurlProgressCallback(void *clientp, double dltotal, double dlnow, double ultotal, double ulnow) {
+int	CurlThread::CurlProgressCallback(void *clientp, curl_off_t, curl_off_t, curl_off_t, curl_off_t) {
 	CurlThread* self = (CurlThread *)clientp;
-	
-	Mutex::ScopedLock l(self->Lock);
-	if( !self->parent ) // Aborting
-		return 0;
-	
-	return 1;
+	// A non-zero return aborts curl_easy_perform with CURLE_ABORTED_BY_CALLBACK.
+	// aborted is set when the request was cancelled,
+	// httpTransfersAborting on shutdown.
+	// Both are atomic, so no lock is needed here.
+	if( self->aborted || httpTransfersAborting )
+		return 1;
+	return 0;
 }
-*/
 
 CURL * CHttp::InitializeTransfer(const std::string& url, const std::string& proxy)
 {
@@ -342,6 +353,9 @@ void CHttp::CancelProcessing() // Non-blocking
 	if(curlThread != NULL)
 	{
 		Mutex::ScopedLock l(curlThread->Lock);
+		// Interrupt a still-running transfer via the progress callback,
+		// so the worker thread returns instead of blocking in curl_easy_perform.
+		curlThread->aborted = true;
 		curlThread->parent = NULL;
 		curlThread = NULL;
 	}
