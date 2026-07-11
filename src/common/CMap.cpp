@@ -813,6 +813,17 @@ void CMap::CalculateDirtCount()
 }
 
 
+Uint32 CMap::getMaterialChecksum() {
+	if(!material) return 0;
+	lockFlags(false);
+	uLong crc = crc32(0, Z_NULL, 0);
+	for(size_t y = 0; y < Height; ++y)
+		crc = crc32(crc, (const Bytef*)material->line[y], (uInt)Width);
+	unlockFlags(false);
+	return (Uint32)crc;
+}
+
+
 static bool getGroundPos(CMap* cMap, const CVec& pos, CVec* ret, uchar badPX) {
 	// TODO: optimise
 	

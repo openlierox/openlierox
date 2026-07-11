@@ -14,6 +14,8 @@ Two clients tell the cases apart:
 A client counts as joined once it reaches the ``Playing`` state.
 """
 
+import re
+
 
 def _host_running_game(network_game):
     """Start the server, join client ``c1`` in the lobby, and start the game.
@@ -88,6 +90,50 @@ def test_two_clients_in_lobby_see_each_other(network_game):
             "%s never received the other client's worm:\n%s"
             % (client.name, client.read_log())
         )
+
+
+def _last_mapchk(inst):
+    """Return the last terrain checksum an instance emitted, or None."""
+    vals = re.findall(r"MAPCHK (\d+)", inst.read_log())
+    return vals[-1] if vals else None
+
+
+def test_late_joiner_terrain_matches_server(network_game):
+    """A mid-game joiner must end up with the same terrain as the server (#827).
+
+    The server carves holes into the map after the game is running.
+    A client that then joins mid-game must be sent that terrain state,
+    not a pristine copy of the map file.
+
+    Fails on current master:
+    the late joiner loads the untouched map,
+    so its material checksum differs from the server's.
+    """
+    server = network_game.start_server(OLX_CARVE_MAP="100,100;150,120;200,150;250,180",
+                                       OLX_EMIT_MAPCHK=1)
+    assert server.wait_for("SERVER_LOBBY", timeout=30), server.read_log()
+
+    c1 = network_game.add_client("c1")
+    assert server.wait_for("SERVER_PLAYING", timeout=40), server.read_log()
+    assert c1.wait_for("CLIENT[c1] PLAYING", timeout=30), c1.read_log()
+
+    # The carve must actually change the terrain, else the test proves nothing.
+    assert server.wait_for("SERVER_CARVED", timeout=20), server.read_log()
+    carved = re.search(r"SERVER_CARVED count=(\d+)", server.read_log())
+    assert carved and int(carved.group(1)) > 0, (
+        "server carved nothing, cannot test terrain sync:\n" + server.read_log())
+
+    c2 = network_game.add_client("c2", env={"OLX_EMIT_MAPCHK": "1"})
+    assert c2.wait_for("CLIENT[c2] PLAYING", timeout=25), c2.read_log()
+    assert c2.wait_for("CLIENT[c2] MAPCHK", timeout=15), c2.read_log()
+
+    server_chk = _last_mapchk(server)
+    c2_chk = _last_mapchk(c2)
+    assert server_chk is not None and c2_chk is not None, (
+        "missing checksums: server=%s c2=%s" % (server_chk, c2_chk))
+    assert c2_chk == server_chk, (
+        "late joiner terrain checksum %s != server %s; "
+        "the modified map was not synced on join (#827)" % (c2_chk, server_chk))
 
 
 def test_worm_removed_when_client_leaves(network_game, tmp_path):

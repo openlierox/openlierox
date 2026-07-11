@@ -353,6 +353,10 @@ public:
 	void				SetMinimapDimensions(uint _w, uint _h);
     uint         GetDirtCount() const { return nTotalDirtCount; }
 
+	// Checksum over the raw material mask (per-pixel material index).
+	// Detects terrain divergence between peers (late join, drift); see #827.
+	Uint32			getMaterialChecksum();
+
 	bool			getCreated()	{ return Created; }
 	
 	

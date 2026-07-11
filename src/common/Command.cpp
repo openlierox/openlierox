@@ -2224,6 +2224,28 @@ void Cmd_mapInfo::exec(CmdLineIntf* caller, const std::vector<std::string>& para
 	}
 }
 
+COMMAND(getMapMaterialChecksum, "checksum of the map material mask (test hook)", "", 0, 0);
+void Cmd_getMapMaterialChecksum::exec(CmdLineIntf* caller, const std::vector<std::string>& params) {
+	CMap* m = game.gameMap();
+	if(!m) { caller->writeMsg("map not loaded", CNC_ERROR); return; }
+	caller->pushReturnArg(to_string(m->getMaterialChecksum()));
+}
+
+COMMAND(carveMap, "carve a hole in the map (test hook)", "x y [size]", 2, 3);
+void Cmd_carveMap::exec(CmdLineIntf* caller, const std::vector<std::string>& params) {
+	if(game.isClient() || !cServer || !cServer->isServerRunning()) { caller->writeMsg(name + " works only as server"); return; }
+	CMap* m = game.gameMap();
+	if(!m) { caller->writeMsg("map not loaded", CNC_ERROR); return; }
+	bool fail = false;
+	int x = from_string<int>(params[0], fail);
+	int y = from_string<int>(params[1], fail);
+	int size = 4;
+	if(params.size() > 2) size = from_string<int>(params[2], fail);
+	if(fail) { printUsage(caller); return; }
+	int carved = m->CarveHole(size, CVec((float)x, (float)y), false);
+	caller->pushReturnArg(itoa(carved));
+}
+
 COMMAND(findSpot, "find randm free spot in map (close to pos)", "[(x,y)]", 0, 1);
 void Cmd_findSpot::exec(CmdLineIntf* caller, const std::vector<std::string>& params) {
 	if(game.isClient() || !cServer || !cServer->isServerRunning()) { caller->writeMsg(name + " works only as server"); return; }
