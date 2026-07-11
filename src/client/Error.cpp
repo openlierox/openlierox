@@ -26,7 +26,6 @@
 #include "FindFile.h"
 #include "StringUtils.h"
 #include "Version.h"
-#include "game/Game.h"
 
 
 int		GotError = false;
@@ -105,10 +104,10 @@ void SystemError(const std::string& text)
 		errors << "SystemError: " << text << endl;
 	}
 	
-	// Shudown only when not already shutting down
-	if (tLX)
-		if (game.state != Game::S_Quit)
-			ShutdownLieroX();
+	// Full shutdown before exiting, so no thread -- worker or console I/O --
+	// is left running to race exit()'s static destruction and abort (#1111).
+	// ShutdownEverything() is safe on a partial init.
+	ShutdownEverything();
 
 #ifdef WIN32
 	if (text.size() != 0)

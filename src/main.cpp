@@ -394,39 +394,26 @@ startpoint:
 	if(!bRestartGameAfterQuit)
 		CrashHandler::restartAfterCrash = false;
 	
-	ShutdownLieroX();
-
-	notes << "waiting for all left threads and tasks" << endl;
-	taskManager->finishQueuedTasks();
-	// So a hung HTTP request can't block waitAll forever.
-	SetHttpTransfersAborting(true);
-	threadPool->waitAll(); // do that before uniniting task manager because some threads could access it
-	SetHttpTransfersAborting(false); // in case we restart below
-
-	// do that after shutting down the timers and other threads
-	ShutdownEventQueue();
-	
-	UnInitTaskManager();
-
 	if(bRestartGameAfterQuit) {
+		// A restart keeps the engine (worker threads, network, tLX) alive and
+		// re-inits, so tear down only the per-run subsystems, not the rest.
+		ShutdownLieroX();
+		notes << "waiting for all left threads and tasks" << endl;
+		taskManager->finishQueuedTasks();
+		// So a hung HTTP request can't block waitAll forever.
+		SetHttpTransfersAborting(true);
+		threadPool->waitAll(); // before uniniting the task manager: some threads could access it
+		SetHttpTransfersAborting(false); // we restart below
+		ShutdownEventQueue();
+		UnInitTaskManager();
 		game.state = Game::S_Inactive; // reset this. otherwise, we would quit if it is still S_Quit.
 		bRestartGameAfterQuit = false;
 		hints << "-- Restarting game --" << endl;
 		goto startpoint;
 	}
 
-	UnInitThreadPool();
+	ShutdownEverything(); // also joins the console I/O threads
 
-	// Network
-	QuitNetworkSystem();
-
-	// LieroX structure
-	// HINT: must be after end of all threads because we could access it
-	if(tLX) {
-		delete tLX;
-		tLX = NULL;
-	}
-	
 	notes << "Good Bye and enjoy your day..." << endl;
 
 #if !defined(__ANDROID__) && !defined(__EMSCRIPTEN__)
@@ -434,8 +421,6 @@ startpoint:
 	CrashHandler::uninit();
 #endif
 
-	quitStdinCLISupport();
-	teeStdoutQuit();
 	return 0;
 }
 
@@ -579,7 +564,7 @@ static void ParseArguments_AfterInit(int argc, char *argv[])
 		if( !stricmp(a, "-nettest") ) {
 			InitializeLieroX();
 			TestCChannelRobustness();
-			ShutdownLieroX();
+			ShutdownEverything();
 			exit(0);
 		} else
 #endif
@@ -608,11 +593,10 @@ static void ParseArguments_AfterInit(int argc, char *argv[])
      		printf("   -version      Print the version and quit\n");
      		printf("   -help         Print this help and quit\n");
 
-			// We are still before InitializeLieroX(),
-			// so the video, event, menu, sound and game subsystems are not up yet.
-			// ShutdownLieroX() tears those down and assumes they were inited,
-			// so we cannot run it here; just quit.
-			// The console I/O threads are joined by the atexit() handler.
+			// Still before InitializeLieroX(), so most subsystems are not up,
+			// but startup already brought up the worker threads and network.
+			// ShutdownEverything() is safe here and stops those cleanly.
+     		ShutdownEverything();
      		exit(0);
         } else
 
@@ -968,6 +952,42 @@ void ShutdownLieroX()
 	xmlCleanupParser();
 
 	notes << "Everything was shut down" << endl;
+}
+
+
+// Full ordered teardown: subsystems, then worker threads,
+// task manager, network, tLX, and finally the console I/O threads.
+// Each step guards itself, so it is safe on a partial init.
+// So an error or early exit shuts down as cleanly as a normal quit
+// instead of racing a live thread at exit (#1111).
+void ShutdownEverything()
+{
+	ShutdownLieroX();
+
+	notes << "waiting for all left threads and tasks" << endl;
+	if(taskManager)
+		taskManager->finishQueuedTasks();
+	// So a hung HTTP request can't block waitAll forever (no reset: we are quitting).
+	SetHttpTransfersAborting(true);
+	if(threadPool)
+		threadPool->waitAll(); // before uniniting the task manager: some threads could access it
+	ShutdownEventQueue();
+	UnInitTaskManager();
+	UnInitThreadPool();
+
+	QuitNetworkSystem();
+
+	// HINT: must be after the end of all threads because they could access it
+	if(tLX) {
+		delete tLX;
+		tLX = NULL;
+	}
+
+	// Join the console I/O threads before returning to exit():
+	// exit() destroys the function-local statics the tee thread uses,
+	// so a tee thread still running would read freed memory and abort (#1111).
+	quitStdinCLISupport();
+	teeStdoutQuit();
 }
 
 
