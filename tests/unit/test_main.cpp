@@ -28,6 +28,7 @@ void test_ChallengeSurvivesStaleConnect();
 void test_ChallengeReissueIsIdempotent();
 void test_ChallengeConsumeRepeated();
 void test_KeyboardDownOnceFiresOncePerPress();
+void test_GuiLayoutArrowKeysStayInTextbox();
 void test_OmfgScriptDeepExpression();
 void test_OmfgScriptDeepPropertyBlocks();
 void test_OmfgScriptShallowOk();
@@ -48,6 +49,7 @@ int main() {
 	test_ChallengeReissueIsIdempotent();
 	test_ChallengeConsumeRepeated();
 	test_KeyboardDownOnceFiresOncePerPress();
+	test_GuiLayoutArrowKeysStayInTextbox();
 	test_OmfgScriptDeepExpression();
 	test_OmfgScriptDeepPropertyBlocks();
 	test_OmfgScriptShallowOk();

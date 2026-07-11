@@ -141,6 +141,9 @@ public:
 	bool			CanLoseFocus()				{ return bCanLoseFocus; }
 	void			setLoseFocus(bool _f)			{ bCanLoseFocus = _f; }
 
+	// Widget uses the arrow keys itself (e.g. a textbox cursor); see #815.
+	virtual bool	handlesArrowKeys() const		{ return false; }
+
 	void			SetupEvents(generic_events_t *Events);	// Not used anywhere, should be removed
 	void			ProcessEvent(int Event);	// Not used anywhere, should be removed
 
