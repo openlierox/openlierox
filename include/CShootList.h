@@ -129,6 +129,7 @@ public:
 	AbsTime		getStartTime()			{ return m_fStartTime; }
 	AbsTime		getLastWrite()			{ return m_fLastWrite; }
 
+	friend void test_CShootListSpeedRoundtrip();  // unit test: writeSingle/readSingle
 };
 
 
