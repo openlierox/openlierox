@@ -262,11 +262,10 @@ void teeStdoutQuit(bool wait) {
 		close(STDOUT_FILENO);
 		close(STDERR_FILENO);
 		close(teeStdoutInfo.pipeend);
-		// Closing the write ends above already makes the tee thread's read()
-		// return EOF; it then drains the buffered output (the message above
-		// included) and exits. Closing the read end (pipestart) here would race
-		// that drain and could discard those final messages, so we close it only
-		// after the join below.
+		// Close the read end only after the join below:
+		// closing the write ends already makes the tee thread's read() hit EOF,
+		// so it drains the buffered output and exits;
+		// closing it early would race that drain and lose those bytes.
 		if(wait) {
 			if(teeStdoutInfo.proc) waitpid(teeStdoutInfo.proc, NULL, 0);
 			// A real join: unlike SDL_WaitThread it returns only once the
