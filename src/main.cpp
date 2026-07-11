@@ -223,10 +223,8 @@ int real_main(int argc, char *argv[])
 		stdinCLIinitRes = initStdinCLISupport();
 	teeStdoutInit();
 
-	// The two console I/O threads own static std::threads.
-	// Any exit() that skips the normal shutdown (e.g. SystemError())
-	// would otherwise destroy them still-joinable, which calls std::terminate().
-	// atexit runs before those static destructors, so join them here.
+	// Backstop join for the console I/O threads; the shutdown paths join them
+	// explicitly first, since exit() can free the tee thread's statics (#1111).
 	std::atexit(quitConsoleIOThreads);
 
 	mainThreadId = getCurrentThreadId();
@@ -850,7 +848,7 @@ void ShutdownLieroX()
 
 	// Options
 	// Save already here in case some other method crashes
-	if(!bDedicated) // only save if not in dedicated mode
+	if(!bDedicated && tLXOptions) // only save if not dedicated and options are loaded
 		tLXOptions->SaveToDisc();
 		
 	DeprecatedGUI::CChatWidget::GlobalDestroy();	
@@ -930,7 +928,7 @@ void ShutdownLieroX()
 
 	// HINT: save the options again because some could get changed in CServer/CClient destructors and shutdown functions
 	// TODO: like what changes? why are there options saved both in CServer/CClient structure and in options?
-	if(!bDedicated) // only save if not in dedicated mode
+	if(!bDedicated && tLXOptions) // only save if not dedicated and options are loaded
 		tLXOptions->SaveToDisc();
 
 	ShutdownOptions();
@@ -955,11 +953,9 @@ void ShutdownLieroX()
 }
 
 
-// Full ordered teardown: subsystems, then worker threads,
-// task manager, network, tLX, and finally the console I/O threads.
-// Each step guards itself, so it is safe on a partial init.
-// So an error or early exit shuts down as cleanly as a normal quit
-// instead of racing a live thread at exit (#1111).
+// Full ordered teardown for error/early-exit paths on partial init:
+// subsystems, worker threads, task manager, network, tLX, then the console
+// I/O threads -- joined here so they don't race exit()'s teardown (#1111).
 void ShutdownEverything()
 {
 	ShutdownLieroX();
