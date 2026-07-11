@@ -398,11 +398,10 @@ startpoint:
 
 	notes << "waiting for all left threads and tasks" << endl;
 	taskManager->finishQueuedTasks();
-	// A hung HTTP request (e.g. an unresponsive master server) would otherwise
-	// block waitAll forever; tell any in-flight transfer to abort now.
+	// So a hung HTTP request can't block waitAll forever.
 	SetHttpTransfersAborting(true);
 	threadPool->waitAll(); // do that before uniniting task manager because some threads could access it
-	SetHttpTransfersAborting(false); // in case we restart the game below
+	SetHttpTransfersAborting(false); // in case we restart below
 
 	// do that after shutting down the timers and other threads
 	ShutdownEventQueue();

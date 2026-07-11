@@ -35,10 +35,7 @@ typedef void CURL;
 //
 void AutoSetupHTTPProxy();
 
-// Signal every in-flight CHttp transfer to abort as soon as possible,
-// or clear that signal again. Set on shutdown so a hung request
-// (a master server that accepts the connection but never answers)
-// can't block the thread-pool wait forever.
+// Make all in-flight transfers abort (or clear the flag); set on shutdown.
 void SetHttpTransfersAborting(bool aborting);
 
 //
