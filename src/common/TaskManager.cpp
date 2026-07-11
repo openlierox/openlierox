@@ -116,7 +116,7 @@ void TaskManager::start(Task* t, QueueType queue) {
 			}
 			{
 				Mutex::ScopedLock lock(*task->mutex);
-				task->state = Task::TS_QUEUED ? Task::TS_RUNNINGQUEUED : Task::TS_RUNNING;
+				task->state = task->state == Task::TS_QUEUED ? Task::TS_RUNNINGQUEUED : Task::TS_RUNNING;
 			}
 			Result ret = task->breakSignal ?
 						Result("breaked even before start") :
