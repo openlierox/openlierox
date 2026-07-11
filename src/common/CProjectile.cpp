@@ -308,7 +308,7 @@ void CProjectile::Draw(SDL_Surface * bmpDest, CViewport *view)
 			return;
 			
 		case PRJ_RECT:
-			DrawRectFill(bmpDest, p.x - radius.x*2, p.y - radius.y*2, p.x + radius.x*2, p.y + radius.x*2, iColour);
+			DrawRectFill(bmpDest, p.x - radius.x*2, p.y - radius.y*2, p.x + radius.x*2, p.y + radius.y*2, iColour);
 			return;
 			
 		case PRJ_POLYGON:
