@@ -387,8 +387,7 @@ void SetCrashHandlerReturnPoint(const char* name) {
 		hints << "returned from sigsetjmp in " << name << endl;
 		if(!tLXOptions) {
 			notes << "we already have tLXOptions uninitialised, exiting now" << endl;
-			// Stop the console I/O threads before exit() destroys the statics
-			// they use, else the tee thread hits a use-after-free (#1111).
+			// Join the console I/O threads before exit() frees the tee thread's statics (#1111).
 			quitStdinCLISupport();
 			teeStdoutQuit();
 			exit(10);

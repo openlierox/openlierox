@@ -223,12 +223,8 @@ int real_main(int argc, char *argv[])
 		stdinCLIinitRes = initStdinCLISupport();
 	teeStdoutInit();
 
-	// Last-resort join for the two console I/O threads (they own static std::threads),
-	// covering any exit() path that doesn't stop them first.
-	// Not sufficient on its own: the tee thread uses function-local statics that
-	// exit() may destroy before this atexit runs (see #1111),
-	// so the real shutdown paths join the threads explicitly (ShutdownEverything);
-	// this only backstops paths that reach exit() with the threads still up.
+	// Backstop join for the console I/O threads; the shutdown paths join them
+	// explicitly first, since exit() can free the tee thread's statics (#1111).
 	std::atexit(quitConsoleIOThreads);
 
 	mainThreadId = getCurrentThreadId();
@@ -957,12 +953,9 @@ void ShutdownLieroX()
 }
 
 
-// Full ordered teardown: subsystems, then worker threads,
-// task manager, network, tLX, and finally the console I/O threads.
-// Reached from error and early-exit paths on partially-initialized state,
-// so each step skips or no-ops when its subsystem was never brought up.
-// Joining the console threads here, before returning to exit(),
-// keeps them from racing exit()'s static destruction (#1111).
+// Full ordered teardown for error/early-exit paths on partial init:
+// subsystems, worker threads, task manager, network, tLX, then the console
+// I/O threads -- joined here so they don't race exit()'s teardown (#1111).
 void ShutdownEverything()
 {
 	ShutdownLieroX();
