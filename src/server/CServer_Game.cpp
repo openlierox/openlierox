@@ -262,7 +262,7 @@ void GameServer::SimulateGame()
 			CServerConnection* cl = &getClients()[c];
 			if(cl->isLocalClient()) continue;
 			if(cl->getStatus() == NET_DISCONNECTED || cl->getStatus() == NET_ZOMBIE) continue;
-			if(cl->getClientVersion() < OLXBetaVersion(0,59,11)) continue;
+			if(cl->getClientVersion() < OLXDateVersion(20260712,2)) continue;
 			cl->getNetEngine()->SendPacket(&bs);
 		}
 	}

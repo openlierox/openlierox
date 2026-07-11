@@ -119,7 +119,7 @@ void CClientNetEngine::SendGameReady()
 // with the regions that differ, so a mid-game joiner catches up on past destruction.
 void CClientNetEngine::SendRequestMapSync()
 {
-	if(client->getServerVersion() < OLXBetaVersion(0,59,11)) return;
+	if(client->getServerVersion() < OLXDateVersion(20260712,2)) return;
 	CMap* m = game.gameMap();
 	if(!m || !m->isLoaded()) return;
 
