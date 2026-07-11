@@ -15,6 +15,7 @@ A client counts as joined once it reaches the ``Playing`` state.
 """
 
 import re
+import time
 
 
 def _host_running_game(network_game):
@@ -127,8 +128,20 @@ def test_late_joiner_terrain_matches_server(network_game):
     assert c2.wait_for("CLIENT[c2] PLAYING", timeout=25), c2.read_log()
     assert c2.wait_for("CLIENT[c2] MAPCHK", timeout=15), c2.read_log()
 
+    # The joiner emits a checksum every poll,
+    # and the terrain sync arrives shortly after it starts playing,
+    # so wait for its checksum to converge on the server's
+    # (which is stable -- only the server carved).
+    # Without the fix it never matches.
     server_chk = _last_mapchk(server)
-    c2_chk = _last_mapchk(c2)
+    c2_chk = None
+    deadline = time.time() + 15
+    while time.time() < deadline:
+        c2_chk = _last_mapchk(c2)
+        if c2_chk is not None and c2_chk == server_chk:
+            break
+        time.sleep(0.5)
+
     assert server_chk is not None and c2_chk is not None, (
         "missing checksums: server=%s c2=%s" % (server_chk, c2_chk))
     assert c2_chk == server_chk, (

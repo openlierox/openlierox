@@ -114,6 +114,29 @@ void CClientNetEngine::SendGameReady()
 
 
 ///////////////////
+// Ask the server to resync any terrain regions that differ from ours (#827).
+// We send our per-region material checksums; the server replies (S2C_MAPSYNCDATA)
+// with the regions that differ, so a mid-game joiner catches up on past destruction.
+void CClientNetEngine::SendRequestMapSync()
+{
+	if(client->getServerVersion() < OLXBetaVersion(0,59,11)) return;
+	CMap* m = game.gameMap();
+	if(!m || !m->isLoaded()) return;
+
+	CBytestream bs;
+	bs.writeByte(C2S_REQUESTMAPSYNC);
+	int cols = m->getMapSyncCols(), rows = m->getMapSyncRows();
+	bs.writeInt16(cols);
+	bs.writeInt16(rows);
+	for(int r = 0; r < rows; ++r)
+		for(int c = 0; c < cols; ++c)
+			bs.writeInt((int)m->getRegionMaterialChecksum(c, r), 4);
+
+	client->cNetChan->AddReliablePacketToSend(bs);
+}
+
+
+///////////////////
 // Send a death
 void CClientNetEngine::SendDeath(int victim, int killer)
 {

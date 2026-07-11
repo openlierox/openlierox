@@ -57,6 +57,7 @@ enum C2S_MESSAGES {
 	C2S_GUSANOS			= 15, // >=0.59 beta1
 	C2S_GUSANOSUPDATE	= 16, // >=0.59 beta5
 	C2S_GAMEATTRUPDATE	= 17, // >=0.59 beta10
+	C2S_REQUESTMAPSYNC	= 18, // >=0.59 beta11: client sends its per-region terrain checksums to pull the regions that differ (#827)
 };
 
 // Server->Client
@@ -99,6 +100,7 @@ enum S2C_MESSAGES {
 	S2C_PLAYSOUND		= 35, // >=0.59 beta1
 	S2C_GUSANOSUPDATE	= 36, // >=0.59 beta5
 	S2C_GAMEATTRUPDATE	= 37, // >=0.59 beta10
+	S2C_MAPSYNCDATA		= 38, // >=0.59 beta11: server sends the terrain material of the regions a client asked to resync (#827)
 };
 
 
