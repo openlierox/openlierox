@@ -45,6 +45,7 @@
 #include "Music.h"
 #include "Debug.h"
 #include "TaskManager.h"
+#include "HTTP.h"
 #include "CGameMode.h"
 #include "ConversationLogger.h"
 #include "OLXCommand.h"
@@ -397,7 +398,10 @@ startpoint:
 
 	notes << "waiting for all left threads and tasks" << endl;
 	taskManager->finishQueuedTasks();
+	// So a hung HTTP request can't block waitAll forever.
+	SetHttpTransfersAborting(true);
 	threadPool->waitAll(); // do that before uniniting task manager because some threads could access it
+	SetHttpTransfersAborting(false); // in case we restart below
 
 	// do that after shutting down the timers and other threads
 	ShutdownEventQueue();

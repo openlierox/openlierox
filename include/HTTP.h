@@ -35,6 +35,9 @@ typedef void CURL;
 //
 void AutoSetupHTTPProxy();
 
+// Make all in-flight transfers abort (or clear the flag); set on shutdown.
+void SetHttpTransfersAborting(bool aborting);
+
 //
 // Classes
 //
