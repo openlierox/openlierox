@@ -263,8 +263,7 @@ private:
 	// Saves region of map to savebuffer for RestoreFromMemory() - called from CarveHole()/PlaceDirt()/PlaceGreenDirt()
 	void SaveToMemoryInternal(int x, int y, int w, int h);
 
-	// Clipped bounds of terrain-sync region (col,row); see MAP_SYNC_REGION.
-	void syncRegionBounds(int col, int row, int& x0, int& y0, int& x1, int& y1) const;
+	void syncRegionBounds(int col, int row, int& x0, int& y0, int& x1, int& y1) const;	// clipped region bounds (#827)
 
 
 public:	
@@ -356,21 +355,14 @@ public:
 	void				SetMinimapDimensions(uint _w, uint _h);
     uint         GetDirtCount() const { return nTotalDirtCount; }
 
-	// Terrain reconciliation (see #827): the map is divided into square regions;
-	// a peer compares per-region checksums and pulls only the regions that differ.
-	enum { MAP_SYNC_REGION = 64 };
+	// terrain reconciliation, per region (#827)
+	enum { MAP_SYNC_REGION = 64 };	// region size in pixels
 	int				getMapSyncCols() const { return (int)((Width + MAP_SYNC_REGION - 1) / MAP_SYNC_REGION); }
 	int				getMapSyncRows() const { return (int)((Height + MAP_SYNC_REGION - 1) / MAP_SYNC_REGION); }
-
-	// Checksum over the raw material mask (per-pixel material index).
-	// Detects terrain divergence between peers (late join, drift); see #827.
-	Uint32			getMaterialChecksum();
+	Uint32			getMaterialChecksum();	// checksum of the whole material mask
 	Uint32			getRegionMaterialChecksum(int col, int row);
-
-	// Serialize one region's raw material mask (zlib-compressed) to the stream,
-	// and apply a received region (overwrite material + redraw the changed pixels).
-	void			writeRegionMaterial(CBytestream* bs, int col, int row);
-	bool			applyRegionMaterial(CBytestream* bs, int col, int row);
+	void			writeRegionMaterial(CBytestream* bs, int col, int row);	// serialize one region (zlib)
+	bool			applyRegionMaterial(CBytestream* bs, int col, int row);	// apply + redraw one region
 
 	bool			getCreated()	{ return Created; }
 	

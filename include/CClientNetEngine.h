@@ -44,8 +44,7 @@ public:
 	virtual void		SendText(const std::string& sText, std::string sWormName);
 	virtual void		SendWormDetails();
 	virtual void		SendGrabBonus(int id, int wormid);
-	// Ask the server to resync any terrain regions that differ from ours (#827).
-	void				SendRequestMapSync();
+	void				SendRequestMapSync();	// terrain resync request (#827)
 	virtual void		SendUpdateLobby(bool ready = true);
 	virtual void		SendDisconnect();
 	virtual void		SendFileData();
