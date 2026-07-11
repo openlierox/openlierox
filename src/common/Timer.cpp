@@ -387,6 +387,18 @@ void Timer::stop()
 }
 
 
+//////////////////
+// Detach from a TimerData that is about to be freed,
+// so stop()/start()/the destructor won't touch it
+void Timer::detachData(TimerData* d)
+{
+	if(m_lastData == d) {
+		m_lastData = NULL;
+		m_running = false;
+	}
+}
+
+
 
 ///////////////
 // Handle the timer event, called from HandleNextEvent
@@ -425,6 +437,8 @@ static void Timer_handleEvent(InternTimerEventData data)
 	
 	if(data.lastEvent)  { // last-event-signal
 		// we can delete here as we have ensured that this is realy the last event
+		if(timer_data->timer)  // detach the owner so it won't dereference the freed data
+			timer_data->timer->detachData(timer_data);
 		delete timer_data;
 	}
 }

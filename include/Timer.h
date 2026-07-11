@@ -132,7 +132,11 @@ public:
 	bool start();
 	bool startHeadless(); // start independent timer
 	void stop();
-	
+
+	// Internal: the event handler calls this when a TimerData is freed,
+	// so a finished/stopped timer never dereferences it.
+	void detachData(TimerData* d);
+
 private:
 	bool m_running;
 	TimerData* m_lastData;	// it's TimerData* intern
