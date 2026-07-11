@@ -45,6 +45,12 @@
 #define		HTTP_TIMEOUT	10	// Filebase became laggy lately, so increased that from 5 seconds
 //#define		BUFFER_LEN		8192
 
+// Abort a transfer that stays below this speed (bytes/sec) for this long (sec).
+// Unlike CURLOPT_TIMEOUT this never aborts a healthy but slow large transfer,
+// it only fires when the connection has effectively stalled.
+#define		HTTP_LOW_SPEED_LIMIT	30
+#define		HTTP_LOW_SPEED_TIME		30
+
 // Set on shutdown to make every running transfer return promptly.
 static std::atomic<bool> httpTransfersAborting(false);
 
@@ -247,6 +253,8 @@ CURL * CHttp::InitializeTransfer(const std::string& url, const std::string& prox
 	curl_easy_setopt( curl, CURLOPT_USERAGENT, Useragent.c_str() );
 	curl_easy_setopt( curl, CURLOPT_NOSIGNAL, (long) 1 );
 	curl_easy_setopt( curl, CURLOPT_CONNECTTIMEOUT, (long) HTTP_TIMEOUT );
+	curl_easy_setopt( curl, CURLOPT_LOW_SPEED_LIMIT, (long) HTTP_LOW_SPEED_LIMIT );
+	curl_easy_setopt( curl, CURLOPT_LOW_SPEED_TIME, (long) HTTP_LOW_SPEED_TIME );
 	curl_easy_setopt( curl, CURLOPT_FOLLOWLOCATION, (long) 1 ); // Allow server to use 3XX Redirect codes
 	curl_easy_setopt( curl, CURLOPT_MAXREDIRS, (long) 25 ); // Some reasonable limit
 #ifdef CURLSSLOPT_NATIVE_CA
