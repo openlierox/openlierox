@@ -151,6 +151,15 @@ def test_late_joiner_terrain_matches_server(network_game):
         "late joiner terrain checksum %s != server %s; "
         "the modified map was not synced on join (#827)" % (c2_chk, server_chk))
 
+    # Guard against a vacuous pass:
+    # the joiner's first checksum is its pristine map, before the sync,
+    # and it must differ from the converged value --
+    # otherwise the server's carve had no effect and we tested nothing.
+    pristine = re.search(r"MAPCHK (\d+)", c2.read_log()).group(1)
+    assert c2_chk != pristine, (
+        "joiner's terrain never changed from the pristine map (%s); "
+        "the carve/sync did nothing" % pristine)
+
 
 def test_worm_removed_when_client_leaves(network_game, tmp_path):
     """When a client leaves a running game, the others drop its worm (#978)."""
