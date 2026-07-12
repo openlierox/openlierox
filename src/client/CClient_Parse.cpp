@@ -2133,7 +2133,10 @@ void CClientNetEngineBeta9::ParseReportDamage(CBytestream *bs)
 	
 	w->getDamageReport()[offender->getID()].damage += damage;
 	w->getDamageReport()[offender->getID()].lastTime = tLX->currentTime;
-	w->injure(damage);	// Calculate correct healthbar
+	// Skip a dead worm, like CClient::InjureWorm does:
+	// a stale REPORTDAMAGE around respawn would re-kill the fresh worm (#588).
+	if(w->getAlive())
+		w->injure(damage);	// Calculate correct healthbar
 	// Update worm damage count (it gets updated in UPDATESCORE packet, we do local calculations here, but they are wrong if we connected during game)
 	//notes << "CClientNetEngineBeta9::ParseReportDamage() offender " << offender->getID() << " dmg " << damage << " victim " << id << endl;
 	offender->addDamage( damage, w, false );
