@@ -2231,6 +2231,19 @@ void Cmd_getMapMaterialChecksum::exec(CmdLineIntf* caller, const std::vector<std
 	caller->pushReturnArg(to_string(m->getMaterialChecksum()));
 }
 
+COMMAND(getMapRegionChecksum, "checksum of one terrain-sync region (test hook)", "col row", 2, 2);
+void Cmd_getMapRegionChecksum::exec(CmdLineIntf* caller, const std::vector<std::string>& params) {
+	CMap* m = game.gameMap();
+	if(!m) { caller->writeMsg("map not loaded", CNC_ERROR); return; }
+	bool fail = false;
+	int col = from_string<int>(params[0], fail);
+	int row = from_string<int>(params[1], fail);
+	if(fail || col < 0 || row < 0 || col >= m->getMapSyncCols() || row >= m->getMapSyncRows()) {
+		caller->writeMsg("region out of range", CNC_ERROR); return;
+	}
+	caller->pushReturnArg(to_string(m->getRegionMaterialChecksum(col, row)));
+}
+
 COMMAND(carveMap, "carve a hole in the map (test hook)", "x y [size]", 2, 3);
 void Cmd_carveMap::exec(CmdLineIntf* caller, const std::vector<std::string>& params) {
 	if(game.isClient() || !cServer || !cServer->isServerRunning()) { caller->writeMsg(name + " works only as server"); return; }
