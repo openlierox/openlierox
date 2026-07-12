@@ -51,22 +51,21 @@
     /* The canvas + the status overlay live in #fs-area, and IT is what goes
      * fullscreen (not the canvas directly) so the overlay can sit on top in the
      * browser's fullscreen top layer. Windowed: it just hugs the 640x480
-     * canvas. Fullscreen: fill the screen, centre the canvas scaled to the
-     * largest 4:3 box, and paint the side/top bars black. */
+     * canvas. Fullscreen: stretch the canvas to fill the whole screen. The
+     * 640x480 backing buffer is scaled to the viewport, so a wide display
+     * shows the game edge to edge (stretched to the screen's aspect) with no
+     * black bars. */
     #fs-area   { position: relative; width: 640px; height: 480px; }
-    #fs-area:fullscreen { width: 100vw; height: 100vh; display: flex;
-                          align-items: center; justify-content: center; background: #000; }
-    #fs-area:fullscreen #canvas { width: min(100vw, 100vh * 4 / 3);
-                                  height: min(100vh, 100vw * 3 / 4); }
+    #fs-area:fullscreen { width: 100vw; height: 100vh; background: #000; }
+    #fs-area:fullscreen #canvas { width: 100%; height: 100%; }
     /* Installed web app (iOS "Add to Home Screen" standalone / Android PWA):
-     * no browser chrome, so fill the whole screen with the centred 4:3 canvas,
+     * no browser chrome, so stretch the canvas to fill the whole screen,
      * exactly like the in-page fullscreen mode. The toolbar/log aren't useful
      * there, so hide them. */
     body.standalone #toolbar, body.standalone #log { display: none; }
     body.standalone #fs-area { position: fixed; inset: 0; width: 100vw; height: 100vh;
-                               display: flex; align-items: center; justify-content: center; background: #000; }
-    body.standalone #fs-area #canvas { width: min(100vw, 100vh * 4 / 3);
-                                       height: min(100vh, 100vw * 3 / 4); }
+                               background: #000; }
+    body.standalone #fs-area #canvas { width: 100%; height: 100%; }
     #log       { max-height: 25vh; overflow: auto; padding: 4px 10px;
                  background: #181818; font: 12px/1.3 monospace; white-space: pre-wrap;
                  align-self: stretch; }
@@ -297,31 +296,13 @@
       Module.setStatus("Exception: " + msg);
     };
 
-    // --- Pointer-coordinate safety net for a letterboxed canvas.
     // Emscripten maps mouse/touch coordinates from the canvas element's
-    // getBoundingClientRect() (its FULL box). If the canvas box were ever a
-    // different aspect than its 640x480 buffer, the bars would skew edge
-    // clicks. We size the canvas to an exact 4:3 box in CSS (windowed and
-    // fullscreen), so this override is normally a no-op — but if a box is ever
-    // letterboxed, it reports the rect of the actually-rendered 4:3 content so
-    // Emscripten's mapping (canvas.width / rect.width + rect.left) stays right.
-    (() => {
-      const c = Module.canvas;
-      const realRect = c.getBoundingClientRect.bind(c);
-      c.getBoundingClientRect = function () {
-        const r = realRect();
-        const bw = this.width, bh = this.height; // 640x480 backing buffer
-        if (!r.width || !r.height || !bw || !bh) return r;
-        const bufAspect = bw / bh;
-        const boxAspect = r.width / r.height;
-        if (Math.abs(boxAspect - bufAspect) < 1e-3) return r; // no letterbox
-        let cw, ch;
-        if (boxAspect > bufAspect) { ch = r.height; cw = ch * bufAspect; } // pillarbox (wide screen)
-        else                       { cw = r.width;  ch = cw / bufAspect; } // letterbox (tall screen)
-        return new DOMRect(r.left + (r.width - cw) / 2,
-                           r.top  + (r.height - ch) / 2, cw, ch);
-      };
-    })();
+    // getBoundingClientRect() onto the 640x480 backing buffer: sdlX =
+    // (clientX - rect.left) * canvas.width / rect.width (and likewise for y).
+    // The canvas fills its box in every mode — windowed it's an exact 4:3 box,
+    // fullscreen/standalone it's stretched to the whole screen — so the whole
+    // box always maps onto the whole buffer and this default mapping is already
+    // correct. No getBoundingClientRect override is needed.
 
     // Suppress browser shortcuts that overlap OLX gameplay bindings.
     // preventDefault only stops the browser's default action — SDL2's
