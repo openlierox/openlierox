@@ -80,6 +80,10 @@ def main():
 
     emit_state = os.environ.get("OLX_EMIT_STATE")
     spawn_close = os.environ.get("OLX_SPAWN_CLOSE")
+    # "x,y;x,y;..." points to carve once the game is running,
+    # to diverge the server's terrain from the untouched map file (#827).
+    carve_spec = os.environ.get("OLX_CARVE_MAP")
+    emit_mapchk = os.environ.get("OLX_EMIT_MAPCHK")
 
     start_when = int(os.environ.get("OLX_START_WHEN_WORMS", "1"))
     started = False
@@ -107,6 +111,19 @@ def main():
                     for wid in worms:
                         command('spawnWorm %s "%s,%s"' % (wid, spot[0], spot[1]))
                     emit("SERVER_SPAWN_CLOSE %s,%s" % (spot[0], spot[1]))
+            if carve_spec:
+                carved = 0
+                for point in carve_spec.split(";"):
+                    xy = point.split(",")
+                    if len(xy) == 2:
+                        ret = command("carveMap %s %s" % (xy[0], xy[1]))
+                        if ret:
+                            carved += int(ret[0])
+                emit("SERVER_CARVED count=%d" % carved)
+        if playing and emit_mapchk:
+            chk = command("getMapMaterialChecksum")
+            if chk:
+                emit("SERVER_MAPCHK %s" % chk[0])
         if playing and emit_state:
             states = emit_worm_states("SERVER")
             total_dmg = sum(s["dmg"] for s in states.values())

@@ -249,6 +249,24 @@ void GameServer::SimulateGame()
 		fLastBonusTime = tLX->currentTime;
 	}
 
+	// Periodically publish the terrain checksum, so clients can detect drift
+	// from the server's map (late join, or float divergence) and pull the
+	// regions that differ (#827).
+	if(game.gameMap() && game.gameMap()->isLoaded()
+	   && tLX->currentTime - fLastMapChecksumSent > TimeDiff(2.0f)) {
+		fLastMapChecksumSent = tLX->currentTime;
+		CBytestream bs;
+		bs.writeByte(S2C_MAPCHECKSUM);
+		bs.writeInt((int)game.gameMap()->getMaterialChecksum(), 4);
+		for(int c = 0; c < MAX_CLIENTS; c++) {
+			CServerConnection* cl = &getClients()[c];
+			if(cl->isLocalClient()) continue;
+			if(cl->getStatus() == NET_DISCONNECTED || cl->getStatus() == NET_ZOMBIE) continue;
+			if(cl->getClientVersion() < OLXDateVersion(20260712,2)) continue;
+			cl->getNetEngine()->SendPacket(&bs);
+		}
+	}
+
 	// check for flag
 	for_each_iterator(CWorm*, w, game.worms())
 		flagInfo()->checkWorm(w->get());
