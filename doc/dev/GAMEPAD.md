@@ -40,8 +40,9 @@ This section covers the analog-stick half. A few behaviours worth knowing:
   through it, in the walk direction, no matter where you're aiming.
 - **Aim holds when released.** The aim only updates while a stick is outside its
   deadzone; let go of both sticks and the worm keeps its last aim.
-- **Weapon select.** On the weapon-selection screen the left stick moves the
-  cursor up/down (one row per push, then auto-repeats if held), alongside the
+- **Weapon select.** On the weapon-selection screen the left stick does what the
+  arrow keys do: up/down moves the cursor, left/right changes the weapon on the
+  selected row (one step per push, then auto-repeats if held), alongside the
   usual keyboard/d-pad keys.
 
 ### Design rules (how the layering works)
