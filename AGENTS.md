@@ -31,3 +31,9 @@ To keep commands auto-approved, write them plain and literal:
   (`git commit -F msg.txt`, `gh pr create --body-file body.md`),
   instead of an inline heredoc or a multi-line quoted argument;
   a newline followed by `#` inside a quoted argument also trips the checker.
+
+# Documentation to read for agents:
+
+We have a some documentation in .md files that could be of help to a coding agents. Some are located in doc/dev/*.md and there is also README.md
+
+Some platforms under build also have their own documentation such as build/android/ANDROID-PORT.md
