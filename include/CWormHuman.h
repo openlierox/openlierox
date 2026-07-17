@@ -114,11 +114,19 @@ private:
 	bool walkingRight;
 
 	// Gamepad left-stick navigation in the weapon-selection menu (the analog
-	// sticks aren't bindable, so the menu reads the pad directly). Tracks the
-	// stick so one push moves one row, with keyboard-style auto-repeat while held.
-	AbsTime	fLastWeaponSelStickMove;
-	bool	weaponSelStickHeld;
-	bool	weaponSelStickRepeated;
+	// sticks aren't bindable, so the menu reads the pad directly). One instance
+	// tracks one stick axis, so a push moves one step and then auto-repeats
+	// while held, like key-repeat.
+	struct WeaponSelStickAxis {
+		AbsTime	fLastMove;
+		bool	held;
+		bool	repeated;
+		WeaponSelStickAxis() : held(false), repeated(false) {}
+		// This frame's step (-1, 0 or +1) for a raw SDL axis value.
+		int step(int axisValue);
+	};
+	WeaponSelStickAxis	weaponSelStickY;	// moves the selection up/down
+	WeaponSelStickAxis	weaponSelStickX;	// changes the weapon left/right
 };
 
 #endif  //  __CWORMHUMAN_H__

@@ -623,8 +623,6 @@ WormType* PRF_HUMAN = &PRF_HUMAN_instance;
 CWormHumanInputHandler::CWormHumanInputHandler(CWorm* w) : CWormInputHandler(w) {
 	bRopeDown = bRopeDownOnce = false;
 	m_localPlayerSlot = -1;
-	weaponSelStickHeld = false;
-	weaponSelStickRepeated = false;
 	gusInit();
 	
 	game.onNewPlayer( this );
@@ -752,6 +750,40 @@ void CWormHumanInputHandler::initWeaponSelection() {
 
 
 ///////////////////
+// One step of gamepad left-stick navigation in the weapon selection, from a raw
+// SDL axis value (left/up negative, right/down positive). A push steps once on
+// the rising edge, then auto-repeats while the stick is held, mimicking key-repeat.
+int CWormHumanInputHandler::WeaponSelStickAxis::step(int axisValue)
+{
+	const int dz = getPadStickDeadzone();
+	const int dir = (axisValue < -dz) ? -1 : (axisValue > dz) ? 1 : 0;
+
+	if(dir == 0) {
+		held = false;
+		return 0;
+	}
+
+	if(!held) {
+		// rising edge: step right away
+		held = true;
+		repeated = false;
+		fLastMove = tLX->currentTime;
+		return dir;
+	}
+
+	// held: wait longer before the first repeat, then repeat faster
+	const float delay = repeated ? 0.12f : 0.4f;
+	if(tLX->currentTime - fLastMove >= delay) {
+		repeated = true;
+		fLastMove = tLX->currentTime;
+		return dir;
+	}
+
+	return 0;
+}
+
+
+///////////////////
 // Draw/Process the weapon selection screen
 void CWormHumanInputHandler::doWeaponSelectionFrame(SDL_Surface * bmpDest, CViewport *v)
 {
@@ -811,6 +843,20 @@ void CWormHumanInputHandler::doWeaponSelectionFrame(SDL_Surface * bmpDest, CView
 	// Touch only drives the first local player in split-screen.
 	const bool touchForThisWorm = isFirstLocalHumanWorm(m_worm);
 
+	// Gamepad left stick navigates the menu too, doing what the arrow keys do:
+	// up/down moves the selection, left/right changes the weapon on the selected
+	// row. The sticks aren't bindable (the in-game twin-stick path owns them), so
+	// read the pad directly via the same helpers and slot mapping (player N ->
+	// pad N). Both axes are read once here, before the rows consume the
+	// left/right step below; the up/down step is applied after them.
+	int stickWeaponChange = 0;
+	int stickSelectionChange = 0;
+	const int padSlot = localHumanWormIndex(m_worm);
+	if(!bChat_Typing && padSlot >= 0 && isPadPresent(padSlot)) {
+		stickWeaponChange = weaponSelStickX.step(getPadLeftStickX(padSlot));
+		stickSelectionChange = weaponSelStickY.step(getPadLeftStickY(padSlot));
+	}
+
 	int y = t + 100;
 	for(size_t i=0;i<m_worm->tWeapons.size();i++) {
 		
@@ -835,6 +881,7 @@ void CWormHumanInputHandler::doWeaponSelectionFrame(SDL_Surface * bmpDest, CView
 				change += TouchScreenInput::tapCount(1, TouchScreenInput::Action::Right);
 				change -= TouchScreenInput::tapCount(1, TouchScreenInput::Action::Left);
 			}
+			change += stickWeaponChange;
 			if(cSelWeapon.isDown()) change *= 6; // jump with multiple speed if selWeapon is pressed
 			int id = m_worm->tWeapons[i].weapon() ? m_worm->tWeapons[i].weapon()->ID : 0;
 			if(change > 0) while(change) {
@@ -945,33 +992,7 @@ void CWormHumanInputHandler::doWeaponSelectionFrame(SDL_Surface * bmpDest, CView
 			change -= TouchScreenInput::tapCount(1, TouchScreenInput::Action::Up);
 		}
 
-		// Gamepad left stick navigates up/down too. The sticks aren't bindable
-		// (the in-game twin-stick path owns them), so read the pad directly via
-		// the same helpers and slot mapping (player N -> pad N). Push up/down to
-		// move one row, then it auto-repeats while held, mimicking key-repeat.
-		const int padSlot = localHumanWormIndex(m_worm);
-		if(padSlot >= 0 && isPadPresent(padSlot)) {
-			const int ly = getPadLeftStickY(padSlot); // SDL: up negative, down positive
-			const int dz = getPadStickDeadzone();
-			const int dir = (ly < -dz) ? -1 : (ly > dz) ? 1 : 0;
-			if(dir == 0) {
-				weaponSelStickHeld = false;
-			} else if(!weaponSelStickHeld) {
-				// rising edge: move one row right away
-				change += dir;
-				weaponSelStickHeld = true;
-				weaponSelStickRepeated = false;
-				fLastWeaponSelStickMove = tLX->currentTime;
-			} else {
-				// held: wait longer before the first repeat, then repeat faster
-				const float delay = weaponSelStickRepeated ? 0.12f : 0.4f;
-				if(tLX->currentTime - fLastWeaponSelStickMove >= delay) {
-					change += dir;
-					weaponSelStickRepeated = true;
-					fLastWeaponSelStickMove = tLX->currentTime;
-				}
-			}
-		}
+		change += stickSelectionChange;
 
 		m_worm->iCurrentWeapon += change;
 		m_worm->iCurrentWeapon %= (int)m_worm->tWeapons.size() + 2;
