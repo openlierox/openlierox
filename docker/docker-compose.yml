@@ -1,0 +1,31 @@
+services:
+  olx-server:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: openlierox-server
+    container_name: olx-server
+    restart: unless-stopped
+
+    # Host networking is the simplest setup for a LAN game server: OpenLieroX's
+    # UDP port is bound directly on the host, and the in-game LAN server browser
+    # (which relies on UDP broadcast) can discover this server automatically.
+    network_mode: host
+
+    # Persist OLX's runtime data (rankings, logs, generated config).
+    volumes:
+      - olx-data:/home/olx/.OpenLieroX
+
+    # Optional: load a different control config (no .py suffix, gamedir-relative).
+    # environment:
+    #   OLX_DED_CONFIG: cfg/dedicated_config
+
+    # If you would rather use bridge networking than host mode, delete the
+    # "network_mode: host" line above and uncomment the mapping below. Note that
+    # LAN auto-discovery via broadcast may not work through the bridge — clients
+    # would then need to connect to the host's IP directly.
+    # ports:
+    #   - "23400:23400/udp"
+
+volumes:
+  olx-data:
