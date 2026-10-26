@@ -24,7 +24,7 @@
 
 macro(olx_generate_version_header OLX_SRC_ROOT OUT_VAR)
 	execute_process(
-		COMMAND sh -x "${OLX_SRC_ROOT}/get_version_full.sh"
+		COMMAND sh "${OLX_SRC_ROOT}/get_version_full.sh"
 		OUTPUT_VARIABLE _olx_ver
 		OUTPUT_STRIP_TRAILING_WHITESPACE
 		RESULT_VARIABLE _olx_ver_rc
