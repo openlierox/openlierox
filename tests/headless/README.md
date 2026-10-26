@@ -28,8 +28,8 @@ then runs pytest. Needs Python 3 + pytest.
 
 Each OLX instance runs headless (`-dedicated -script <control script>`)
 and is driven over OLX's dedicated-control pipe;
-the scripts in `control/` are Python 3 rewrites
-of the shipped (Python 2) `dedicated_control_io.py`.
+the scripts in `control/` are lightweight rewrites
+of the shipped `dedicated_control_io.py`, tailored to the test harness.
 They report progress as stderr markers
 (`SERVER_LOBBY`, `CLIENT[c2] PLAYING`, ...) that `harness.py` waits on.
 Clients are dedicated instances that `-connect` out,

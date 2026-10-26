@@ -10,15 +10,13 @@ automation scripts that cycle games, rotate maps/mods, and handle voting.
 > A ready-to-run image is published at
 > [`ghcr.io/openlierox/openlierox-server`](https://github.com/orgs/openlierox/packages/container/package/openlierox-server).
 
-## Why Ubuntu 22.04 (jammy)?
+## Why Ubuntu 24.04 (noble)?
 
-The dedicated-server control scripts (`share/gamedir/scripts/dedicated_control*`)
-are written in **Python 2**. Ubuntu 22.04 "jammy" still packages `python2.7` in
-its universe repository (enabled by default) — Ubuntu 24.04, Debian 12, and
-Debian 13 dropped it. jammy is also in standard support until April 2027
-(then Ubuntu Pro ESM), unlike Debian 11 "bullseye", which this image used
-until bullseye's own LTS ended and its mirrors stopped reliably serving
-packages. So the image uses `ubuntu:22.04` as its base.
+noble is an LTS release with all the build dependencies packaged and in
+standard support until April 2029 (then Ubuntu Pro ESM), unlike Debian 11
+"bullseye", which this image used until bullseye's own LTS ended and its
+mirrors stopped reliably serving packages. So the image uses `ubuntu:24.04`
+as its base.
 
 ## Quick start (docker compose)
 

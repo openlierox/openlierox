@@ -1,4 +1,4 @@
-#!/usr/bin/python -u
+#!/usr/bin/python3 -u
 
 import random
 global worms, io
@@ -25,10 +25,10 @@ setvar( "GameOptions.GameInfo.FillWithBotsTo", 4 )
 # Pick one random seeker
 for w in worms.values():
 	io.setWormTeam( w.iID, 0 )
-seeker = random.choice(worms.values()).iID
+seeker = random.choice(list(worms.values())).iID
 io.setWormTeam( seeker, 1 )
 if len(worms.values()) >= 4: # More than 4 players
 	seeker2 = seeker
 	while seeker2 == seeker:
-		seeker2 = random.choice(worms.values()).iID
+		seeker2 = random.choice(list(worms.values())).iID
 		io.setWormTeam( seeker2, 1 ) # Pick another random seeker

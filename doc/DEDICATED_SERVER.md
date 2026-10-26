@@ -31,7 +31,7 @@ openlierox -dedicated -exec "script dedicated_control cfg/dedicated_config"
 ```
 
 - `-dedicated` runs headless (no graphics, no sound), so no display is required.
-- `-exec "script dedicated_control …"` loads the **Python 2** automation script
+- `-exec "script dedicated_control …"` loads the **Python 3** automation script
   ([`share/gamedir/scripts/dedicated_control`](../share/gamedir/scripts)), which
   reads its settings from a config such as
   [`share/gamedir/cfg/dedicated_config.py`](../share/gamedir/cfg/dedicated_config.py).
@@ -75,17 +75,15 @@ already points at `ghcr.io/openlierox/openlierox-server:latest`, so
 The rest of this section describes building the image yourself from this source
 tree (needed if you change the code or config defaults).
 
-### Why Ubuntu 22.04 (jammy)?
+### Why Ubuntu 24.04 (noble)?
 
-The control scripts are written in **Python 2**. Ubuntu 22.04 "jammy" still
-packages `python2.7` in its universe repository (enabled by default in the
-base image) — Ubuntu 24.04 and Debian 12/13 dropped it. jammy is also in
-standard support until April 2027 (then Ubuntu Pro ESM covers it further),
+noble is an LTS release with all the build dependencies packaged, and in
+standard support until April 2029 (then Ubuntu Pro ESM covers it further),
 unlike Debian 11 "bullseye", which this image used until bullseye's own LTS
 ended and its mirrors stopped reliably serving packages. So the image is
-based on `ubuntu:22.04`. The image is built in two stages: a build stage
+based on `ubuntu:24.04`. The image is built in two stages: a build stage
 compiles the `-DDEDICATED_ONLY` binary, and a slim runtime stage ships only
-the binary, the game data, the shared libraries, and `python2.7`.
+the binary, the game data, the shared libraries, and `python3`.
 
 ### Quick start (docker compose)
 
@@ -123,7 +121,7 @@ The image runs as a non-root `openlierox` user.
 ## Running natively from source
 
 If you would rather not use Docker, build a headless binary directly. Install the
-build dependencies (see the main [`README.md`](../README.md)), plus `python2` for
+build dependencies (see the main [`README.md`](../README.md)), plus `python3` for
 the control scripts, then:
 
 ```sh

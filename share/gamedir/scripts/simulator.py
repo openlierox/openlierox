@@ -1,20 +1,22 @@
-#!/usr/bin/python -u
+#!/usr/bin/python3 -u
 
 import sys, os, re
+import subprocess
 
 if len(sys.argv) < 2:
-	print "usage:", sys.argv[0], "<script>"
+	print("usage:", sys.argv[0], "<script>")
 	exit(1)
 
 script = sys.argv[1]
-sin, sout = os.popen2(script)
+proc = subprocess.Popen(script, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, bufsize=1)
+sin, sout = proc.stdin, proc.stdout
 
 
 def olxdir():
 	try:
-		from win32com.shell import shellcon, shell            
+		from win32com.shell import shellcon, shell
 		homedir = shell.SHGetFolderPath(0, shellcon.CSIDL_MYDOCUMENTS, 0, 0)
- 
+
 	except ImportError:
 		homedir = os.path.expanduser("~")
 
@@ -24,12 +26,12 @@ def olxdir():
 		p = "Library/Application Support/OpenLieroX"
 	else:
 		p = ".OpenLieroX"
-	
+
 	return homedir + "/" + p
 
 
 def getwritefullfilename(fn):
-	return olxdir() + "/" + fn		
+	return olxdir() + "/" + fn
 
 
 def getvar(var):
@@ -55,7 +57,7 @@ def handle(cmd, params):
 
 	if cmd == "nextsignal":
 		while True:
-			ret = re.findall("[^ \t\"]+", raw_input("Enter signal: ").strip())
+			ret = re.findall("[^ \t\"]+", input("Enter signal: ").strip())
 			if len(ret) > 0: break
 		return ret
 
@@ -65,7 +67,7 @@ def handle(cmd, params):
 
 while True:
 	l = sout.readline().strip()
-	print "Script:", l
+	print("Script:", l)
 	cmd = re.findall("[^ \t\"]+", l)
 
 	if len(cmd) > 0:
@@ -73,9 +75,9 @@ while True:
 		try:
 			ret = handle(cmd[0].lower(), cmd[1:])
 		except:
-			print "Error while handling", cmd
-			print sys.exc_info()
-		
+			print("Error while handling", cmd)
+			print(sys.exc_info())
+
 		for rl in ret:
 			sin.write(":" + str(rl) + "\n")
 		sin.write(".\n")

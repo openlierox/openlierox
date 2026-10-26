@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 import sys, os
 from glob import glob
@@ -9,7 +9,7 @@ os.chdir(mydir + "/breakpad")
 
 p = {
 	"darwin": "mac",
-	"linux2": "linux",
+	"linux": "linux",
 	"win32": "windows",
 	}[sys.platform]
 
@@ -34,11 +34,11 @@ for d in dirs:
 def has_main_func(fn):
 	return open(fn).read().find("int main") >= 0
 
-files = filter(lambda fn: not has_main_func(fn), files)
-files = filter(lambda fn: fn.find("_unittest.") < 0, files)
-files = filter(lambda fn: fn.find("HTTPMultipartUpload.m") < 0, files)
-files = filter(lambda fn: fn.find("crash_generation/ConfigFile.mm") < 0, files)
-files = filter(lambda fn: fn.find("crash_generation/Inspector.mm") < 0, files)
+files = list(filter(lambda fn: not has_main_func(fn), files))
+files = list(filter(lambda fn: fn.find("_unittest.") < 0, files))
+files = list(filter(lambda fn: fn.find("HTTPMultipartUpload.m") < 0, files))
+files = list(filter(lambda fn: fn.find("crash_generation/ConfigFile.mm") < 0, files))
+files = list(filter(lambda fn: fn.find("crash_generation/Inspector.mm") < 0, files))
 
 if sys.argv[1:] == ["-debug"]:
 	pprint(files)

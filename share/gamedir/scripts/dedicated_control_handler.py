@@ -1,4 +1,4 @@
-#!/usr/bin/python -u
+#!/usr/bin/python3 -u
 # Dedicated Control handler script for OpenLieroX
 # (http://openlierox.sourceforge.net)
 
@@ -543,21 +543,21 @@ class PresetCicler(StandardCiclerBase):
 
 		sDefaults = os.path.join(presetDir,"Defaults")
 		try:
-			execfile(sDefaults)
+			exec(compile(open(sDefaults).read(), sDefaults, 'exec'), globals())
 		except:
 			io.messageLog("Error in preset: " + str(formatExceptionInfo()),io.LOG_ERROR)
 
 		sFile = os.path.join(presetDir,self.curSelection)
 		try:
-			fPreset = file(sFile,"r")
+			fPreset = open(sFile,"r")
 			line = fPreset.readline()
 			if line.find("python") != -1:
 				fPreset.close()
-				execfile(sFile)
+				exec(compile(open(sFile).read(), sFile, 'exec'), globals())
 			else:
-				print line.strip().replace('"','')
+				print(line.strip().replace('"',''))
 				for line in fPreset.readlines():
-					print line.strip().replace('"','')
+					print(line.strip().replace('"',''))
 				fPreset.close()
 		except IOError:
 			# File does not exist, perhaps it was removed.
@@ -645,7 +645,7 @@ def controlHandlerDefault():
 			if oldGameState == GAME_PLAYING:
 				lobbyWaitAfterGame = curTime + cfg.WAIT_AFTER_GAME
 			if videoRecorder:
-				os.kill(videoRecorder.pid, signal.SIGINT)  # videoRecorder.send_signal(signal.SIGINT) # This is available only on Python 2.6
+				os.kill(videoRecorder.pid, signal.SIGINT)  # equivalent to videoRecorder.send_signal(signal.SIGINT)
 				videoRecorderSignalTime = time.time()
 				io.chatMsg("Waiting for video recorder to finish")
 

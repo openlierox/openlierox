@@ -82,7 +82,7 @@ while len(all_available_maps) == 0:
 	all_available_maps = cmd.listMaps()
 	time.sleep(1)
 
-if float(re.match("([A-Za-z]+/)?(?P<num>[0-9]+\.[0-9]+).*", cmd.getVar("GameOptions.Network.ForceMinVersion")[0]).group("num")) + 0.001 < 0.59:
+if float(re.match(r"([A-Za-z]+/)?(?P<num>[0-9]+\.[0-9]+).*", cmd.getVar("GameOptions.Network.ForceMinVersion")[0]).group("num")) + 0.001 < 0.59:
 	cmd.msg("LX levels only")
 	all_available_maps = [ x for x in all_available_maps if x.endswith(".lxl") ]
 else:

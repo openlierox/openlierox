@@ -1,4 +1,4 @@
-#!/usr/bin/python -u
+#!/usr/bin/python3 -u
 
 # Dedicated Control handler script for OpenLieroX
 # (http://openlierox.sourceforge.net)
@@ -9,7 +9,7 @@ import os, sys, time
 # on Windows it cannot print errors to console
 # We should start logging as soon as possible, or we won't get errors about invalid config file
 if sys.platform == "win32":
-	sys.stderr = open("dedicated_control_errors.log", "w", 0)
+	sys.stderr = open("dedicated_control_errors.log", "w", buffering=1)
 
 # Add current dir to module search path
 sys.path.append( os.getcwd() )

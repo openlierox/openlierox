@@ -1,6 +1,6 @@
-#!/usr/bin/python -u
+#!/usr/bin/python3 -u
 
-import sys, time, cgi, os, random, traceback, re
+import sys, time, html, os, random, traceback, re, functools
 
 f = open("pwn0meter.txt","r")
 w = open("pwn0meter.html","w")
@@ -21,13 +21,13 @@ try:
 
 	chatstr = "<h3>Random chat quotes</h3><p>"
 	rndstart = random.randint(0, len(chatlines) - 5)
-	for i in xrange(rndstart, rndstart + 5):
-		chatstr += cgi.escape(chatlines[i].replace(chatlogmark, "")) + "<br>"
+	for i in range(rndstart, rndstart + 5):
+		chatstr += html.escape(chatlines[i].replace(chatlogmark, ""), quote=False) + "<br>"
 	chatstr += "</p>"
 	w.write(chatstr)
-	
+
 except:
-	print "Unexpected error:", traceback.format_exc()
+	print("Unexpected error:", traceback.format_exc())
 	pass
 
 killers = {}
@@ -37,20 +37,20 @@ clan_deaders = {}
 clans = {}
 
 re_clans = (
-	re.compile("^\[\[\[(?P<clan>.+)\]\]\].+$"),
-	re.compile("^\[(?P<clan>.+)\].+$"),
-	re.compile("^.+\[(?P<clan>.+)\]$"),
-	re.compile("^\((?P<clan>.+)\).+$"),
-	re.compile("^.+\((?P<clan>.+)\)$"),
-	re.compile("^-=(?P<clan>.+)=-.+$"),
-	re.compile("^-(?P<clan>.+)-.+$"),
-	re.compile("^\<(?P<clan>.+)\>.+$"),
-	re.compile("^\{(?P<clan>.+)\}.+$"),
-	re.compile("^.+\{(?P<clan>.+)\}$"),
-	re.compile("^\|(?P<clan>.+)\|.+$"),
-	re.compile("^.+\[(?P<clan>.+)\]$"),
-	re.compile("^\|(?P<clan>.+)\|.+$"),
-	re.compile("^.+\[(?P<clan>.+)\]$"),
+	re.compile(r"^\[\[\[(?P<clan>.+)\]\]\].+$"),
+	re.compile(r"^\[(?P<clan>.+)\].+$"),
+	re.compile(r"^.+\[(?P<clan>.+)\]$"),
+	re.compile(r"^\((?P<clan>.+)\).+$"),
+	re.compile(r"^.+\((?P<clan>.+)\)$"),
+	re.compile(r"^-=(?P<clan>.+)=-.+$"),
+	re.compile(r"^-(?P<clan>.+)-.+$"),
+	re.compile(r"^\<(?P<clan>.+)\>.+$"),
+	re.compile(r"^\{(?P<clan>.+)\}.+$"),
+	re.compile(r"^.+\{(?P<clan>.+)\}$"),
+	re.compile(r"^\|(?P<clan>.+)\|.+$"),
+	re.compile(r"^.+\[(?P<clan>.+)\]$"),
+	re.compile(r"^\|(?P<clan>.+)\|.+$"),
+	re.compile(r"^.+\[(?P<clan>.+)\]$"),
 	)
 
 def clan_of(name):
@@ -98,43 +98,42 @@ for l in f.readlines():
 
 f.close()
 
-#print killers
+#print(killers)
 
 
 def printRanks(killers, deaders):
-	sorted = killers.keys()
 	def sortFunc(s1, s2):
-		kills1 = sum(killers[s1].itervalues()) - killers[s1].get(s1,0)
-		kills2 = sum(killers[s2].itervalues()) - killers[s2].get(s2,0)
+		kills1 = sum(killers[s1].values()) - killers[s1].get(s1,0)
+		kills2 = sum(killers[s2].values()) - killers[s2].get(s2,0)
 		if kills1 < kills2: return 1
 		if kills1 > kills2: return -1
 		try:
-			deaths1 = sum(deaders[s1].itervalues())
+			deaths1 = sum(deaders[s1].values())
 		except:
 			deaths1 = 0
 		try:
-			deaths2 = sum(deaders[s2].itervalues())
+			deaths2 = sum(deaders[s2].values())
 		except:
 			deaths2 = 0
 		if deaths1 < deaths2: return -1
 		if deaths1 > deaths2: return 1
 		return 0
 
-	sorted.sort(cmp=sortFunc)
+	ranked = sorted(killers.keys(), key=functools.cmp_to_key(sortFunc))
 
 
 	i = 1
-	for k in sorted:
-		kills = sum(killers[k].itervalues())
+	for k in ranked:
+		kills = sum(killers[k].values())
 		try:
-			deaths = sum(deaders[k].itervalues())
+			deaths = sum(deaders[k].values())
 		except:
 			deatsh = 0
 		suicides = killers[k].get(k,0)
 		kills -= suicides
 		deaths -= suicides
-		w.write("%i. <B>%s</B>: %i kills %i deaths %i suicides, killed:" % 
-			( i, cgi.escape(k), kills, deaths, suicides ))
+		w.write("%i. <B>%s</B>: %i kills %i deaths %i suicides, killed:" %
+			( i, html.escape(k, quote=False), kills, deaths, suicides ))
 		# Ugly killer sorting
 		killedMax = {}
 		for f in killers[k]:
@@ -142,8 +141,7 @@ def printRanks(killers, deaders):
 				killedMax[killers[k][f]] = []
 			if killedMax[killers[k][f]].count(f) == 0:
 				killedMax[killers[k][f]].append(f)
-		killedMax1 = killedMax.keys()
-		killedMax1.sort(reverse=True)
+		killedMax1 = sorted(killedMax.keys(), reverse=True)
 		count = 0
 		for f in killedMax1:
 			for f1 in killedMax[f]:
@@ -154,7 +152,7 @@ def printRanks(killers, deaders):
 					break
 				if count != 1:
 					w.write(",")
-				w.write(" %s - %i" % ( cgi.escape(f1), f ) )
+				w.write(" %s - %i" % ( html.escape(f1, quote=False), f ) )
 		w.write("<BR>\n")
 		i += 1
 
@@ -167,10 +165,10 @@ w.write("<a name=\"players\"></a>\n")
 printRanks(killers, deaders)
 
 w.write("<h2>Clan members</h2>\n")
-for c in clans.iterkeys():
+for c in clans.keys():
 	if c == "Clanfree": continue # ignore
-	w.write("<b>%s</b>: " % cgi.escape(c))
-	w.write("%s<br>\n" % cgi.escape(", ".join(list(clans[c]))))
+	w.write("<b>%s</b>: " % html.escape(c, quote=False))
+	w.write("%s<br>\n" % html.escape(", ".join(list(clans[c])), quote=False))
 
 w.write("</BODY>\n</html>\n")
 w.close()

@@ -1,4 +1,4 @@
-#!/usr/bin/python -u
+#!/usr/bin/python3 -u
 
 import random
 global worms, io
@@ -20,7 +20,7 @@ setvar( "GameOptions.GameInfo.CTF_SpeedFactorForCarrier", 0.6 ) # Slow down flag
 for w in worms.values():
 	io.setWormTeam( w.iID, 0 )
 for f in range(int(len(worms)/2)):
-	red = random.choice(worms.values()).iID
+	red = random.choice(list(worms.values())).iID
 	if io.getWormTeam( red ) == 1: # Not "while" to avoid infinite loop
-		red = random.choice(worms.values()).iID
+		red = random.choice(list(worms.values())).iID
 	io.setWormTeam( red, 1 )

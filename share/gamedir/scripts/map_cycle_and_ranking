@@ -1,4 +1,4 @@
-#!/usr/bin/python -u
+#!/usr/bin/python3 -u
 
 import sys, os, time, random, re, traceback
 sys.path.append( os.path.dirname(sys.argv[0]) )
@@ -14,7 +14,7 @@ while len(levels) == 0:
 	levels = io.listMaps()
 	time.sleep(1)
 
-if float(re.match("([A-Za-z]+/)?(?P<num>[0-9]+\.[0-9]+).*", io.getVar("GameOptions.Network.ForceMinVersion")).group("num")) + 0.001 < 0.59:
+if float(re.match(r"([A-Za-z]+/)?(?P<num>[0-9]+\.[0-9]+).*", io.getVar("GameOptions.Network.ForceMinVersion")).group("num")) + 0.001 < 0.59:
 	io.msg("LX levels only")
 	levels = [ x for x in levels if x.endswith(".lxl") ]
 else:
