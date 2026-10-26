@@ -48,6 +48,12 @@ jobs:
             mingw-w64-ucrt-x86_64-ntldd
             zip
 
+      # The checkout is owned by the Windows runner user, so MSYS2's git
+      # refuses it as "dubious ownership" and the version script then
+      # finds no git repository.
+      - name: Trust checkout
+        run: git config --global --add safe.directory '*'
+
       - name: Build
         run: ./.github/workflows/build-windows.sh
 
