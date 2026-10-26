@@ -1,5 +1,5 @@
 #!/bin/bash
-# Configure and build openlierox.exe for Windows (MSYS2 MinGW64).
+# Configure and build openlierox.exe for Windows (MSYS2 UCRT64).
 #
 # Inputs (env):
 #   BUILD_DIR - cmake build directory (default: build-cmake)
@@ -10,10 +10,10 @@ set -euo pipefail
 
 cd $(dirname $0)"/../.."
 
-# Ensure MinGW64 toolchain is on PATH. In GitHub Actions the `msys2 {0}`
+# Ensure UCRT64 toolchain is on PATH. In GitHub Actions the `msys2 {0}`
 # shell already does this; when invoked from a plain bash (e.g. local runs
-# where /mingw64 is not auto-mapped) we need to add it explicitly.
-export PATH="/c/msys64/mingw64/bin:/c/msys64/usr/bin:$PATH"
+# where /ucrt64 is not auto-mapped) we need to add it explicitly.
+export PATH="/c/msys64/ucrt64/bin:/c/msys64/usr/bin:$PATH"
 
 BUILD_DIR="${BUILD_DIR:-build-cmake}"
 
