@@ -9,6 +9,12 @@ jobs:
   build-windows:
     name: Build Windows .exe (MSYS2 UCRT64)
     runs-on: windows-2022
+    # cmake is a native process, so the git it spawns may not read MSYS2's
+    # ~/.gitconfig; env-based config is inherited by every child process.
+    env:
+      GIT_CONFIG_COUNT: "1"
+      GIT_CONFIG_KEY_0: safe.directory
+      GIT_CONFIG_VALUE_0: "*"
     defaults:
       run:
         shell: msys2 {0}
@@ -64,6 +70,8 @@ jobs:
           git rev-parse --git-dir
           ls -la | head -20
           sh ./get_version_full.sh
+          printf 'execute_process(COMMAND sh ./get_version_full.sh OUTPUT_VARIABLE o ERROR_VARIABLE e RESULT_VARIABLE r)\nmessage("rc=${r} out=${o} err=${e}")\nexecute_process(COMMAND sh -c "which git sh; git rev-parse --git-dir; echo HOME=$HOME" OUTPUT_VARIABLE o ERROR_VARIABLE e)\nmessage("${o} ${e}")\n' > /tmp/dbg.cmake
+          cmake -P /tmp/dbg.cmake
 
       - name: Build
         run: ./.github/workflows/build-windows.sh
