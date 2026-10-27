@@ -15,6 +15,8 @@
 
 
 #include <assert.h>
+#include <sstream>
+#include <yaml-cpp/yaml.h>
 
 #include "LieroX.h"
 #include "ProfileSystem.h"
@@ -32,6 +34,8 @@ static ProfileList tProfiles;
 
 static void	SaveProfile(FILE *fp, const SmartPointer<profile_t>& p);
 static void	LoadProfile(FILE *fp);
+static void	SaveProfileYaml(YAML::Emitter& out, const SmartPointer<profile_t>& p);
+static void	LoadProfileYaml(const YAML::Node& node);
 
 
 static void AddDefaultHumanPlayer() {
@@ -314,6 +318,167 @@ void SaveProfile(FILE *fp, const SmartPointer<profile_t>& p)
 	// Weapons		
 	for(int i=0; i<5; i++)
 		fwrite(p->getWeaponSlot(i),		64,	fp);
+}
+
+
+///////////////////
+// Load the profiles from the YAML format (cfg/players.yaml).
+// Returns true if the file was found and parsed cleanly. On any failure the
+// profile list is left untouched (so a caller can fall back to the .dat format).
+int LoadProfilesYaml()
+{
+	std::ifstream f;
+	if(!OpenGameFileR(f, "cfg/players.yaml"))
+		// No YAML profiles yet - not an error, the caller decides what to do.
+		return false;
+
+	std::stringstream buf;
+	buf << f.rdbuf();
+
+	try {
+		YAML::Node root = YAML::Load(buf.str());
+		if(!root.IsMap()) {
+			errors << "Could not load cfg/players.yaml: root is not a map" << endl;
+			return false;
+		}
+
+		// Check version
+		int ver = root["version"] ? root["version"].as<int>() : 0;
+		if(ver != PROFILE_VERSION) {
+			errors << "Could not load cfg/players.yaml: version \"" << ver
+				<< "\" is not equal to \"" << PROFILE_VERSION << "\"" << endl;
+			return false;
+		}
+
+		const YAML::Node& profiles = root["profiles"];
+		if(!profiles || !profiles.IsSequence()) {
+			errors << "Could not load cfg/players.yaml: 'profiles' is missing or not a sequence" << endl;
+			return false;
+		}
+
+		// All checks passed - replace the current list.
+		tProfiles.clear();
+		for(YAML::const_iterator it = profiles.begin(); it != profiles.end(); ++it)
+			LoadProfileYaml(*it);
+	} catch(const YAML::Exception& e) {
+		errors << "Could not load cfg/players.yaml: " << e.what() << endl;
+		return false;
+	}
+
+	MainHumanProfile(); // this call ensures that there is a human profile
+
+	if(getFirstBotProf().second < 0)
+		AddDefaultBotPlayers();
+
+	return true;
+}
+
+
+///////////////////
+// Save the profiles to the YAML format (cfg/players.yaml)
+void SaveProfilesYaml()
+{
+	if(tProfiles.size() == 0)
+		// Profiles not loaded, don't write an empty file (and delete all user's profiles!)
+		return;
+
+	std::ofstream f;
+	if(!OpenGameFileW(f, "cfg/players.yaml")) {
+		errors << "Could not open cfg/players.yaml for writing" << endl;
+		return;
+	}
+
+	YAML::Emitter out;
+	out << YAML::BeginMap;
+	out << YAML::Key << "version" << YAML::Value << PROFILE_VERSION;
+	out << YAML::Key << "profiles" << YAML::Value << YAML::BeginSeq;
+
+	foreach(p, tProfiles)
+		SaveProfileYaml(out, *p);
+
+	out << YAML::EndSeq;
+	out << YAML::EndMap;
+
+	f << out.c_str() << std::endl;
+}
+
+
+///////////////////
+// Load a single profile from a YAML node
+static void LoadProfileYaml(const YAML::Node& node)
+{
+	if(!node.IsMap())
+		return;
+
+	SmartPointer<profile_t> p(new profile_t);
+	if(p.get() == NULL)
+		return;
+
+	// Name & Type
+	p->sName = node["name"] ? node["name"].as<std::string>() : "";
+	p->cSkin.Change(node["skin"] ? node["skin"].as<std::string>() : "default.png");
+	p->iType = node["type"] ? node["type"].as<int>() : PRF_HUMAN->toInt();
+	p->nDifficulty = node["difficulty"] ? node["difficulty"].as<int>() : AI_EASY;
+
+	if(p->iType == PRF_COMPUTER->toInt())
+		p->cSkin.setBotIcon(p->nDifficulty);
+
+	// Note: the binary .dat format has sUsername/sPassword fields, but they are
+	// unused vestigial fields (always empty, never consumed). The YAML format
+	// deliberately omits them; they stay empty (their profile_t default).
+
+	// Colour
+	p->R = p->G = p->B = 0;
+	const YAML::Node& color = node["color"];
+	if(color && color.IsSequence() && color.size() >= 3) {
+		p->R = (Uint8) color[0].as<int>();
+		p->G = (Uint8) color[1].as<int>();
+		p->B = (Uint8) color[2].as<int>();
+	}
+
+	p->cSkin.setDefaultColor(Color(p->R, p->G, p->B));
+	p->cSkin.Colorize(p->cSkin.getDefaultColor());
+
+	// Weapons
+	p->sWeaponSlots.resize(5);
+	const YAML::Node& weapons = node["weapons"];
+	if(weapons && weapons.IsSequence()) {
+		for(int i=0; i<5 && (size_t)i < weapons.size(); i++)
+			p->sWeaponSlots[i] = weapons[i].as<std::string>();
+	}
+
+	AddProfile(p);
+}
+
+
+///////////////////
+// Save a single profile as a YAML map
+static void SaveProfileYaml(YAML::Emitter& out, const SmartPointer<profile_t>& p)
+{
+	out << YAML::BeginMap;
+
+	// Name & Type
+	out << YAML::Key << "name" << YAML::Value << p->sName;
+	out << YAML::Key << "type" << YAML::Value << p->iType;
+	out << YAML::Key << "difficulty" << YAML::Value << p->nDifficulty;
+	out << YAML::Key << "skin" << YAML::Value << p->cSkin.getFileName();
+
+	// Note: the binary .dat format's sUsername/sPassword fields are intentionally
+	// not written here - they are unused vestigial fields (always empty).
+
+	// Colour
+	out << YAML::Key << "color" << YAML::Value
+		<< YAML::Flow << YAML::BeginSeq
+		<< (int)p->R << (int)p->G << (int)p->B
+		<< YAML::EndSeq;
+
+	// Weapons
+	out << YAML::Key << "weapons" << YAML::Value << YAML::BeginSeq;
+	for(int i=0; i<5; i++)
+		out << p->getWeaponSlot(i);
+	out << YAML::EndSeq;
+
+	out << YAML::EndMap;
 }
 
 

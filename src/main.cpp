@@ -708,6 +708,11 @@ bool InitializeLieroX()
 	if(!bDedicated)
 		EnsureDefaultLocalPlayerProfiles();
 
+	// Mirror the profiles into the new YAML format (cfg/players.yaml) so it can
+	// be inspected alongside the binary cfg/players.dat. Both formats are kept
+	// side by side while we migrate away from the .dat format.
+	SaveProfilesYaml();
+
 	if(bDedicated)
 		if(!DedicatedControl::Init()) {
 			errors << "couldn't init dedicated control" << endl;
