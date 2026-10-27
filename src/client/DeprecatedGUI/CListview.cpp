@@ -21,6 +21,7 @@
 #include "StringUtils.h"
 #include "Cursor.h"
 #include "Timer.h"
+#include "sound/SoundsBase.h"
 
 
 namespace DeprecatedGUI {
@@ -1023,6 +1024,10 @@ int	CListview::MouseOver(mouse_t *tMouse)
 
 	bNeedsRepaint = true; // Repaint required
 
+	if (Menu_IsKeyboardNavigationUsed() && getFocused()) {
+		MoveMouseToCurrentItem();
+	}
+
 	if( !bMouseOverEventEnabled )
 		return LV_NONE;
 
@@ -1476,6 +1481,32 @@ int	CListview::MouseWheelUp(mouse_t *tMouse)
 	return LV_NONE;
 }
 
+void CListview::MoveMouseToCurrentItem()
+{
+	if (!tSelected)
+		return;
+
+	// Go through the items
+	int y = iY + tLX->cFont.GetHeight() + 2;
+	if (!tColumns)
+		y = iY + 2;
+	lv_item_t *item = tItems;
+
+	for (int count = 0; item; item = item->tNext) {
+		if (count++ < cScrollbar.getValue())
+			continue;
+
+		y += item->iHeight;
+		if(y >= iY + iHeight)
+			return;
+
+		if (item == tSelected) {
+			Menu_WarpMouse(iX + 3, y - 1);
+			return;
+		}
+	}
+}
+
 /////////////////
 // Key down event
 int CListview::KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate)
@@ -1487,6 +1518,22 @@ int CListview::KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate
 		tLastWidgetEvent.iEventMsg = tFocusedSubWidget->KeyDown(c, keysym, modstate);
 		if (tLastWidgetEvent.iEventMsg != -1)
 			return LV_WIDGETEVENT;
+	}
+
+	if (tSelected) {
+		// Go through every witget in a current list row, return if one of them widget returns non-empty event
+		for(lv_subitem_t *sub = tSelected->tSubitems; sub; sub=sub->tNext) {
+			if (sub->bVisible && sub->tWidget && sub->iType == LVS_WIDGET && sub->tWidget->getEnabled()) {
+				int eventMsg = sub->tWidget->KeyDown(c, keysym, modstate);
+				if (eventMsg >= 0) {
+					tLastWidgetEvent.cWidget = sub->tWidget;
+					tLastWidgetEvent.iControlID = sub->tWidget->getID();
+					tLastWidgetEvent.iEventMsg = eventMsg;
+					sub->tWidget->setFocused(true);
+					return LV_WIDGETEVENT;
+				}
+			}
+		}
 	}
 
 	// TODO: why is this here?
@@ -1502,50 +1549,73 @@ int CListview::KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate
 
 	iLastChar = c;
 
-	// Up arrow
+	int moveRows = 0;
 	if (keysym == SDLK_DOWN) {
-		if (tSelected) {
-			if (tSelected->tNext)  {
-				tSelected->bSelected = false;
-				tSelected = tSelected->tNext;
-				tSelected->bSelected = true;
-				iLastChar = SDLK_DOWN;
-				if (bGotScrollbar)
-					if (tSelected->_iID >= (cScrollbar.getItemsperbox()-1 + cScrollbar.getValue()))
-						cScrollbar.setValue( cScrollbar.getValue()+1 );
-				return LV_CHANGED;
-			}
-		} else {
-			tSelected = tItems;
-			if(tSelected) {
-				tSelected->bSelected = true;
-				if (bGotScrollbar)
-					cScrollbar.setValue(0);
-				return LV_CHANGED;
-			}
-		}
-		return LV_NONE;
+		moveRows++;
+	}
+	if (keysym == SDLK_UP)  {
+		moveRows--;
+	}
+	if (keysym == SDLK_PAGEDOWN) {
+		moveRows += 10;
+	}
+	if (keysym == SDLK_PAGEUP)  {
+		moveRows -= 10;
 	}
 
+	if (moveRows != 0) {
+		bool processed = 0;
 
-	// Down arrow
-	if (keysym == SDLK_UP)  {
-		lv_item_t *i = tItems;
-		if (tItems)  {
-			int idx = 0;
-			for ( ; i && i->tNext; i=i->tNext, idx++ )  {
-				if (i->tNext == tSelected) {
-					if (tSelected)
-						tSelected->bSelected = false;
-					tSelected = i;
+		// Down arrow
+		for (; moveRows > 0; moveRows--) {
+			if (tSelected) {
+				if (tSelected->tNext)  {
+					tSelected->bSelected = false;
+					tSelected = tSelected->tNext;
 					tSelected->bSelected = true;
-					iLastChar = SDLK_UP;
+					iLastChar = SDLK_DOWN;
 					if (bGotScrollbar)
-						if (cScrollbar.getValue() > idx)
-							cScrollbar.setValue( cScrollbar.getValue()-1 );
-					return LV_CHANGED;
+						if (tSelected->_iID >= (cScrollbar.getItemsperbox()-1 + cScrollbar.getValue()))
+							cScrollbar.setValue( cScrollbar.getValue()+1 );
+					processed = true;
+				}
+			} else {
+				tSelected = tItems;
+				if(tSelected) {
+					tSelected->bSelected = true;
+					if (bGotScrollbar)
+						cScrollbar.setValue(0);
+					processed = true;
 				}
 			}
+		}
+
+		// Up arrow
+		for (; moveRows < 0; moveRows++) {
+			lv_item_t *i = tItems;
+			if (tItems)  {
+				int idx = 0;
+				for ( ; i && i->tNext; i=i->tNext, idx++ )  {
+					if (i->tNext == tSelected) {
+						if (tSelected)
+							tSelected->bSelected = false;
+						tSelected = i;
+						tSelected->bSelected = true;
+						iLastChar = SDLK_UP;
+						if (bGotScrollbar)
+							if (cScrollbar.getValue() > idx)
+									cScrollbar.setValue( cScrollbar.getValue()-1 );
+						PlaySoundSample(sfxGeneral.smpClick);
+						processed = true;
+					}
+				}
+			}
+		}
+
+		if (processed) {
+			MoveMouseToCurrentItem();
+			PlaySoundSample(sfxGeneral.smpClick);
+			return LV_CHANGED;
 		}
 	}
 
@@ -1558,6 +1628,7 @@ int CListview::KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate
 			tSelected->bSelected = true;
 			if (bGotScrollbar)
 				cScrollbar.setValue(0);
+			PlaySoundSample(sfxGeneral.smpClick);
 			return LV_CHANGED;
 		}
 	}
@@ -1571,6 +1642,7 @@ int CListview::KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate
 			tSelected->bSelected = true;
 			if (bGotScrollbar)
 				cScrollbar.setValue(tSelected->_iID);
+			PlaySoundSample(sfxGeneral.smpClick);
 			return LV_CHANGED;
 		}
 	}
@@ -1578,18 +1650,14 @@ int CListview::KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate
 	// Delete
 	if (keysym == SDLK_DELETE)  {
 		iLastChar = SDLK_DELETE;
+		PlaySoundSample(sfxGeneral.smpClick);
 		return LV_DELETE;
 	}
 
 	// Enter
-	if (keysym == SDLK_RETURN ||
-		keysym == SDLK_KP_ENTER ||
-		keysym == SDLK_LALT ||
-		keysym == SDLK_LCTRL ||
-		keysym == SDLK_LSHIFT ||
-		keysym == SDLK_x ||
-		keysym == SDLK_z) {
+	if (isActivationKey(keysym)) {
 		iLastChar = SDLK_RETURN;
+		PlaySoundSample(sfxGeneral.smpClick);
 		return LV_ENTER;
 	}
 
@@ -1609,6 +1677,22 @@ int CListview::KeyUp(UnicodeChar c, int keysym, const ModifiersState& modstate)
 		tLastWidgetEvent.iEventMsg = tFocusedSubWidget->KeyUp(c, keysym, modstate);
 		if (tLastWidgetEvent.iEventMsg != -1)
 			return LV_WIDGETEVENT;
+	}
+
+	if (tSelected) {
+		// Go through every witget in a current list row, return if one of them widget returns non-empty event
+		for(lv_subitem_t *sub = tSelected->tSubitems; sub; sub=sub->tNext) {
+			if (sub->bVisible && sub->tWidget && sub->iType == LVS_WIDGET && sub->tWidget->getEnabled()) {
+				int eventMsg = sub->tWidget->KeyUp(c, keysym, modstate);
+				if (eventMsg >= 0) {
+					tLastWidgetEvent.cWidget = sub->tWidget;
+					tLastWidgetEvent.iControlID = sub->tWidget->getID();
+					tLastWidgetEvent.iEventMsg = eventMsg;
+					sub->tWidget->setFocused(true);
+					return LV_WIDGETEVENT;
+				}
+			}
+		}
 	}
 
 	return LV_NONE;

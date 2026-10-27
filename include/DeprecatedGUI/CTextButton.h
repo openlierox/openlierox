@@ -54,7 +54,7 @@ public:
 	int		MouseDown(mouse_t *tMouse, int nDown)	{ return CLabel::MouseDown( tMouse, nDown ); }
 	int		MouseWheelDown(mouse_t *tMouse)		{ return CLabel::MouseWheelDown( tMouse ); }
 	int		MouseWheelUp(mouse_t *tMouse)		{ return CLabel::MouseWheelUp( tMouse ); }
-	int		KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate)	{ return CLabel::KeyDown( c, keysym, modstate ); }
+	int		KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate);
 	int		KeyUp(UnicodeChar c, int keysym, const ModifiersState& modstate)	{ return CLabel::KeyUp( c, keysym, modstate ); }
 
 	uintptr_t SendMessage(int iMsg, uintptr_t Param1, uintptr_t Param2)	{ return CLabel::SendMessage( iMsg, Param1, Param2 ); }

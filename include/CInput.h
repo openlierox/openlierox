@@ -101,6 +101,9 @@ public:
 	int		Setup(const std::string& text);
 	static void InitJoysticksTemp(); // call this if CInput::Wait shall recognise joystick events
 	static void UnInitJoysticksTemp();
+	// True while CInput::Wait is in use (between the two calls above).
+	// Gamepad buttons must not be mirrored as menu keys then, or they could be captured as a key.
+	static bool IsWaitingForInput();
 	// SDL_CONTROLLERDEVICEADDED / SDL_CONTROLLERDEVICEREMOVED hotplug
 	// handlers. Without these, controllers plugged in after startup
 	// (or surfaced late by the platform — e.g. browser Gamepad API

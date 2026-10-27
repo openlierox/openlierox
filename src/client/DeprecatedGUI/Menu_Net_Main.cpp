@@ -57,6 +57,8 @@ bool Menu_Net_MainInitialize()
 
 	cMain.Add( new CLabel("OpenLieroX News", tLX->clNormalLabel), -1, 255, 140, 0,0);
 
+	Menu_Net_AddTabBarButtons(&cMain);
+
 
 	return true;
 }
@@ -80,6 +82,9 @@ void Menu_Net_MainFrame(int mouse)
 	// Process & Draw the gui
 	ev = cMain.Process();
 	cMain.Draw( VideoPostProcessor::videoSurface().get() );
+
+	if (Menu_Net_ProcessTabBarButtons(ev))
+		return;
 
 
 	// Process any events

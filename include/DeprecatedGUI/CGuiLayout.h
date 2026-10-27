@@ -105,6 +105,9 @@ private:
 
 	
 public:
+	static bool isKeyboardNavigationUsed() { return bKeyboardNavigation; }
+	static void setKeyboardNavigationUsed(bool used) { bKeyboardNavigation = used; }
+
 	// Methods
 
 	void		Initialize(int LayoutID = -1);

@@ -24,6 +24,7 @@
 #include "DeprecatedGUI/Menu.h"
 #include "GfxPrimitives.h"
 #include "StringUtils.h"
+#include "sound/SoundsBase.h"
 #include "Timer.h"
 #include "Debug.h"
 #include "CodeAttributes.h"
@@ -558,44 +559,42 @@ int CCombobox::KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate
 	// TODO: this doesn't work as expected atm if the mouse is over
 	// Handle key up/down
 	if (bDropped)  {
-		if (keysym == SDLK_DOWN)  {
-			if (selectNext())  {
+		int moveItems = 0;
+		if (keysym == SDLK_DOWN)
+			moveItems = 1;
+		else if (keysym == SDLK_UP)
+			moveItems = -1;
+		else if (keysym == SDLK_PAGEDOWN)
+			moveItems = 10;
+		else if (keysym == SDLK_PAGEUP)
+			moveItems = -10;
+
+		if (moveItems != 0) {
+			bool changed = false;
+			for (; moveItems > 0; moveItems--)
+				changed |= selectNext();
+			for (; moveItems < 0; moveItems++)
+				changed |= selectPrev();
+			if (changed) {
 				// Move the scrollbar if necessary
 				cScrollbar.setValue( iSelected - cScrollbar.getItemsperbox() / 2 );
 				iKeySelectedItem = iSelected;
+				PlaySoundSample(sfxGeneral.smpClick);
 			}
 			ProcessChangedEvent();
 			return CMB_CHANGED;
-		} else if (keysym == SDLK_UP)  {
-			if (selectPrev())  {
-				// Move the scrollbar if necessary
-				cScrollbar.setValue( iSelected - cScrollbar.getItemsperbox() / 2 );
-				iKeySelectedItem = iSelected;
-			}
-			ProcessChangedEvent();
-			return CMB_CHANGED;
-		} else if(keysym == SDLK_RETURN ||
-					keysym == SDLK_KP_ENTER ||
-					keysym == SDLK_LALT ||
-					keysym == SDLK_LCTRL ||
-					keysym == SDLK_LSHIFT ||
-					keysym == SDLK_x ||
-					keysym == SDLK_z) {
+		} else if(isActivationKey(keysym)) {
 			bDropped = false;
+			PlaySoundSample(sfxGeneral.smpClick);
 			ProcessChangedEvent();
 			return CMB_CHANGED;
 		}
 	} else {
-		if (keysym == SDLK_RETURN ||
-			keysym == SDLK_KP_ENTER ||
-			keysym == SDLK_LALT ||
-			keysym == SDLK_LCTRL ||
-			keysym == SDLK_LSHIFT ||
-			keysym == SDLK_x ||
-			keysym == SDLK_z) {
+		if (isActivationKey(keysym)) {
 			bDropped = true;
 			cScrollbar.setValue( iSelected - cScrollbar.getItemsperbox() / 2 );
 			iKeySelectedItem = iSelected;
+			PlaySoundSample(sfxGeneral.smpClick);
 			ProcessChangedEvent();
 			return CMB_CHANGED;
 		}

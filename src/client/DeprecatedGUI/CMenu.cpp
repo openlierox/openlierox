@@ -247,34 +247,27 @@ int CMenu::KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate)
 			} else {
 				if (m_psItemList.empty())
 					m_nSelectedIndex = -1;
-				else {
+				else if (m_nSelectedIndex + 1 < (int)m_psItemList.size())
 					m_nSelectedIndex++;
-					m_nSelectedIndex %= m_psItemList.size();
-				}
 			}
-		break;
+			MoveMouseToCurrentItem();
+		return MNU_SELECTION_CHANGED;
 
 		case SDLK_UP:
-			if (m_nSelectedIndex == -1)  {
+			if (m_nSelectedIndex == -1 && !m_psItemList.empty())  {
 				m_nSelectedIndex = m_psItemList.size() - 1;
 			} else {
 				if (m_psItemList.empty())
 					m_nSelectedIndex = -1;
-				else {
+				else if (m_nSelectedIndex > 0)
 					m_nSelectedIndex--;
-					if (m_nSelectedIndex < 0)
-						m_nSelectedIndex = m_psItemList.size() - 1;
-				}
 			}
-		break;
+			MoveMouseToCurrentItem();
+		return MNU_SELECTION_CHANGED;
 
-		case SDLK_RETURN:
-		case SDLK_KP_ENTER:
-		case SDLK_LALT:
-		case SDLK_LCTRL:
-		case SDLK_LSHIFT:
-		case SDLK_x:
-		case SDLK_z:
+		default:
+			if (!isActivationKey(keysym))
+				break;
 			if (m_nSelectedIndex >= 0 && m_nSelectedIndex < (int)m_psItemList.size()) {
 				std::list<mnu_item_t>::iterator it = m_psItemList.begin();
 				for(int i = 0; i < m_nSelectedIndex && it != m_psItemList.end(); i++)
@@ -287,6 +280,16 @@ int CMenu::KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate)
 	}
 
 	return MNU_NONE;
+}
+
+void CMenu::MoveMouseToCurrentItem()
+{
+	if (!Menu_IsKeyboardNavigationUsed() || !getFocused() || m_nSelectedIndex == -1)
+		return;
+
+	int y = m_nPosY + 2 + (m_nSelectedIndex + 1) * tLX->cFont.GetHeight();
+
+	Menu_WarpMouse(m_nPosX + 2, y - 1);
 }
 
 }; // namespace DeprecatedGUI

@@ -65,6 +65,10 @@ menu_t	*tMenu = NULL;
 
 
 bool		bSkipStart = false;
+
+// Last cursor position set by Menu_WarpMouse, in window-logical coordinates
+static int Menu_MouseWarpedX = 0;
+static int Menu_MouseWarpedY = 0;
 CWidgetList	LayoutWidgets[LAYOUT_COUNT];
 
 static bool Menu_InitSockets() {
@@ -1099,6 +1103,43 @@ void Menu_EnableNetEvents()
 	for (size_t i = 0; i < sizeof(tMenu->tSocket)/sizeof(tMenu->tSocket[0]); ++i)
 		if(i != SCK_FOO)
 			tMenu->tSocket[i]->setWithEvents(true);
+}
+
+bool Menu_IsKeyboardNavigationUsed()
+{
+	return CGuiLayout::isKeyboardNavigationUsed();
+}
+
+// Move the system cursor to menu coordinates (x,y),
+// so the highlighted widget and the cursor stay together during keyboard navigation.
+void Menu_WarpMouse(int x, int y)
+{
+	struct RepositionMouse: public Action
+	{
+		int x, y;
+		RepositionMouse(int _x, int _y): x(_x), y(_y)
+		{
+		}
+		Result handle()
+		{
+			// The menu is presented centered and scaled to the window
+			int wx = x, wy = y;
+			SDL_RenderLogicalToWindow(VideoPostProcessor::get()->sdl_renderer(), x, y, &wx, &wy);
+			SDL_WarpMouseInWindow(VideoPostProcessor::get()->sdl_window(), wx, wy);
+			return true;
+		}
+	};
+	x += VideoPostProcessor::get()->displayScreenOffsetX();
+	Menu_MouseWarpedX = x;
+	Menu_MouseWarpedY = y;
+	doActionInMainThread( new RepositionMouse(x, y) );
+}
+
+// Real mouse movement (not the one caused by Menu_WarpMouse) ends keyboard navigation
+void Menu_ProcessMouseMotion(int x, int y)
+{
+	if (abs(x - Menu_MouseWarpedX) > 2 || abs(y - Menu_MouseWarpedY) > 2)
+		CGuiLayout::setKeyboardNavigationUsed(false);
 }
 
 	

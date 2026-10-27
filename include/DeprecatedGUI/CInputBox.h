@@ -81,7 +81,8 @@ public:
 	int		MouseWheelDown(mouse_t *tMouse)		{ return INB_NONE; }
 	int		MouseWheelUp(mouse_t *tMouse)		{ return INB_NONE; }
 	int		KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate)	{ return INB_NONE; }
-	int		KeyUp(UnicodeChar c, int keysym, const ModifiersState& modstate)	{ return INB_NONE; }
+	// Fires on key up, so the key reader opened by it does not see the same key press
+	int		KeyUp(UnicodeChar c, int keysym, const ModifiersState& modstate);
 
 
 	// Process a message sent

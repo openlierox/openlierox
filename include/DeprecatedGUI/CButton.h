@@ -48,6 +48,7 @@ public:
 	// Constructor
 	CButton() {
 		bMouseOver = false;
+		bSelected = false;
 		bMouseDown = false;
 		bUseFallback = false;
 		iType = wid_Button;
@@ -61,6 +62,7 @@ public:
 		iImageID = imgid;
 		bmpImage = image;
 		bMouseOver = false;
+		bSelected = false;
 		bMouseDown = false;
 		bUseFallback = false;
 		iType = wid_Button;
@@ -74,6 +76,7 @@ public:
 		iImageID = 0;
 		bmpImage = LoadGameImage(path);
 		bMouseOver = false;
+		bSelected = false;
 		bMouseDown = false;
 		bUseFallback = false;
 		iType = wid_Button;
@@ -85,11 +88,15 @@ public:
 
 	bool		bVisible;
 
+	// Draw the button highlighted, as if the mouse was over it
+	void		setSelected(bool selected)	{ bSelected = selected; }
+
 private:
 	// Attributes
 
 	bool		bMouseOver;
 	bool		bMouseDown;
+	bool		bSelected;
 	SmartPointer<SDL_Surface> bmpImage;
 	int			iImageID;
     int         iGoodWidth;

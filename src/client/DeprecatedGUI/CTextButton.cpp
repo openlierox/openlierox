@@ -33,4 +33,11 @@ void	CTextButton::Draw(SDL_Surface * bmpDest)
 	CLabel::Draw( bmpDest );
 }
 
+int	CTextButton::KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate)
+{
+	if (isActivationKey(keysym))
+		return TXB_MOUSEUP;
+	return CLabel::KeyDown( c, keysym, modstate );
+}
+
 }; // namespace DeprecatedGUI
