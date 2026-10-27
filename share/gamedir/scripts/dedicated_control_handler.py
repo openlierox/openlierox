@@ -14,7 +14,7 @@ import traceback
 import random
 import portalocker
 import subprocess, signal, os.path
-import distutils.version
+import re
 
 import dedicated_control_io as io
 setvar = io.setvar
@@ -274,16 +274,23 @@ def parseNewWorm(wormID, name):
 	wormIP = io.getWormIP(wormID).split(":")[0]
 	# io.messageLog("Curtime " + str(time.time()) + " IP " + str(wormIP) + " Kicked worms: " + str(cmds.kickedUsers), io.LOG_INFO)
 	if wormIP in cmds.kickedUsers and cmds.kickedUsers[ wormIP ] > time.time():
-			io.kickWorm( wormID, "You can join in " + str(int(cmds.kickedUsers[ wormIP ] - time.time())/60 + 1) + " minutes" )
+			io.kickWorm( wormID, "You can join in " + str(int(cmds.kickedUsers[ wormIP ] - time.time())//60 + 1) + " minutes" )
 			return
 	cmds.recheckVote()
 
 	ver = io.getWormVersion(wormID)
-	if distutils.version.LooseVersion(ver.lower()) < distutils.version.LooseVersion("OpenLieroX/0.58_rc5".lower()):
+	if versionKey(ver) < versionKey("OpenLieroX/0.58_rc5"):
 		io.privateMsg(wormID, "Download OpenLieroX 0.58 rc5 at http://openlierox.net/")
 
 	if newWormHandler != None:
 		newWormHandler(wormID, name)
+
+
+# Splits a version string into comparable numeric/text parts
+# (distutils.version.LooseVersion was removed in Python 3.12).
+def versionKey(ver):
+	return [(0, int(p), "") if p.isdigit() else (1, 0, p)
+			for p in re.split(r"(\d+)|[._/-]+", ver.lower()) if p]
 
 
 def parseWormLeft(sig):

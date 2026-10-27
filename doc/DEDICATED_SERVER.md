@@ -76,12 +76,11 @@ pinned the same way — update it when the version changes.
 The rest of this section describes building the image yourself from this source
 tree (needed if you change the code or config defaults).
 
-### Why Ubuntu 22.04 (jammy)?
+### Why Ubuntu 24.04 (noble)?
 
 The control scripts are written in **Python 3**. The image is based on
-`ubuntu:22.04`, which is in standard support until April 2027 (then Ubuntu Pro
-ESM covers it further) and matches the runtime library package names in the
-Dockerfile. The image is built in two stages: a build stage compiles the
+`ubuntu:24.04`, an LTS release with all the build dependencies packaged and in
+standard support until April 2029 (then Ubuntu Pro ESM covers it further). The image is built in two stages: a build stage compiles the
 `-DDEDICATED_ONLY` binary, and a slim runtime stage ships only the binary, the
 game data, the shared libraries, and `python3`.
 

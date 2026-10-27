@@ -1,12 +1,12 @@
-# OpenLieroX dedicated server — Ubuntu 22.04 "jammy"
+# OpenLieroX dedicated server — Ubuntu 24.04 "noble"
 #
-# The dedicated-server automation (share/gamedir/scripts/dedicated_control*)
-# is written in Python 3 and runs via a "#!/usr/bin/env -S python3 -u"
-# shebang. jammy is in standard support until April 2027 (then Ubuntu Pro
-# ESM); the runtime library package names below are the jammy ones.
+# Why noble: an LTS release with all the build dependencies packaged and in
+# standard support until April 2029 (then Ubuntu Pro ESM). The dedicated-server
+# automation (share/gamedir/scripts/dedicated_control*) is written in Python 3
+# and runs via a "#!/usr/bin/env -S python3 -u" shebang.
 
 # ---------- build stage ----------
-FROM ubuntu:22.04 AS build
+FROM ubuntu:24.04 AS build
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -44,7 +44,7 @@ RUN cmake -DDEDICATED_ONLY=Yes -DHAWKNL_BUILTIN=Yes -DDEBUG=No . \
     && make -j"$n"
 
 # ---------- runtime stage ----------
-FROM ubuntu:22.04
+FROM ubuntu:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -59,8 +59,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libxml2 \
         libgd3 \
         zlib1g \
-        libzip4 \
-        libcurl4 \
+        libzip4t64 \
+        libcurl4t64 \
         libopenal1 \
         libalut0 \
         libvorbisfile3 \

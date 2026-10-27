@@ -22,14 +22,13 @@ old, legacy version of the game and must never be what `:latest` resolves to.
 Always pin the version tag when running a 0.58 image; this is why
 [`docker-compose.yml`](docker-compose.yml) does too.
 
-## Why Ubuntu 22.04 (jammy)?
+## Why Ubuntu 24.04 (noble)?
 
-The dedicated-server control scripts (`share/gamedir/scripts/dedicated_control*`)
-are written in **Python 3**, which the image installs from the distribution
-(`python3`). The image uses `ubuntu:22.04` as its base for both the build and
-runtime stages; jammy is in standard support until April 2027 (then Ubuntu Pro
-ESM), and the runtime library package names in the Dockerfile are the jammy
-ones.
+noble is an LTS release with all the build dependencies packaged and in
+standard support until April 2029 (then Ubuntu Pro ESM). The dedicated-server
+control scripts (`share/gamedir/scripts/dedicated_control*`) are written in
+**Python 3**, which the image installs from the distribution (`python3`). The
+image uses `ubuntu:24.04` as its base for both the build and runtime stages.
 
 ## Quick start (docker compose)
 
