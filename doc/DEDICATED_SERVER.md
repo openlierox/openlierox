@@ -137,10 +137,26 @@ cd share/gamedir
 ../../bin/openlierox -dedicated -exec "script dedicated_control cfg/dedicated_config"
 ```
 
-For running one or more instances as a managed system service on Debian, see the
-init-script daemon in [`tools/DedicatedDaemonDebian`](../tools/DedicatedDaemonDebian),
-which starts one `openlierox -dedicated` per config file found in a config
-directory.
+To run dedicated server at boot, the easiest method is to add it to crontab - run command
+
+```
+crontab -e
+```
+
+and add following lines to the crontab, assuming OpenLieroX directory is `$HOME/openlierox`:
+
+```
+@reboot cd $HOME/openlierox/share/gamedir; while true; do ../../bin/openlierox -dedicated -exec "script dedicated_control cfg/dedicated_config" 2>&1 | logger --tag openlierox; sleep 10; done
+0 */6 * * * killall openlierox; sleep 1; killall -9 openlierox
+0 2 * * * find $HOME/.OpenLieroX/logs -mtime +7 -type f -delete
+```
+
+OpenLieroX dedicated server is unstable and is freezing once per day, so the second line will kill and restart it once per 6 hours.
+The third line is used to remove old server logs, which will grow without limit if left unchecked.
+Server logs are duplicated to the system journal, you can view them using `journalctl` command.
+
+Note: the init-script daemon in [`tools/DedicatedDaemonDebian`](../tools/DedicatedDaemonDebian)
+is heavily outdated and depends on init.d, which was replaced by systemd on newer Debian syatems.
 
 ---
 
