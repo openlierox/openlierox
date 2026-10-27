@@ -80,7 +80,8 @@ sudo apt install \
     libvorbis-dev \
     libyaml-cpp-dev \
     binutils-dev \
-    libiberty-dev
+    libiberty-dev \
+    liblua5.1-dev
 ```
 
 To build use `CMake`, e.g.:
