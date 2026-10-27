@@ -60,19 +60,6 @@ jobs:
       - name: Trust checkout
         run: git config --global --add safe.directory '*'
 
-      - name: Debug git
-        continue-on-error: true
-        run: |
-          pwd
-          which git sh
-          git --version
-          git config --global --list
-          git rev-parse --git-dir
-          ls -la | head -20
-          sh ./get_version_full.sh
-          printf 'execute_process(COMMAND sh ./get_version_full.sh OUTPUT_VARIABLE o ERROR_VARIABLE e RESULT_VARIABLE r)\nmessage("rc=${r} out=${o} err=${e}")\nexecute_process(COMMAND sh -c "which git sh; git rev-parse --git-dir; echo HOME=$HOME" OUTPUT_VARIABLE o ERROR_VARIABLE e)\nmessage("${o} ${e}")\n' > /tmp/dbg.cmake
-          cmake -P /tmp/dbg.cmake
-
       - name: Build
         run: ./.github/workflows/build-windows.sh
 
