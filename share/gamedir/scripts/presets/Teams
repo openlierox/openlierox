@@ -1,4 +1,4 @@
-#!/usr/bin/env -S python2 -u
+#!/usr/bin/env -S python3 -u
 
 import random
 global worms, io
@@ -17,7 +17,7 @@ for x in range(len(io.getWormList()), 4):
 for w in worms.values():
 	io.setWormTeam( w.iID, 0 )
 for f in range(int(len(worms)/2)):
-	red = random.choice(worms.values()).iID
+	red = random.choice(list(worms.values())).iID
 	if io.getWormTeam( red ) == 1: # Not "while" to avoid infinite loop
-		red = random.choice(worms.values()).iID
+		red = random.choice(list(worms.values())).iID
 	io.setWormTeam( red, 1 )

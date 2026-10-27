@@ -1,4 +1,4 @@
-#!/usr/bin/env -S python2 -u
+#!/usr/bin/env -S python3 -u
 # Dedicated Control handler script for OpenLieroX
 # (http://openlierox.sourceforge.net)
 
@@ -547,7 +547,7 @@ class ModCicler(StandardCiclerGameVar):
 
 		sDefaults = os.path.join(presetDir,"Defaults")
 		try:
-			execfile(sDefaults)
+			exec(compile(open(sDefaults).read(), sDefaults, 'exec'), globals())
 		except:
 			io.messageLog("Error in preset: " + str(formatExceptionInfo()),io.LOG_ERROR)
 
@@ -556,15 +556,15 @@ class ModCicler(StandardCiclerGameVar):
 		if os.path.exists(sFile):
 			StandardCiclerBase.apply(self)
 			try:
-				fPreset = file(sFile,"r")
+				fPreset = open(sFile,"r")
 				line = fPreset.readline()
 				if line.find("python") != -1:
 					fPreset.close()
-					execfile(sFile)
+					exec(compile(open(sFile).read(), sFile, 'exec'), globals())
 				else:
-					print line.strip().replace('"','')
+					print(line.strip().replace('"',''))
 					for line in fPreset.readlines():
-						print line.strip().replace('"','')
+						print(line.strip().replace('"',''))
 					fPreset.close()
 			except IOError:
 				# File does not exist, perhaps it was removed.
@@ -661,9 +661,9 @@ def randomizeTeams():
 	for w in worms.values():
 		io.setWormTeam( w.iID, 0 )
 	for f in range(int(len(worms)/2)):
-		red = random.choice(worms.values()).iID
+		red = random.choice(list(worms.values())).iID
 		if io.getWormTeam( red ) == 1: # Not "while" to avoid infinite loop
-			red = random.choice(worms.values()).iID
+			red = random.choice(list(worms.values())).iID
 		io.setWormTeam( red, 1 )
 
 def describeScheduledPresets():
@@ -734,7 +734,7 @@ def controlHandlerDefault():
 			cmds.increaseVoteTime()
 			cmds.recheckVote()
 			if videoRecorder:
-				os.kill(videoRecorder.pid, signal.SIGINT)  # videoRecorder.send_signal(signal.SIGINT) # This is available only on Python 2.6
+				os.kill(videoRecorder.pid, signal.SIGINT)  # equivalent to videoRecorder.send_signal(signal.SIGINT)
 				videoRecorderSignalTime = time.time()
 				io.chatMsg("Waiting for video recorder to finish")
 
