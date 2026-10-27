@@ -7,7 +7,7 @@ on:
 
 jobs:
   build-windows:
-    name: Build Windows .exe (MSYS2 MinGW64)
+    name: Build Windows .exe (MSYS2 UCRT64)
     runs-on: windows-2022
     defaults:
       run:
@@ -23,29 +23,29 @@ jobs:
       - name: Setup MSYS2
         uses: msys2/setup-msys2@v2
         with:
-          msystem: MINGW64
+          msystem: UCRT64
           update: true
           install: >-
             base-devel
             git
-            mingw-w64-x86_64-toolchain
-            mingw-w64-x86_64-cmake
-            mingw-w64-x86_64-ninja
-            mingw-w64-x86_64-pkgconf
-            mingw-w64-x86_64-SDL2
-            mingw-w64-x86_64-SDL2_image
-            mingw-w64-x86_64-SDL2_mixer
-            mingw-w64-x86_64-libxml2
-            mingw-w64-x86_64-libgd
-            mingw-w64-x86_64-zlib
-            mingw-w64-x86_64-libzip
-            mingw-w64-x86_64-curl
-            mingw-w64-x86_64-boost
-            mingw-w64-x86_64-openal
-            mingw-w64-x86_64-freealut
-            mingw-w64-x86_64-libvorbis
-            mingw-w64-x86_64-yaml-cpp
-            mingw-w64-x86_64-ntldd-git
+            mingw-w64-ucrt-x86_64-toolchain
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-ninja
+            mingw-w64-ucrt-x86_64-pkgconf
+            mingw-w64-ucrt-x86_64-SDL2
+            mingw-w64-ucrt-x86_64-SDL2_image
+            mingw-w64-ucrt-x86_64-SDL2_mixer
+            mingw-w64-ucrt-x86_64-libxml2
+            mingw-w64-ucrt-x86_64-libgd
+            mingw-w64-ucrt-x86_64-zlib
+            mingw-w64-ucrt-x86_64-libzip
+            mingw-w64-ucrt-x86_64-curl
+            mingw-w64-ucrt-x86_64-boost
+            mingw-w64-ucrt-x86_64-openal
+            mingw-w64-ucrt-x86_64-freealut
+            mingw-w64-ucrt-x86_64-libvorbis
+            mingw-w64-ucrt-x86_64-yaml-cpp
+            mingw-w64-ucrt-x86_64-ntldd
             zip
 
       - name: Build

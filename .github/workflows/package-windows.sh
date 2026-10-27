@@ -33,11 +33,11 @@ mkdir -p "$PACKAGE_DIR/gamedir"
 cp -r share/gamedir/. "$PACKAGE_DIR/gamedir"
 
 # Pull in every MinGW runtime DLL the binary depends on, recursively.
-# ntldd prints lines like "    libfoo.dll => C:\msys64\mingw64\bin\libfoo.dll (0x...)".
+# ntldd prints lines like "    libfoo.dll => C:\msys64\ucrt64\bin\libfoo.dll (0x...)".
 ntldd -R "$PACKAGE_DIR/openlierox.exe" \
     | awk -F'=>' '/=>/ { print $2 }' \
     | awk '{ print $1 }' \
-    | grep -i 'mingw64' \
+    | grep -i 'ucrt64' \
     | while read -r dll; do
         winpath="$(cygpath -u "$dll")"
         cp -n "$winpath" "$PACKAGE_DIR/"
