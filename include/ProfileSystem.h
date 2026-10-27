@@ -83,6 +83,11 @@ int		LoadProfiles();
 void	SaveProfiles();
 void	ShutdownProfiles();
 
+// YAML-based profile format (cfg/players.yaml). Holds exactly the same data as
+// the binary cfg/players.dat; both formats are supported side by side for now.
+int		LoadProfilesYaml();
+void	SaveProfilesYaml();
+
 // Recreate any of the default local (split-screen) player profiles that are
 // missing. Call after LoadProfiles(). See ProfileSystem.cpp for details.
 void	EnsureDefaultLocalPlayerProfiles();
