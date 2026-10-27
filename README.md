@@ -63,6 +63,8 @@ Install development dependencies, for Ubuntu and Debian it can be done with:
 
 ```
 sudo apt install \
+    build-essential \
+    cmake \
     libsdl2-dev \
     libsdl2-image-dev \
     libsdl2-mixer-dev \
