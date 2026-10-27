@@ -19,6 +19,7 @@
 #include "DeprecatedGUI/Menu.h"
 #include "GfxPrimitives.h"
 #include "StringUtils.h"
+#include "sound/SoundsBase.h"
 #include "DeprecatedGUI/CCheckbox.h"
 
 
@@ -55,6 +56,15 @@ CCheckbox::CCheckbox(ScriptVar_t& var) {
 	iVar = NULL;
 }
 
+
+int CCheckbox::KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate)
+{
+	if (!isActivationKey(keysym))
+		return CHK_NONE;
+	setValue(!bValue);
+	PlaySoundSample(sfxGeneral.smpClick);
+	return CHK_CHANGED;
+}
 
 }; // namespace DeprecatedGUI
 

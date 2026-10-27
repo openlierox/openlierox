@@ -141,6 +141,13 @@ public:
 	bool			CanLoseFocus()				{ return bCanLoseFocus; }
 	void			setLoseFocus(bool _f)			{ bCanLoseFocus = _f; }
 
+	// Keys that activate the focused widget; gamepad buttons are mapped to them too
+	static bool		isActivationKey(int keysym) {
+		return keysym == SDLK_RETURN || keysym == SDLK_KP_ENTER ||
+			keysym == SDLK_LALT || keysym == SDLK_LCTRL || keysym == SDLK_LSHIFT ||
+			keysym == SDLK_x || keysym == SDLK_z;
+	}
+
 	// Widget uses the arrow keys itself (e.g. a textbox cursor); see #815.
 	virtual bool	handlesArrowKeys() const		{ return false; }
 

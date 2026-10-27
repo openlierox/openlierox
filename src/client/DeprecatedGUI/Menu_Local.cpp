@@ -1009,7 +1009,13 @@ void Menu_GameSettings()
 	features->AddColumn("", 60 + 10); 
 	features->AddColumn("", maxWidth + 10); 
 	features->AddColumn("", 190); 
-	
+
+	if( Menu_IsKeyboardNavigationUsed() ) {
+		// Expand every group, so that all settings can be reached with the arrow keys
+		for( int group = 0; group < GIG_Size; group++ )
+			tLXOptions->iGameInfoGroupsShown[group] = true;
+	}
+
 	initFeaturesList(features);
 
 	cGameSettings.Add( new CLabel("", tLX->clNormalLabel), gs_FeaturesListLabel, 95 - 35, 390, 450 + 70, 40);
@@ -1461,7 +1467,8 @@ bool Menu_GameSettings_Frame()
 						featuresLabel->setText( splitStringWithNewLine(desc, (size_t)-1, 450, tLX->cFont) );
 					}
 				}
-				if( ev->iEventMsg == LV_CHANGED )
+				// Selecting a heading with the keyboard must not collapse its group
+				if( ev->iEventMsg == LV_CHANGED && !Menu_IsKeyboardNavigationUsed() )
 				{
 					for( int group = 0; group < GIG_Size; group++ )
 						if( features->getMouseOverSIndex() == GameInfoGroupDescriptions[group][0] ) {
@@ -1534,7 +1541,7 @@ static std::string		sModDirectory;
 // Weapons Restrictions
 enum {
 	wr_Ok,
-    wr_Scroll,
+    wr_List,
     wr_Reset,
 	wr_ListBox,
 	wr_Cancel,
@@ -1543,6 +1550,34 @@ enum {
 	wr_Save
 };
 
+
+static const std::string szWeaponStates[] = {"Enabled", "Bonus", "Banned"};
+
+///////////////////
+// Show the current weapon states in the list
+static void Menu_WeaponsRestrictionsUpdateList()
+{
+	CListview *lv = (CListview *)cWeaponsRest.getWidget(wr_List);
+
+	for_each_iterator(wpnrest_t, it, cWpnRestList.getList()) {
+		const std::string& name = it->get().szName;
+		int state = it->get().nState;
+
+		lv_item_t *item = lv->getItem(name);
+		if(!item) {
+			std::string buf = name;
+			stripdot(buf,245);
+			item = lv->AddItem(name, 0, tLX->clNormalLabel);
+			lv->AddSubitem(LVS_TEXT, buf, (DynDrawIntf*)NULL, NULL);
+			lv->AddSubitem(LVS_TEXT, "", (DynDrawIntf*)NULL, NULL);
+		}
+
+		lv_subitem_t *sub = lv->getSubItem(item, 1);
+		sub->sText = szWeaponStates[state];
+		// Different color will make it more comfortable for eyes
+		sub->iColour = state == wpr_bonus ? tLX->clSubHeading : state == wpr_banned ? tLX->clDisabled : tLX->clNormalLabel;
+	}
+}
 
 ///////////////////
 // Initialize the weapons restrictions
@@ -1564,7 +1599,10 @@ void Menu_WeaponsRestrictions(const std::string& szMod)
     cWeaponsRest.Add( new CButton(BUT_OK, tMenu->bmpButtons),	wr_Ok,     400,420, 30,15);
     cWeaponsRest.Add( new CButton(BUT_LOAD, tMenu->bmpButtons),	wr_Load,   250,445, 60,15);
     cWeaponsRest.Add( new CButton(BUT_SAVE, tMenu->bmpButtons),	wr_Save,   330,445, 60,15);
-    cWeaponsRest.Add( new CScrollbar(),                         wr_Scroll, 490,185, 14,230);
+    CListview *lv = new CListview();
+    cWeaponsRest.Add( lv,                                       wr_List,   150,185, 345,232);
+    lv->AddColumn("", 250);
+    lv->AddColumn("", 60);
 
 	cWpnRestList.resetToEnabled();
 	
@@ -1576,6 +1614,8 @@ void Menu_WeaponsRestrictions(const std::string& szMod)
 	// Load the weapons
 	cWpnRestList.loadList(gameSettings[FT_WeaponRest], sModDirectory);
 	cWpnRestList.updateList( cWeaponList );
+
+	Menu_WeaponsRestrictionsUpdateList();
 }
 
 //////////////////
@@ -1598,65 +1638,8 @@ bool Menu_WeaponsRestrictions_Frame()
 {
 	gui_event_t *ev = NULL;
 	mouse_t *Mouse = GetMouse();
-    //Uint32 blue = MakeColour(0,138,251);
-
-    // State strings
-    static const std::string    szStates[] = {"Enabled", "Bonus", "Banned"};
 
 	DrawImageAdv(VideoPostProcessor::videoSurface().get(), tMenu->bmpBuffer, 120,150, 120,150, 400,300);
-
-    // Draw the list
-    int count = (int)cWeaponsRest.SendMessage(wr_Scroll, SCM_GETVALUE,(uintptr_t)0,0);
-
-	int w, j;
-	w = j = 0;
-	for_each_iterator(wpnrest_t, it, cWpnRestList.getList()) {
-		if( w++ < count )
-            continue;
-        if( j > 10 )
-            break;
-
-
-        int y = 190 + (j++)*20;
-        Color Colour = tLX->clNormalLabel;
-		Color StateColour = Colour;
-		if( it->get().nState == wpr_bonus ) // Different color will make it more comfortable for eyes
-			StateColour = tLX->clSubHeading;
-		if( it->get().nState == wpr_banned )
-			StateColour = tLX->clDisabled;
-		int state = it->get().nState;
-
-        // If a mouse is over the line, highlight it
-        if( Mouse->X > 150 && Mouse->X < 450 ) {
-            if( Mouse->Y > y && Mouse->Y < y+20 ) {
-                Colour = tLX->clMouseOver;
-				StateColour = tLX->clMouseOver;
-
-                // If the mouse has been clicked, cycle through the states
-                if( Mouse->Up & SDL_BUTTON(1) ) {
-					state++;
-					state %= 3;
-					cWpnRestList.setWeaponState(it->get().szName, (WpnRestrictionState)state);
-    
-					gameSettings.overwrite[FT_WeaponRest] = "cfg/wpnrest.dat";
-				}
-            }
-        }
-
-		std::string buf = it->get().szName;
-		stripdot(buf,245);
-        tLX->cFont.Draw( VideoPostProcessor::videoSurface().get(), 150, y, Colour, buf );
-		tLX->cFont.Draw( VideoPostProcessor::videoSurface().get(), 400, y, StateColour, szStates[state] );
-	}
-
-    // Adjust the scrollbar
-    cWeaponsRest.SendMessage(wr_Scroll, SCM_SETITEMSPERBOX, 12, 0);
-    cWeaponsRest.SendMessage(wr_Scroll, SCM_SETMIN, (uintptr_t)0, 0);
-	if(cWpnRestList.getNumWeapons() > 10)
-		cWeaponsRest.SendMessage(wr_Scroll, SCM_SETMAX, cWpnRestList.getNumWeapons() + 1, 0);
-    else
-        cWeaponsRest.SendMessage(wr_Scroll, SCM_SETMAX, (uintptr_t)0, 0);
-
 
 	ev = cWeaponsRest.Process();
 	cWeaponsRest.Draw(VideoPostProcessor::videoSurface().get());
@@ -1666,15 +1649,18 @@ bool Menu_WeaponsRestrictions_Frame()
 
 		switch(ev->iControlID) {
 
-			case gev_MouseWheel:
-				if(ev->iEventMsg == gev_MouseWheelUp)  {
-					CScrollbar *tScrollbar = (CScrollbar *)cWeaponsRest.getWidget(wr_Scroll);
-					tScrollbar->MouseWheelUp(NULL);
-				}
-				
-				if(ev->iEventMsg == gev_MouseWheelDown)  {
-					CScrollbar *tScrollbar = (CScrollbar *)cWeaponsRest.getWidget(wr_Scroll);
-					tScrollbar->MouseWheelDown(NULL);
+			// Click or Enter, cycle through the states
+			case wr_List:
+				if(ev->iEventMsg == LV_ENTER ||
+				   ((ev->iEventMsg == LV_CHANGED || ev->iEventMsg == LV_DOUBLECLK) && (Mouse->Up & SDL_BUTTON(1)))) {
+					CListview *lv = (CListview *)cWeaponsRest.getWidget(wr_List);
+					const std::string name = lv->getCurSIndex();
+					if(!name.empty()) {
+						int state = (cWpnRestList.getWeaponState(name) + 1) % 3;
+						cWpnRestList.setWeaponState(name, (WpnRestrictionState)state);
+						gameSettings.overwrite[FT_WeaponRest] = "cfg/wpnrest.dat";
+						Menu_WeaponsRestrictionsUpdateList();
+					}
 				}
 				break;
 
@@ -1693,6 +1679,7 @@ bool Menu_WeaponsRestrictions_Frame()
                 if( ev->iEventMsg == BTN_CLICKED ) {
 					gameSettings.overwrite[FT_WeaponRest] = "cfg/wpnrest.dat";
                     cWpnRestList.cycleVisible(cWeaponList);
+					Menu_WeaponsRestrictionsUpdateList();
                 }
                 break;
 
@@ -1701,6 +1688,7 @@ bool Menu_WeaponsRestrictions_Frame()
                 if(ev->iEventMsg == BTN_CLICKED) {
 					gameSettings.overwrite[FT_WeaponRest] = "cfg/wpnrest.dat";
                     cWpnRestList.randomizeVisible(cWeaponList);
+					Menu_WeaponsRestrictionsUpdateList();
                 }
                 break;
 
@@ -1708,6 +1696,7 @@ bool Menu_WeaponsRestrictions_Frame()
             case wr_Load:
                 if(ev->iEventMsg == BTN_CLICKED) {
                     Menu_WeaponPresets(false,&cWpnRestList);
+					Menu_WeaponsRestrictionsUpdateList();
                 }
                 break;
 
@@ -1715,6 +1704,7 @@ bool Menu_WeaponsRestrictions_Frame()
             case wr_Save:
                 if(ev->iEventMsg == BTN_CLICKED) {
                     Menu_WeaponPresets(true,&cWpnRestList);
+					Menu_WeaponsRestrictionsUpdateList();
                 }
                 break;
 		}

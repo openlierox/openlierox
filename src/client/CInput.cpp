@@ -205,6 +205,7 @@ static const int JOY_DEADZONE = (32767 * JOY_DEADZONE_PERCENT) / 100; // 60% -> 
 void updateAxisStates() {}
 void CInput::InitJoysticksTemp() {}
 void CInput::UnInitJoysticksTemp() {}
+bool CInput::IsWaitingForInput() { return false; }
 void CInput::OnControllerAdded(int) {}
 void CInput::OnControllerRemoved(int) {}
 int getControllerPlayerSlot(SDL_JoystickID) { return -1; }
@@ -389,7 +390,12 @@ static void initController(int i, bool isTemp) {
 	SDL_GameControllerUpdate();
 }
 
+static int gTempJoysticksUsers = 0;
+
+bool CInput::IsWaitingForInput() { return gTempJoysticksUsers > 0; }
+
 void CInput::InitJoysticksTemp() {
+	gTempJoysticksUsers++;
 	if(!bJoystickSupport) return;
 	const int n = SDL_NumJoysticks();
 	notes << "Initing controllers temporary..." << endl;
@@ -408,6 +414,7 @@ static void uninitTempController(int i) {
 }
 
 void CInput::UnInitJoysticksTemp() {
+	if(gTempJoysticksUsers > 0) gTempJoysticksUsers--;
 	for(size_t i = 0; i < controllers.size(); ++i) uninitTempController((int)i);
 }
 

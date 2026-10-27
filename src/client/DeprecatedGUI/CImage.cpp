@@ -77,4 +77,9 @@ uintptr_t CImage::SendMessage(int iMsg, uintptr_t Param1, uintptr_t Param2)
 	return 0;
 }
 
+int CImage::KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate)
+{
+	return isActivationKey(keysym) ? IMG_CLICK : IMG_NONE;
+}
+
 }; // namespace DeprecatedGUI

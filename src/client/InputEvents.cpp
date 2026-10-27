@@ -396,6 +396,7 @@ static void EvHndl_MouseMotion(SDL_Event* ev) {
 	mouseY = CLAMP(mouseY, 0, VideoPostProcessor::get()->screenHeight());*/
 	mouseX = ev->motion.x;
 	mouseY = ev->motion.y;
+	DeprecatedGUI::Menu_ProcessMouseMotion(mouseX, mouseY);
 	// Genuine mouse movement (not a compatibility event trailing a real tap)
 	// means the player is on the mouse — show the software cursor.
 	if(ev->motion.which != SDL_TOUCH_MOUSEID && !recentRealTouch())
@@ -427,28 +428,112 @@ static void EvHndl_MouseButtonUp(SDL_Event* ev) {
 	}
 }
 
-// Two unrelated jobs on the same event:
+// True while a menu (not the game itself) reads the keyboard.
+// Only then gamepad input is mirrored as menu navigation keys,
+// because during the match the same buttons control the worm.
+static bool menuInputActive() {
+	if(CInput::IsWaitingForInput()) return false;
+	switch(game.state) {
+		case Game::S_Inactive:
+		case Game::S_Connecting:
+		case Game::S_Lobby:
+			return true;
+		default:
+			return DeprecatedGUI::bShowFloatingOptions || (cClient && cClient->isGameMenu());
+	}
+}
+
+static SDL_Keycode controllerButtonToMenuKey(Uint8 button) {
+	switch(button) {
+		case SDL_CONTROLLER_BUTTON_DPAD_UP:    return SDLK_UP;
+		case SDL_CONTROLLER_BUTTON_DPAD_DOWN:  return SDLK_DOWN;
+		case SDL_CONTROLLER_BUTTON_DPAD_LEFT:  return SDLK_LEFT;
+		case SDL_CONTROLLER_BUTTON_DPAD_RIGHT: return SDLK_RIGHT;
+		case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:  return SDLK_PAGEUP;
+		case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER: return SDLK_PAGEDOWN;
+		case SDL_CONTROLLER_BUTTON_A:          return SDLK_RETURN;
+		case SDL_CONTROLLER_BUTTON_B:          return SDLK_ESCAPE;
+		default:                               return 0;
+	}
+}
+
+// The left stick works like the arrow keys in menus, including key repeat.
+// There is one direction per axis; stickKey is the arrow key currently held, or 0.
+static const int kStickMenuThreshold = 16000;
+static const Uint32 kStickRepeatDelay = 400;
+static const Uint32 kStickRepeatInterval = 100;
+static SDL_Keycode gStickKey[2] = { 0, 0 };
+static Uint32 gStickNextRepeat[2] = { 0, 0 };
+
+// Buttons whose key press was sent to the menu, so that exactly their release is sent as well
+static std::set<Uint8> gMenuButtonsDown;
+
+static void setStickMenuKey(int axis, SDL_Keycode key) {
+	if(key && !menuInputActive()) key = 0;
+	if(gStickKey[axis] == key) return;
+	if(gStickKey[axis]) InjectSyntheticKey(gStickKey[axis], false);
+	gStickKey[axis] = key;
+	if(key) {
+		InjectSyntheticKey(key, true);
+		gStickNextRepeat[axis] = SDL_GetTicks() + kStickRepeatDelay;
+	}
+}
+
+static void repeatStickMenuKeys() {
+	for(int axis = 0; axis < 2; axis++) {
+		if(!gStickKey[axis]) continue;
+		if(!menuInputActive()) {
+			setStickMenuKey(axis, 0);
+			continue;
+		}
+		Uint32 now = SDL_GetTicks();
+		if((Sint32)(now - gStickNextRepeat[axis]) < 0) continue;
+		gStickNextRepeat[axis] = now + kStickRepeatInterval;
+		InjectSyntheticKey(gStickKey[axis], true);
+	}
+}
+
+// Three unrelated jobs on the same event:
 //  1) Gamepad activity on player 1's controller hides the touch UI.
 //     Player 2's controller (slot 1) is left alone, matching the keyboard rule.
 //  2) START on any controller mirrors Escape, so it opens/closes the in-game
 //     menu (and acts as Escape elsewhere) exactly like the keyboard. Synth-
 //     esising a key event keeps every Escape-driven behaviour in sync.
+//  3) In menus, the D-pad, A, B and the shoulder buttons mirror the arrow keys,
+//     Return, Escape, PageUp and PageDown, so the keyboard navigation works with a gamepad.
 static void EvHndl_ControllerButton(SDL_Event* ev) {
 	if(ev->type == SDL_CONTROLLERBUTTONDOWN
 	&& getControllerPlayerSlot(ev->cbutton.which) == 0)
 		TouchControls::NotifyExternalInput();
 
+	bool down = (ev->type == SDL_CONTROLLERBUTTONDOWN);
 	if(ev->cbutton.button == SDL_CONTROLLER_BUTTON_START) {
-		KeyboardEvent kbev;
-		kbev.sym = SDLK_ESCAPE;
-		kbev.ch = 0;
-		kbev.down = (ev->type == SDL_CONTROLLERBUTTONDOWN);
-		kbev.state = evtModifiersState;
-		pushKeyboardEv(kbev);
+		InjectSyntheticKey(SDLK_ESCAPE, down);
+		return;
 	}
+
+	SDL_Keycode key = controllerButtonToMenuKey(ev->cbutton.button);
+	if(!key) return;
+	if(down) {
+		if(!menuInputActive()) return;
+		gMenuButtonsDown.insert(ev->cbutton.button);
+	} else if(gMenuButtonsDown.erase(ev->cbutton.button) == 0)
+		return;
+	InjectSyntheticKey(key, down);
 }
 static void EvHndl_ControllerAxis(SDL_Event* ev) {
 	constexpr int kAxisActiveThreshold = 8000;
+
+	if(ev->caxis.axis == SDL_CONTROLLER_AXIS_LEFTX || ev->caxis.axis == SDL_CONTROLLER_AXIS_LEFTY) {
+		bool horizontal = (ev->caxis.axis == SDL_CONTROLLER_AXIS_LEFTX);
+		SDL_Keycode key = 0;
+		if(ev->caxis.value < -kStickMenuThreshold)
+			key = horizontal ? SDLK_LEFT : SDLK_UP;
+		else if(ev->caxis.value > kStickMenuThreshold)
+			key = horizontal ? SDLK_RIGHT : SDLK_DOWN;
+		setStickMenuKey(horizontal ? 0 : 1, key);
+	}
+
 	if(ev->caxis.value <=  kAxisActiveThreshold
 	&& ev->caxis.value >= -kAxisActiveThreshold) return;
 	if(getControllerPlayerSlot(ev->caxis.which) == 0)
@@ -639,6 +724,8 @@ void ProcessEvents()
 		HandleNextEvent();
 		ret = true;
 	}
+
+	repeatStickMenuKeys();
 
 #ifdef FUZZY_ERROR_TESTING
 	/*Event.type = GetRandomInt(255);

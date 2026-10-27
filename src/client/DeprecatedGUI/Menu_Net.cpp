@@ -35,7 +35,7 @@
 namespace DeprecatedGUI {
 
 enum {
-	mn_Internet=0,
+	mn_Internet=1000,
 	mn_LAN,
 	mn_Host,
 	mn_Favourites,
@@ -43,11 +43,9 @@ enum {
 	mn_Chat,
 };
 
-
 // TODO: remove globals
 int		iNetMode = net_main;
 int		iHostType = 0;
-CButton	cNetButtons[6];
 SDL_Rect tLoadingRect;
 
 
@@ -70,22 +68,6 @@ bool Menu_NetInitialize(bool withSubMenu)
 		Menu_DrawBox(tMenu->bmpBuffer.get(), 15,130, 625, 465);
 	Menu_DrawSubTitle(tMenu->bmpBuffer.get(),SUB_NETWORK);
 	Menu_RedrawMouse(true);
-
-	// Setup the top buttons
-	int image_ids[] = {BUT_INTERNET, BUT_LAN, BUT_HOST, BUT_FAVOURITES, BUT_NEWS, BUT_CHAT};
-    for(size_t i=0; i < sizeof(image_ids) / sizeof(int); ++i) {
-    	cNetButtons[i].setImage(tMenu->bmpButtons);
-    	cNetButtons[i].setImageID(image_ids[i]);
-        cNetButtons[i].Create();
-    }
-
-	cNetButtons[mn_Internet].Setup(mn_Internet, 75, 110, 95, 15);
-	cNetButtons[mn_LAN].Setup(mn_LAN, 190, 110, 40, 15);
-	cNetButtons[mn_Host].Setup(mn_Host, 255, 110, 50, 15);
-	cNetButtons[mn_Favourites].Setup(mn_Favourites, 330, 110, 105, 15);
-	cNetButtons[mn_News].Setup(mn_News, 460, 110, 50, 15);
-	cNetButtons[mn_Chat].Setup(mn_Chat, 535, 110, 50, 15);
-	//cNetButtons[4].Setup(4, 400, 110, 105, 15);
 
 	// Initialize the IRC support
 	InitializeIRC();
@@ -135,13 +117,6 @@ void Menu_Net_GotoHostLobby()
 			Menu_DrawBox(tMenu->bmpBuffer.get(), 15,130, 625, 465);
 		Menu_DrawSubTitle(tMenu->bmpBuffer.get(),SUB_NETWORK);
 		Menu_RedrawMouse(true);
-
-
-		cNetButtons[mn_Internet].Setup(mn_Internet, 205, 110, 95, 15);
-		cNetButtons[mn_LAN].Setup(mn_LAN, 320, 110, 40, 15);
-		cNetButtons[mn_Host].Setup(mn_Host, 385, 110, 50, 15);
-		cNetButtons[mn_Favourites].Setup(mn_Favourites, 460, 110, 50, 15);
-		//cNetButtons[4].Setup(4, 460, 110, 50, 15);
 	}
 
 	bSkipStart = true;
@@ -151,97 +126,110 @@ void Menu_Net_GotoHostLobby()
 
 
 ///////////////////
+// Add the buttons for switching between the net menu tabs, called by each tab
+void Menu_Net_AddTabBarButtons(CGuiLayout * layout)
+{
+	struct Tab { int id; int image; int x; int w; int mode; };
+	static const Tab tabs[] = {
+		{ mn_Internet,   BUT_INTERNET,   75,  95, net_internet },
+		{ mn_LAN,        BUT_LAN,        190, 40, net_lan },
+		{ mn_Host,       BUT_HOST,       255, 50, net_host },
+		{ mn_Favourites, BUT_FAVOURITES, 330, 105, net_favourites },
+		{ mn_News,       BUT_NEWS,       460, 50, net_news },
+		{ mn_Chat,       BUT_CHAT,       535, 50, net_chat },
+	};
+
+	for (const Tab& tab : tabs) {
+		CButton * button = new CButton(tab.image, tMenu->bmpButtons);
+		// The current tab is drawn highlighted
+		button->setSelected(tab.mode == iNetMode);
+		layout->Add( button, tab.id, tab.x, 110, tab.w, 15 );
+	}
+}
+
+///////////////////
+// Close the current tab and open another one
+static void Menu_Net_GotoTab(int mode)
+{
+	CChatWidget::GlobalSetEnabled(false);
+
+	// Call a shutdown on all the highest net menu's
+	Menu_Net_MainShutdown();
+	Menu_Net_LANShutdown();
+	Menu_Net_NETShutdown();
+	Menu_Net_HostShutdown();
+	Menu_Net_FavouritesShutdown();
+	Menu_Net_NewsShutdown();
+	Menu_Net_ChatShutdown();
+
+	iNetMode = mode;
+
+	// Redraw the window section
+	DrawImageAdv(VideoPostProcessor::videoSurface().get(), tMenu->bmpBuffer, 20,140,  20,140,  620,340);
+
+	// Initialize the appropriate menu
+	switch(iNetMode) {
+		case net_lan:
+			Menu_Net_LANInitialize();
+			break;
+		case net_internet:
+			Menu_Net_NETInitialize();
+			break;
+		case net_host:
+			Menu_Net_HostInitialize();
+			break;
+		case net_favourites:
+			Menu_Net_FavouritesInitialize();
+			break;
+		case net_news:
+			Menu_Net_NewsInitialize();
+			break;
+		case net_chat:
+			Menu_Net_ChatInitialize();
+			break;
+	}
+}
+
+///////////////////
+// Switch the tab if one of the tab buttons was activated, called by each tab.
+// Returns true if the tab was switched, the caller must not touch its layout anymore.
+bool Menu_Net_ProcessTabBarButtons(gui_event_t *ev)
+{
+	if (!ev || ev->iEventMsg != BTN_CLICKED)
+		return false;
+
+	int mode;
+	switch (ev->iControlID) {
+		case mn_Internet:   mode = net_internet; break;
+		case mn_LAN:        mode = net_lan; break;
+		case mn_Host:       mode = net_host; break;
+		case mn_Favourites: mode = net_favourites; break;
+		case mn_News:       mode = net_news; break;
+		case mn_Chat:       mode = net_chat; break;
+		default:
+			return false;
+	}
+
+	PlaySoundSample(sfxGeneral.smpClick);
+	Menu_Net_GotoTab(mode);
+	return true;
+}
+
+
+///////////////////
 // The main net menu frame
 void Menu_NetFrame()
 {
 	int		mouse = 0;
-	mouse_t	*Mouse = GetMouse();
-
 
 	// Refresh the main window of the screen
 	//DrawImageAdv(VideoPostProcessor::videoSurface(), tMenu->bmpBuffer, 20,140,  20,140,  620,340);
 	//DrawImageAdv(VideoPostProcessor::videoSurface(), tMenu->bmpBuffer, 120,110, 120,110, 420,30);
 
-
-	// Process the top buttons
-	if((iNetMode != net_host || iHostType == 0) &&
-	   (iNetMode != net_join)) {
-
-		cNetButtons[iNetMode-1].MouseOver(Mouse);
-		for(int i=mn_Internet; i<=mn_Chat && mouse == 0; i++) {
-
-			cNetButtons[i].Draw(VideoPostProcessor::videoSurface().get());
-
-			if( i == iNetMode-1 )
-				continue;
-
-			if( cNetButtons[i].InBox(Mouse->X, Mouse->Y) ) {
-				cNetButtons[i].MouseOver(Mouse);
-			}
-			
-			if( (cNetButtons[i].InBox(Mouse->X, Mouse->Y) && Mouse->Up) || 
-				( i == mn_Chat && CChatWidget::GlobalEnabled() && iNetMode != net_chat ) ) {
-
-				CChatWidget::GlobalSetEnabled(false);
-				mouse = 1;
-
-				PlaySoundSample(sfxGeneral.smpClick);
-
-				// Call a shutdown on all the highest net menu's
-				Menu_Net_MainShutdown();
-				Menu_Net_LANShutdown();
-				Menu_Net_NETShutdown();
-				Menu_Net_HostShutdown();
-				Menu_Net_FavouritesShutdown();
-				Menu_Net_NewsShutdown();
-				Menu_Net_ChatShutdown();
-
-                iNetMode = i+1;
-
-                // Redraw the window section
-                DrawImageAdv(VideoPostProcessor::videoSurface().get(), tMenu->bmpBuffer, 20,140,  20,140,  620,340);
-
-				// Initialize the appropriate menu
-				switch(iNetMode) {
-
-					// Main
-					case net_main:
-						Menu_Net_MainInitialize();
-						break;
-
-					// LAN
-					case net_lan:
-						Menu_Net_LANInitialize();
-						break;
-
-					// Internet
-					case net_internet:
-						Menu_Net_NETInitialize();
-						break;
-
-					// Host
-					case net_host:
-						Menu_Net_HostInitialize();
-						break;
-
-					// Favourites
-					case net_favourites:
-						Menu_Net_FavouritesInitialize();
-						break;
-
-					// News
-					case net_news:
-						Menu_Net_NewsInitialize();
-						break;
-
-					// Chat
-					case net_chat:
-						Menu_Net_ChatInitialize();
-						break;
-				}
-			}
-		}
-	}
+	// Continue in the chat tab if a chat popup was left open from a game
+	if (CChatWidget::GlobalEnabled() && iNetMode != net_chat &&
+		(iNetMode != net_host || iHostType == 0) && iNetMode != net_join)
+		Menu_Net_GotoTab(net_chat);
 
 	// Run the frame of the current menu screen
 	switch(iNetMode) {

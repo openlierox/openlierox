@@ -58,6 +58,8 @@ public:
 
 
 private:
+	int		keyboardStep() const;
+
 	// Attributes
 
 	int		iValue;

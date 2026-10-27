@@ -254,7 +254,7 @@ CWidget *CGuiLayout::keyboardNavigationTarget(int keysym) const
 		int posmin = 0;
 		int posmax = cFocused->getX() + cFocused->getY() * 0x10000 + cFocused->getKeyboardNavigationOrder() * 0x10000000;
 		for(auto widget: cWidgets) {
-			if (!widget->getEnabled() || widget == cFocused || widget->getType() == wid_Label)
+			if (!widget->getEnabled() || widget == cFocused || widget->getType() == wid_Label || widget->getType() == wid_None)
 				continue;
 			int pos = widget->getX() + widget->getY() * 0x10000 + widget->getKeyboardNavigationOrder() * 0x10000000;
 			if (posmin < pos && posmax > pos) {
@@ -266,7 +266,7 @@ CWidget *CGuiLayout::keyboardNavigationTarget(int keysym) const
 		int posmin = cFocused->getX() + cFocused->getY() * 0x10000 + cFocused->getKeyboardNavigationOrder() * 0x10000000;
 		int posmax = INT_MAX;
 		for(auto widget: cWidgets) {
-			if (!widget->getEnabled() || widget == cFocused || widget->getType() == wid_Label)
+			if (!widget->getEnabled() || widget == cFocused || widget->getType() == wid_Label || widget->getType() == wid_None)
 				continue;
 			int pos = widget->getX() + widget->getY() * 0x10000 + widget->getKeyboardNavigationOrder() * 0x10000000;
 			if (posmin < pos && posmax > pos) {
@@ -412,7 +412,7 @@ gui_event_t *CGuiLayout::Process()
 	if (!cFocused && bKeyboardNavigation) {
 		int posmax = INT_MAX;
 		for(auto widget: cWidgets) {
-			if (!widget->getEnabled() || widget->getType() == wid_Label)
+			if (!widget->getEnabled() || widget->getType() == wid_Label || widget->getType() == wid_None)
 				continue;
 			int pos = widget->getX() + widget->getY() * 0x10000 + widget->getKeyboardNavigationOrder() * 0x10000000;
 			if (posmax > pos) {
@@ -425,19 +425,7 @@ gui_event_t *CGuiLayout::Process()
 
 	if (cFocused && widgetSelectedWithKeyboard) {
 		cFocused->setFocused(true);
-		struct RepositionMouse: public Action
-		{
-			int x, y;
-			RepositionMouse(int _x, int _y): x(_x), y(_y)
-			{
-			}
-			Result handle()
-			{
-				SDL_WarpMouseInWindow(NULL, x, y);
-				return true;
-			}
-		};
-		doActionInMainThread( new RepositionMouse(cFocused->getX() + 1, cFocused->getY() + cFocused->getHeight() - 2) );
+		Menu_WarpMouse(cFocused->getX() + 1, cFocused->getY() + cFocused->getHeight() - 2);
 		PlaySoundSample(sfxGeneral.smpClick);
 	}
 

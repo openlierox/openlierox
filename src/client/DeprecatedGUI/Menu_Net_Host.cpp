@@ -135,6 +135,8 @@ bool Menu_Net_HostInitialize()
 	//cHostPly.Add( new CLabel("Server-side Health",			tLX->clNormalLabel),-1,	125, 418,0,  0);
 	//cHostPly.Add( new CCheckbox(false),	                    hs_ServerSideHealth,	270,415,17, 17);
 
+	Menu_Net_AddTabBarButtons(&cHostPly);
+
 	cHostPly.getWidget(hs_Playing)->setKeyboardNavigationOrder(1);
 	cHostPly.getWidget(hs_Back)->setKeyboardNavigationOrder(1);
 	cHostPly.getWidget(hs_Ok)->setKeyboardNavigationOrder(1);
@@ -268,6 +270,9 @@ void Menu_Net_HostPlyFrame(int mouse)
 	// Process & Draw the gui
 	ev = cHostPly.Process();
 	cHostPly.Draw( VideoPostProcessor::videoSurface().get() );
+
+	if (Menu_Net_ProcessTabBarButtons(ev))
+		return;
 
 	
 	// Process any events
@@ -720,7 +725,7 @@ void Menu_Net_HostLobbyCreateGui()
 	// Setup the player list
 	CListview *player_list = (CListview *)cHostLobby.getWidget(hl_PlayerList);
 	if (player_list)  {
-		player_list->setShowSelect(false);
+		player_list->setShowSelect(Menu_IsKeyboardNavigationUsed());
 		player_list->setOldStyle(true);
 		player_list->AddColumn("Players", gfxGUI.bmpCommandBtn.get()->w / 2 + 2, tLX->clHeading);  // Command button/Player label
 		player_list->AddColumn("", tMenu->bmpLobbyReady.get()->w + 2);  // Lobby ready
@@ -1171,12 +1176,14 @@ void Menu_Net_HostLobbyFrame(int mouse)
 				break;
 
             // Popup menu
-			case hl_PopupMenu:  {
+			case hl_PopupMenu:
+				if (ev->iEventMsg >= MNU_USER) {
 					Menu_HostActionsPopupMenuClick(cHostLobby, hl_PopupMenu, hl_PopupPlayerInfo, g_nLobbyWorm, ev->iEventMsg);
 				} 
 				break;
 
-			case hl_PopupPlayerInfo:  {
+			case hl_PopupPlayerInfo:
+				if (ev->iEventMsg >= MNU_USER) {
 					Menu_HostActionsPopupPlayerInfoClick(cHostLobby, hl_PopupMenu, hl_PopupPlayerInfo, g_nLobbyWorm, ev->iEventMsg);
 				} 
 				break;
@@ -1208,6 +1215,14 @@ void Menu_Net_HostLobbyFrame(int mouse)
 	}
 
 	
+	if (Menu_IsKeyboardNavigationUsed() && (!cHostLobby.getFocusedWidget() || cHostLobby.getFocusedWidget()->getID() != hl_PopupMenu)) {
+		// If popup menu not focused, remove it
+		cHostLobby.SendMessage(hl_PopupMenu, MNM_REDRAWBUFFER, (uintptr_t)0, 0);
+		cHostLobby.removeWidget(hl_PopupMenu);
+		cHostLobby.SendMessage(hl_PopupPlayerInfo, MNM_REDRAWBUFFER, (uintptr_t)0, 0);
+		cHostLobby.removeWidget(hl_PopupPlayerInfo);
+	}
+
 	// Draw the mouse
 	DrawCursor(VideoPostProcessor::videoSurface().get());
 
@@ -1756,7 +1771,7 @@ void Menu_HostActionsPopupMenuInitialize( CGuiLayout & layout, int id_PopupMenu,
 {
 						// Remove old popup menu
 						layout.removeWidget(id_PopupMenu);
-						cHostLobby.removeWidget(id_PopupPlayerInfo);
+						layout.removeWidget(id_PopupPlayerInfo);
 
 						if (wormid < 0 || wormid >= MAX_WORMS)
 							return;
@@ -1773,6 +1788,9 @@ void Menu_HostActionsPopupMenuInitialize( CGuiLayout & layout, int id_PopupMenu,
 						{
 							mnu = new CMenu(Mouse->X, Mouse->Y);
 							layout.Add(mnu, id_PopupMenu, 0, 0, 640, 480 );
+							if (game.gameMode()->GameTeams() > 1) {
+								mnu->addItem(5, "Change team");
+							}
 							if (wormid > 0)  {  // These items make no sense for host
 								mnu->addItem(0, "Kick player");
 								mnu->addItem(1, "Ban player");
@@ -1786,6 +1804,8 @@ void Menu_HostActionsPopupMenuInitialize( CGuiLayout & layout, int id_PopupMenu,
 							}
 							if( game.state != Game::S_Playing )
 								mnu->addItem(4, "Spectator", true, w->isSpectating());
+
+							layout.FocusWidget(id_PopupMenu);
 						}
 
 						CMenu * info = new CMenu( Mouse->X + (mnu ? mnu->getMenuWidth() : 0) + 10, Mouse->Y );
@@ -1876,6 +1896,16 @@ void Menu_HostActionsPopupMenuClick(CGuiLayout & layout, int id_PopupMenu, int i
 									cServer->SendGlobalText(replacemax(networkTexts->sIsPlaying, "<player>", w->getName(), buf, 1), TXT_NETWORK);
 							}
 						}
+						} break;
+
+					// Team
+					case MNU_USER+5:  {
+							CWorm *w = game.wormById(wormid, false);
+							if(!w) break;
+							w->setTeam((w->getTeam() + 1) % game.gameMode()->GameTeams());
+
+							cServer->SendWormLobbyUpdate();  // Update
+							bHost_Update = true;
 						} break;
                 }
 

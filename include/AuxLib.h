@@ -123,6 +123,7 @@ public:
 	static void uninit();
 
 	SDL_Window* sdl_window() const { return m_window.get(); }
+	SDL_Renderer* sdl_renderer() const { return m_renderer.get(); }
 
 	bool initWindow();
 	bool resetVideo(); // this is called from SetVideoMode

@@ -19,6 +19,7 @@
 #include "DeprecatedGUI/Graphics.h"
 #include "DeprecatedGUI/Menu.h"
 #include "GfxPrimitives.h"
+#include "sound/SoundsBase.h"
 #include "DeprecatedGUI/CSlider.h"
 
 
@@ -73,19 +74,28 @@ int CSlider::MouseDown(mouse_t *tMouse, int nDown)
 	return SLD_CHANGE;
 }
 
+// Wide ranges move 2% per key press, narrow ones 10%
+int CSlider::keyboardStep() const
+{
+	int range = iMax - iMin;
+	return range >= 50 ? range / 50 : range >= 10 ? range / 10 : 1;
+}
+
 int CSlider::KeyDown(UnicodeChar c, int keysym, const ModifiersState& modstate)
 {
 	switch (keysym)  {
 		case SDLK_LEFT:
-			iValue -= (iMax - iMin) >= 10 ? (iMax - iMin) / 10 : 1;
+			iValue -= keyboardStep();
 			iValue = MAX(iMin,iValue);
 			iValue = MIN(iMax,iValue);
+			PlaySoundSample(sfxGeneral.smpClick);
 		return SLD_CHANGE;
 
 		case SDLK_RIGHT:
-			iValue += (iMax - iMin) >= 10 ? (iMax - iMin) / 10 : 1;
+			iValue += keyboardStep();
 			iValue = MAX(iMin,iValue);
 			iValue = MIN(iMax,iValue);
+			PlaySoundSample(sfxGeneral.smpClick);
 		return SLD_CHANGE;
 	}
 

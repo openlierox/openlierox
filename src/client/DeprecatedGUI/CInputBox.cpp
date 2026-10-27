@@ -19,6 +19,7 @@
 #include "DeprecatedGUI/Menu.h"
 #include "GfxPrimitives.h"
 #include "CInput.h"
+#include "sound/SoundsBase.h"
 #include "DeprecatedGUI/CInputBox.h"
 
 
@@ -66,6 +67,14 @@ CInputboxInput::CInputboxInput(): CInputbox( 0, "", tMenu->bmpInputbox, "" )
 CInputboxInput::~CInputboxInput()
 {
 	CInput::UnInitJoysticksTemp();
+}
+
+int CInputbox::KeyUp(UnicodeChar c, int keysym, const ModifiersState& modstate)
+{
+	if (!isActivationKey(keysym))
+		return INB_NONE;
+	PlaySoundSample(sfxGeneral.smpClick);
+	return INB_MOUSEUP;
 }
 
 }; // namespace DeprecatedGUI

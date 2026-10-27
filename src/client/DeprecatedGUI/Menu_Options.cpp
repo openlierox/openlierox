@@ -34,13 +34,13 @@
 #include "IpToCountryDB.h"
 #include "ConversationLogger.h"
 #include "TouchControls.h"
+#include "DeprecatedGUI/CTextButton.h"
 #include "Consts.h" // for MAX_LOCAL_PLAYERS
 
 
 namespace DeprecatedGUI {
 
 int OptionsMode = 0;
-CGuiLayout	cOptions;
 CGuiLayout	cOpt_Controls;        // Player 1 controls   (sub-tab 0)
 CGuiLayout	cOpt_Controls2;       // Player 2 controls   (sub-tab 1)
 CGuiLayout	cOpt_Controls3;       // Player 3 controls   (sub-tab 2, gamepad by default)
@@ -81,16 +81,12 @@ static bool IsControlsTabVisible(int t) {
 		return (t - ct_Player1) < kNumPlayerControlTabs;
 	return true;
 }
-// Tab header hit-boxes, filled in when drawn (see Menu_OptionsDrawControlsTabs).
-static SDL_Rect ControlsTabRects[ct__Count];
 // "Reset defaults" button hit-box, filled in when drawn.
-static SDL_Rect ResetBtnRect;
 
 // Touch-screen tab state: list of available layouts (re-fetched at
 // Menu_OptionsInitialize, hence whenever the user re-enters the menu)
 // plus the per-tile hit-boxes filled in by Menu_OptionsDrawTouchTiles.
 static std::vector<TouchControls::LayoutInfo> gTouchLayoutInfos;
-static std::vector<SDL_Rect>                  gTouchLayoutTileRects;
 
 // The On / Off / Auto selector for Game.TouchscreenControls, shown on the top
 // row of the Touchscreen sub-tab (above the layout tiles). The labels map to
@@ -99,7 +95,6 @@ static const struct { const char* label; const char* value; } kTouchModeChoices[
 	{ "Auto-detect", "auto" }, { "Always on", "true" }, { "Always off", "false" },
 };
 static const int kTouchModeCount = (int)(sizeof(kTouchModeChoices) / sizeof(kTouchModeChoices[0]));
-static SDL_Rect gTouchModeRects[kTouchModeCount];
 
 // Which choice the current option value corresponds to (for highlighting).
 static int Menu_CurrentTouchMode() {
@@ -109,15 +104,27 @@ static int Menu_CurrentTouchMode() {
 	if(stringcaseequal(v, "false") || stringcaseequal(v, "no")  || stringcaseequal(v, "off") || v == "0") return 2;
 	return 0; // "auto" or anything unrecognised
 }
-CButton		TopButtons[3];
 
 // Control id's
 enum {
-	op_Back = -2,
 	Static = -1,
-	op_Controls=0,
+};
+
+// The ids of the buttons that every page has; clear of the ids of the page widgets.
+// Controls, Game and System are in the order of OptionsMode.
+enum {
+	op_Controls=1000,
 	op_Game,
-	op_System
+	op_System,
+	op_Back,
+};
+
+// The ids of the Controls sub-tab headers, one per ControlsSubTab value
+enum {
+	op_ControlsTab=2000,
+	op_ControlsReset=2100,
+	op_TouchMode=2200,	// one per kTouchModeChoices
+	op_TouchTile=2300,	// one per touch layout
 };
 
 enum {
@@ -360,8 +367,32 @@ static void Menu_AddControlRow(CGuiLayout& layout, const std::string& label, int
 	}
 }
 
+// Add the page buttons and the Back button to a page of the options
+static void Menu_OptionsAddTopButtons(CGuiLayout * layout)
+{
+	layout->Add( new CButton(BUT_CONTROLS, tMenu->bmpButtons), op_Controls, 180, 110, 100, 15);
+	layout->Add( new CButton(BUT_GAME, tMenu->bmpButtons), op_Game, 310, 110, 50, 15);
+	layout->Add( new CButton(BUT_SYSTEM, tMenu->bmpButtons), op_System, 390, 110, 70, 15);
+	layout->Add( new CButton(BUT_BACK, tMenu->bmpButtons), op_Back, 25,440, 50,15);
+}
+
+// Highlight the button of the current page on all pages
+static void Menu_OptionsUpdateTopButtons()
+{
+	CGuiLayout * layouts[] = { &cOpt_ControlsGen, &cOpt_ControlsTouch, &cOpt_System, &cOpt_Game };
+	for (CGuiLayout * layout : layouts)
+		for (int page = 0; page < 3; page++)
+			((CButton *)layout->getWidget(op_Controls + page))->setSelected(page == OptionsMode);
+	for (int ply = 0; ply < kMaxPlayerControlTabs; ply++)
+		for (int page = 0; page < 3; page++)
+			((CButton *)PlayerControlsLayout(ply)->getWidget(op_Controls + page))->setSelected(page == OptionsMode);
+}
+
 // Defined further down; forward-declared so Menu_OptionsInitialize can call it.
 static void Menu_OptionsRefreshTouchTiles();
+static void Menu_OptionsAddControlsTabs(CGuiLayout * layout);
+static void Menu_OptionsAddResetButton(CGuiLayout * layout);
+static void Menu_OptionsAddTouchHotspots(CGuiLayout * layout);
 
 ///////////////////
 // Initialize the options
@@ -379,40 +410,34 @@ bool Menu_OptionsInitialize()
 
 	Menu_RedrawMouse(true);
 
-	// Setup the top buttons
-	TopButtons[op_Controls] =	CButton(BUT_CONTROLS,	tMenu->bmpButtons);
-	TopButtons[op_Game] =		CButton(BUT_GAME,		tMenu->bmpButtons);
-	TopButtons[op_System] =		CButton(BUT_SYSTEM,		tMenu->bmpButtons);
-
-	TopButtons[0].Setup(op_Controls, 180, 110, 100, 15);
-	TopButtons[1].Setup(op_Game, 310, 110, 50, 15);
-	TopButtons[2].Setup(op_System, 390, 110, 70, 15);
-    for(i=op_Controls; i<=op_System; i++)
-        TopButtons[i].Create();
-
-	cOptions.Shutdown();
-	cOptions.Initialize();
-
 	cOpt_System.Shutdown();
 	cOpt_System.Initialize();
+	Menu_OptionsAddTopButtons(&cOpt_System);
 
 	for(int ply = 0; ply < kMaxPlayerControlTabs; ply++) {
 		PlayerControlsLayout(ply)->Shutdown();
 		PlayerControlsLayout(ply)->Initialize();
+		Menu_OptionsAddTopButtons(PlayerControlsLayout(ply));
+		Menu_OptionsAddControlsTabs(PlayerControlsLayout(ply));
+		Menu_OptionsAddResetButton(PlayerControlsLayout(ply));
 	}
 
 	cOpt_ControlsGen.Shutdown();
 	cOpt_ControlsGen.Initialize();
+	Menu_OptionsAddTopButtons(&cOpt_ControlsGen);
+	Menu_OptionsAddControlsTabs(&cOpt_ControlsGen);
+	Menu_OptionsAddResetButton(&cOpt_ControlsGen);
 
 	cOpt_ControlsTouch.Shutdown();
 	cOpt_ControlsTouch.Initialize();
+	Menu_OptionsAddTopButtons(&cOpt_ControlsTouch);
+	Menu_OptionsAddControlsTabs(&cOpt_ControlsTouch);
 
 	cOpt_Game.Shutdown();
 	cOpt_Game.Initialize();
+	Menu_OptionsAddTopButtons(&cOpt_Game);
 
-
-	// Add the controls
-	cOptions.Add( new CButton(BUT_BACK, tMenu->bmpButtons), op_Back, 25,440, 50,15);
+	Menu_OptionsUpdateTopButtons();
 
 
 	// Controls — each local player (Player 1..MAX_LOCAL_PLAYERS) gets its own
@@ -447,13 +472,14 @@ bool Menu_OptionsInitialize()
 	// Controls — Touch screen (fourth sub-tab). Layouts are picked from
 	// preview tiles drawn directly onto the menu — see
 	// Menu_OptionsRefreshTouchTiles / Menu_OptionsDrawTouchTiles. The
-	// CGuiLayout itself stays empty for this tab; we only draw the tiles
-	// on top of the normal Process()/Draw() of the (empty) cOpt_ControlsTouch.
+	// CGuiLayout itself only holds invisible hotspots over them (see CTouchHotspot);
+	// the tiles are drawn on top of the normal Process()/Draw() of cOpt_ControlsTouch.
 	Menu_OptionsRefreshTouchTiles();
+	Menu_OptionsAddTouchHotspots(&cOpt_ControlsTouch);
 
-	// The "Reset defaults" button is drawn manually (see
-	// Menu_OptionsDrawResetButton) so it can show that exact text — the atlas
-	// buttons only offer a generic "Default" graphic.
+	// The "Reset defaults" button is a text widget (see CResetDefaultsButton)
+	// so it can show that exact text — the atlas buttons only offer a generic
+	// "Default" graphic.
 
 
 
@@ -650,6 +676,7 @@ bool Menu_StartWithSysOptionsMenu(void*) {
 	bSkipStart = true;
 	Menu_OptionsInitialize();
 	OptionsMode = 2;
+	Menu_OptionsUpdateTopButtons();
 	return true;
 }
 
@@ -689,35 +716,42 @@ static CGuiLayout& Menu_OptionsControlsLayout()
 	}
 }
 
-///////////////////
-// Draws the Controls sub-tab headers (Player 1 / Player 2 / General) and
-// records their hit-boxes in ControlsTabRects.
-static void Menu_OptionsDrawControlsTabs(SDL_Surface* dest)
+// A header of the Controls sub-tabs. The current one is highlighted and underlined,
+// the one with the keyboard focus or under the mouse is highlighted.
+class CControlsTabButton : public CTextButton {
+public:
+	CControlsTabButton(int tab):
+		CTextButton(ControlsTabNames[tab], tLX->clNormalLabel, tLX->clMouseOver), iTab(tab), bHover(false) {}
+
+	int MouseOver(mouse_t *tMouse) { bHover = true; return CTextButton::MouseOver(tMouse); }
+
+	void Draw(SDL_Surface * bmpDest) {
+		const bool active = (iTab == ControlsSubTab);
+		ChangeColour(active ? tLX->clHeading : (bHover || getFocused()) ? tLX->clMouseOver : tLX->clNormalLabel);
+		bHover = false;
+		CLabel::Draw(bmpDest);
+		if(active)
+			DrawRectFill(bmpDest, iX, iY + iHeight + 1, iX + iWidth, iY + iHeight + 2, tLX->clHeading);
+	}
+
+private:
+	int		iTab;
+	bool	bHover;
+};
+
+// Add the headers of the Controls sub-tabs to a Controls layout
+static void Menu_OptionsAddControlsTabs(CGuiLayout * layout)
 {
 	const int tabY = 150;
 	// Tighter spacing / earlier start so all six tabs (Player 1-4, General,
 	// Touchscreen) fit across the page box without overflowing.
 	const int gap = 26;
-	const int h = tLX->cFont.GetHeight();
 	int x = 40;
 	for(int t = 0; t < ct__Count; t++) {
-		if(!IsControlsTabVisible(t)) {
-			ControlsTabRects[t].w = 0;  // marks the tab as not hit-testable
+		if(!IsControlsTabVisible(t))
 			continue;
-		}
-		const std::string name = ControlsTabNames[t];
-		const int w = tLX->cFont.GetWidth(name);
-
-		ControlsTabRects[t].x = x;
-		ControlsTabRects[t].y = tabY;
-		ControlsTabRects[t].w = w;
-		ControlsTabRects[t].h = h;
-
-		const bool active = (t == ControlsSubTab);
-		tLX->cFont.Draw(dest, x, tabY, active ? tLX->clHeading : tLX->clNormalLabel, name);
-		if(active)
-			DrawRectFill(dest, x, tabY + h + 1, x + w, tabY + h + 2, tLX->clHeading);
-
+		const int w = tLX->cFont.GetWidth(ControlsTabNames[t]);
+		layout->Add( new CControlsTabButton(t), op_ControlsTab + t, x, tabY, w, tLX->cFont.GetHeight());
 		x += w + gap;
 	}
 }
@@ -730,51 +764,94 @@ static void Menu_OptionsDrawControlsTabs(SDL_Surface* dest)
 static void Menu_OptionsRefreshTouchTiles()
 {
 	gTouchLayoutInfos = TouchControls::GetAvailableLayouts();
-	gTouchLayoutTileRects.assign(gTouchLayoutInfos.size(), SDL_Rect{0, 0, 0, 0});
+}
+
+static const char* const kTouchModeLabel = "Use touchscreen controls:";
+
+// Where the On / Off / Auto choice i is, on the top row of the Touchscreen sub-tab.
+// Sit roughly midway between the sub-tab bar (y=150) and the tiles (y=235).
+static SDL_Rect Menu_OptionsTouchModeRect(int i)
+{
+	int x = kControlLabelX + tLX->cFont.GetWidth(kTouchModeLabel) + 16;
+	for(int j = 0; j < i; j++)
+		x += tLX->cFont.GetWidth(kTouchModeChoices[j].label) + 24;
+	return SDL_Rect{(Sint16)x, 190, (Uint16)tLX->cFont.GetWidth(kTouchModeChoices[i].label), (Uint16)tLX->cFont.GetHeight()};
+}
+
+// Where the preview tile i of n is, below the mode row.
+static SDL_Rect Menu_OptionsTouchTileRect(int i, int n)
+{
+	const int tileW = 200;
+	const int tileH = 150;
+	const int gap   = 20;
+	const int totalW = n * tileW + (n - 1) * gap;
+	int x = (640 - totalW) / 2;
+	if(x < 20) x = 20;  // many tiles — fall back to a left margin
+	return SDL_Rect{(Sint16)(x + i * (tileW + gap)), 235, (Uint16)tileW, (Uint16)tileH};
+}
+
+// An invisible widget over a part of the Touchscreen sub-tab that is drawn by hand,
+// so that the keyboard can focus and activate it. The area itself is drawn by
+// Menu_OptionsDrawTouchMode and Menu_OptionsDrawTouchTiles.
+class CTouchHotspot : public CTextButton {
+public:
+	CTouchHotspot(): CTextButton("", tLX->clNormalLabel, tLX->clNormalLabel) {}
+	void Create() {}
+	void Draw(SDL_Surface * bmpDest) {}
+};
+
+static bool Menu_OptionsTouchHotspotFocused(int id)
+{
+	CWidget * focused = cOpt_ControlsTouch.getFocusedWidget();
+	return focused && focused->getID() == id;
+}
+
+// Add the hotspots of the Touchscreen sub-tab, after the layouts were fetched
+static void Menu_OptionsAddTouchHotspots(CGuiLayout * layout)
+{
+	for(int i = 0; i < kTouchModeCount; i++) {
+		SDL_Rect r = Menu_OptionsTouchModeRect(i);
+		layout->Add( new CTouchHotspot(), op_TouchMode + i, r.x, r.y, r.w, r.h);
+	}
+	const int n = (int)gTouchLayoutInfos.size();
+	for(int i = 0; i < n; i++) {
+		SDL_Rect r = Menu_OptionsTouchTileRect(i, n);
+		layout->Add( new CTouchHotspot(), op_TouchTile + i, r.x, r.y, r.w, r.h);
+	}
 }
 
 ///////////////////
 // Draw the "Touch controls: On / Off / Auto" selector on the top row of the
-// Touchscreen sub-tab (above the layout tiles). Records each choice's hit-box
-// in gTouchModeRects for click handling in Menu_OptionsFrame.
+// Touchscreen sub-tab (above the layout tiles).
 static void Menu_OptionsDrawTouchMode(SDL_Surface* dest)
 {
 	mouse_t* Mouse = GetMouse();
-	// Sit roughly midway between the sub-tab bar (y=150) and the tiles (now
-	// y=235), with generous padding above and below so the row isn't crowded.
-	const int y = 190;
-	const int h = tLX->cFont.GetHeight();
-
-	const std::string label = "Use touchscreen controls:";
-	tLX->cFont.Draw(dest, kControlLabelX, y, tLX->clNormalLabel, label);
+	const std::string label = kTouchModeLabel;
+	tLX->cFont.Draw(dest, kControlLabelX, Menu_OptionsTouchModeRect(0).y, tLX->clNormalLabel, label);
 
 	const int current = Menu_CurrentTouchMode();
-	int x = kControlLabelX + tLX->cFont.GetWidth(label) + 16;
 	for(int i = 0; i < kTouchModeCount; i++) {
 		const std::string text = kTouchModeChoices[i].label;
-		const int w = tLX->cFont.GetWidth(text);
-
-		SDL_Rect r{(Sint16)x, (Sint16)y, (Uint16)w, (Uint16)h};
-		gTouchModeRects[i] = r;
+		const SDL_Rect r = Menu_OptionsTouchModeRect(i);
 
 		const bool selected = (i == current);
-		const bool hover = (Mouse->X >= x && Mouse->X <= x + w &&
-		                    Mouse->Y >= y && Mouse->Y <= y + h);
-		Color col = selected ? tLX->clHeading : (hover ? tLX->clHeading : tLX->clNormalLabel);
-		tLX->cFont.Draw(dest, x, y, col, text);
+		const bool focused = Menu_OptionsTouchHotspotFocused(op_TouchMode + i);
+		const bool hover = (Mouse->X >= r.x && Mouse->X <= r.x + r.w &&
+		                    Mouse->Y >= r.y && Mouse->Y <= r.y + r.h);
+		Color col = (selected || hover || focused) ? tLX->clHeading : tLX->clNormalLabel;
+		tLX->cFont.Draw(dest, r.x, r.y, col, text);
 		// Underline the selected choice so the active value is obvious.
 		if(selected)
-			DrawRectFill(dest, x, y + h, x + w, y + h + 1, tLX->clHeading);
-
-		x += w + 24;
+			DrawRectFill(dest, r.x, r.y + r.h, r.x + r.w, r.y + r.h + 1, tLX->clHeading);
+		if(focused)
+			DrawRect(dest, r.x - 3, r.y - 2, r.x + r.w + 3, r.y + r.h + 3, tLX->clMouseOver);
 	}
 }
 
 // Draw the row of layout tiles on the "Touchscreen" sub-tab. Each tile
 // shows the layout's preview PNG (or a "No preview" placeholder), the
 // `name:` field below, and a thicker border around the currently-selected
-// layout. Records each tile's screen rect in gTouchLayoutTileRects so
-// click handling in Menu_OptionsFrame can resolve hits.
+// layout.
 static void Menu_OptionsDrawTouchTiles(SDL_Surface* dest)
 {
 	const int n = (int)gTouchLayoutInfos.size();
@@ -784,20 +861,12 @@ static void Menu_OptionsDrawTouchTiles(SDL_Surface* dest)
 		return;
 	}
 
-	const int tileW = 200;
-	const int tileH = 150;
-	const int gap   = 20;
-	const int topY  = 235; // leave padding below the "Use touchscreen controls:" row
-	const int totalW = n * tileW + (n - 1) * gap;
-	int x = (640 - totalW) / 2;
-	if(x < 20) x = 20;  // many tiles — fall back to a left margin
-
 	for(int i = 0; i < n; i++) {
 		const TouchControls::LayoutInfo& info = gTouchLayoutInfos[i];
 		const bool selected = (info.fileName == tLXOptions->sTouchscreenLayout);
+		const bool focused = Menu_OptionsTouchHotspotFocused(op_TouchTile + i);
 
-		SDL_Rect r{(Sint16)x, (Sint16)topY, (Uint16)tileW, (Uint16)tileH};
-		gTouchLayoutTileRects[i] = r;
+		const SDL_Rect r = Menu_OptionsTouchTileRect(i, n);
 
 		// Preview, or "No preview" placeholder.
 		if(info.preview.get()) {
@@ -820,6 +889,9 @@ static void Menu_OptionsDrawTouchTiles(SDL_Surface* dest)
 			DrawRect(dest, r.x - 2, r.y - 2, r.x + r.w + 1, r.y + r.h + 1, outline);
 			DrawRect(dest, r.x - 3, r.y - 3, r.x + r.w + 2, r.y + r.h + 2, outline);
 		}
+		// The tile with the keyboard focus gets an extra ring
+		if(focused)
+			DrawRect(dest, r.x - 5, r.y - 5, r.x + r.w + 4, r.y + r.h + 4, tLX->clMouseOver);
 
 		// Display name centred below the tile.
 		const int nameW = tLX->cFont.GetWidth(info.displayName);
@@ -828,33 +900,33 @@ static void Menu_OptionsDrawTouchTiles(SDL_Surface* dest)
 		tLX->cFont.Draw(dest, nameX, nameY,
 		                selected ? tLX->clHeading : tLX->clNormalLabel,
 		                info.displayName);
-
-		x += tileW + gap;
 	}
 }
 
 ///////////////////
-// Draws the "Reset defaults" button (a bordered text button, so it can show
-// that exact label) and records its hit-box in ResetBtnRect.
-static void Menu_OptionsDrawResetButton(SDL_Surface* dest)
+// The "Reset defaults" text button of the Controls sub-tabs, highlighted when
+// focused or under the mouse. It is a widget so that the keyboard can reach it.
+class CResetDefaultsButton : public CTextButton {
+public:
+	CResetDefaultsButton(): CTextButton("Reset defaults", tLX->clNormalLabel, tLX->clHeading), bHover(false) {}
+
+	int MouseOver(mouse_t *tMouse) { bHover = true; return CTextButton::MouseOver(tMouse); }
+
+	void Draw(SDL_Surface * bmpDest) {
+		ChangeColour((bHover || getFocused()) ? tLX->clHeading : tLX->clNormalLabel);
+		bHover = false;
+		CLabel::Draw(bmpDest);
+	}
+
+private:
+	bool bHover;
+};
+
+// Add the "Reset defaults" button to a Controls layout.
+// Left-aligned under the action-name column (same x as "Up", "Down", ...).
+static void Menu_OptionsAddResetButton(CGuiLayout * layout)
 {
-	mouse_t* Mouse = GetMouse();
-	const std::string text = "Reset defaults";
-	const int textW = tLX->cFont.GetWidth(text);
-	const int h = 18;
-	// Left-aligned under the action-name column (same x as "Up", "Down", ...).
-	const int x = kControlLabelX;
-	const int y = 440;
-
-	ResetBtnRect.x = x;
-	ResetBtnRect.y = y;
-	ResetBtnRect.w = textW;
-	ResetBtnRect.h = h;
-
-	// No border: match the borderless clickable text used by the sub-tabs.
-	// A hover colour change signals it is clickable.
-	const bool hover = (Mouse->X >= x && Mouse->X <= x + textW && Mouse->Y >= y && Mouse->Y <= y + h);
-	tLX->cFont.Draw(dest, x, y + 3, hover ? tLX->clHeading : tLX->clNormalLabel, text);
+	layout->Add( new CResetDefaultsButton(), op_ControlsReset, kControlLabelX, 443, tLX->cFont.GetWidth("Reset defaults"), tLX->cFont.GetHeight());
 }
 
 ///////////////////
@@ -899,11 +971,84 @@ static void Menu_ResetControlsTab(int tab)
 	tLX->setupInputs();
 }
 
+// Go to the next (step=1) or the previous (step=-1) visible Controls sub-tab
+static void Menu_OptionsStepControlsTab(int step)
+{
+	int t = ControlsSubTab;
+	do {
+		t += step;
+	} while(t >= 0 && t < ct__Count && !IsControlsTabVisible(t));
+	if(t < 0 || t >= ct__Count)
+		return;
+
+	ControlsSubTab = t;
+	// Clear the old sub-tab's widgets from the screen
+	DrawImageAdv(VideoPostProcessor::videoSurface().get(), tMenu->bmpBuffer, 20,140, 20,140, 620,340);
+	PlaySoundSample(sfxGeneral.smpClick);
+}
+
+// Switch the Controls sub-tab if one of the sub-tab headers was activated.
+// Returns true if the sub-tab was changed, the caller must stop using its layout.
+static bool Menu_OptionsProcessControlsTabs(gui_event_t *ev)
+{
+	if(!ev || ev->iEventMsg != TXB_MOUSEUP)
+		return false;
+	const int tab = ev->iControlID - op_ControlsTab;
+	if(tab < 0 || tab >= ct__Count || tab == ControlsSubTab)
+		return false;
+
+	ControlsSubTab = tab;
+	// Clear the old sub-tab's widgets from the screen
+	DrawImageAdv(VideoPostProcessor::videoSurface().get(), tMenu->bmpBuffer, 20,140, 20,140, 620,340);
+	PlaySoundSample(sfxGeneral.smpClick);
+
+	// Continue from the same header on the new sub-tab
+	Menu_OptionsControlsLayout().FocusWidget(ev->iControlID);
+	return true;
+}
+
+// Handle the page buttons and the Back button, which every page has.
+// Returns true if the page was changed, the caller must stop using its layout.
+static bool Menu_OptionsProcessTopButtons(gui_event_t *ev)
+{
+	if(!ev || ev->iEventMsg != BTN_CLICKED)
+		return false;
+
+	switch(ev->iControlID) {
+
+		// Back button
+		case op_Back:
+			// Shutdown & save
+			Menu_OptionsShutdown();
+			tLXOptions->SaveToDisc();
+
+			// Leave
+			PlaySoundSample(sfxGeneral.smpClick);
+			Menu_MainInitialize();
+			return true;
+
+		// Page buttons
+		case op_Controls:
+		case op_Game:
+		case op_System:
+			DrawImageAdv(VideoPostProcessor::videoSurface().get(), tMenu->bmpBuffer, 20,140, 20,140, 620,340);
+			OptionsMode = ev->iControlID - op_Controls;
+			Menu_OptionsUpdateTopButtons();
+			PlaySoundSample(sfxGeneral.smpClick);
+
+			// Continue from the same button on the new page
+			Menu_OptionsControlsLayout().FocusWidget(ev->iControlID);
+			cOpt_Game.FocusWidget(ev->iControlID);
+			cOpt_System.FocusWidget(ev->iControlID);
+			return true;
+	}
+	return false;
+}
+
 ///////////////////
 // Options main frame
 void Menu_OptionsFrame()
 {
-	mouse_t		*Mouse = GetMouse();
 	gui_event_t *ev = NULL;
 	int			val;
 
@@ -914,70 +1059,18 @@ void Menu_OptionsFrame()
 	//DrawImageAdv(VideoPostProcessor::videoSurface(), tMenu->bmpBuffer, 20,140, 20,140, 620,340);
 
 
-	// Process the top buttons
-	TopButtons[OptionsMode].MouseOver(Mouse);
 	SetGameCursor(CURSOR_ARROW); // Hack: button changed the cursor to hand, we need to change it back
-	for(int i=op_Controls;i<=op_System;i++) {
-
-		TopButtons[i].Draw(VideoPostProcessor::videoSurface().get());
-
-		if(i==OptionsMode)
-			continue;
-
-		if(TopButtons[i].InBox(Mouse->X,Mouse->Y)) {
-			TopButtons[i].MouseOver(Mouse);
-			if(Mouse->Up) {
-                DrawImageAdv(VideoPostProcessor::videoSurface().get(), tMenu->bmpBuffer, 20,140, 20,140, 620,340);
-				OptionsMode = i;
-				PlaySoundSample(sfxGeneral.smpClick);
-			}
-		}
-	}
-
-	// Process the gui layout
-	ev = cOptions.Process();
-	cOptions.Draw(VideoPostProcessor::videoSurface().get());
-
-	if(ev) {
-
-		switch(ev->iControlID) {
-
-			// Back button
-			case op_Back:
-				if(ev->iEventMsg == BTN_CLICKED) {
-
-					// Shutdown & save
-					Menu_OptionsShutdown();
-					tLXOptions->SaveToDisc();
-
-					// Leave
-					PlaySoundSample(sfxGeneral.smpClick);
-					Menu_MainInitialize();
-					return;
-				}
-				break;
-		}
-	}
-
 
 	if(OptionsMode == 0) {
 
-		// Sub-tabs: Player 1 / Player 2 / General — only one shown at a time
-		Menu_OptionsDrawControlsTabs(VideoPostProcessor::videoSurface().get());
-		if(Mouse->Up) {
-			for(int t = 0; t < ct__Count; t++) {
-				if(t == ControlsSubTab) continue;
-				if(!IsControlsTabVisible(t)) continue;
-				const SDL_Rect& r = ControlsTabRects[t];
-				if(r.w == 0) continue;  // tab not drawn this frame
-				if(Mouse->X >= r.x && Mouse->X <= r.x + r.w && Mouse->Y >= r.y && Mouse->Y <= r.y + r.h) {
-					ControlsSubTab = t;
-					// Clear the old sub-tab's widgets from the screen
-					DrawImageAdv(VideoPostProcessor::videoSurface().get(), tMenu->bmpBuffer, 20,140, 20,140, 620,340);
-					PlaySoundSample(sfxGeneral.smpClick);
-					break;
-				}
-			}
+		// PageUp and PageDown (the gamepad shoulder buttons) switch the sub-tab
+		keyboard_t *Keyboard = GetKeyboard();
+		for(int i = 0; i < Keyboard->queueLength; i++) {
+			const KeyboardEvent& kbev = Keyboard->keyQueue[i];
+			if(kbev.down && kbev.sym == SDLK_PAGEUP)
+				Menu_OptionsStepControlsTab(-1);
+			else if(kbev.down && kbev.sym == SDLK_PAGEDOWN)
+				Menu_OptionsStepControlsTab(1);
 		}
 
 		// Active sub-tab content
@@ -985,52 +1078,40 @@ void Menu_OptionsFrame()
 		ev = ctrlLayout.Process();
 		ctrlLayout.Draw(VideoPostProcessor::videoSurface().get());
 
+		if (Menu_OptionsProcessTopButtons(ev))
+			return;
+
+		if (Menu_OptionsProcessControlsTabs(ev))
+			return;
+
 		if(ControlsSubTab == ct_Touchscreen) {
 			// Top row: On / Off / Auto selector for Game.TouchscreenControls.
 			Menu_OptionsDrawTouchMode(VideoPostProcessor::videoSurface().get());
-			if(Mouse->Up) {
-				for(int i = 0; i < kTouchModeCount; i++) {
-					const SDL_Rect& r = gTouchModeRects[i];
-					if(Mouse->X >= r.x && Mouse->X <= r.x + r.w &&
-					   Mouse->Y >= r.y && Mouse->Y <= r.y + r.h) {
-						const std::string val = kTouchModeChoices[i].value;
-						if(!stringcaseequal(tLXOptions->sTouchscreenControls, val)) {
-							tLXOptions->sTouchscreenControls = val;
-							TouchControls::ReloadLayout();
-							PlaySoundSample(sfxGeneral.smpClick);
-						}
-						break;
-					}
+			if(ev && ev->iEventMsg == TXB_MOUSEUP && ev->iControlID >= op_TouchMode && ev->iControlID < op_TouchMode + kTouchModeCount) {
+				const std::string val = kTouchModeChoices[ev->iControlID - op_TouchMode].value;
+				if(!stringcaseequal(tLXOptions->sTouchscreenControls, val)) {
+					tLXOptions->sTouchscreenControls = val;
+					TouchControls::ReloadLayout();
+					PlaySoundSample(sfxGeneral.smpClick);
 				}
 			}
 			// Layout tiles + click handling. No "Reset defaults" here — the
 			// touch-screen tab has nothing to reset.
 			Menu_OptionsDrawTouchTiles(VideoPostProcessor::videoSurface().get());
-			if(Mouse->Up) {
-				for(size_t i = 0; i < gTouchLayoutTileRects.size(); ++i) {
-					const SDL_Rect& r = gTouchLayoutTileRects[i];
-					if(r.w == 0) continue;
-					if(Mouse->X >= r.x && Mouse->X <= r.x + r.w &&
-					   Mouse->Y >= r.y && Mouse->Y <= r.y + r.h) {
-						const std::string& sel = gTouchLayoutInfos[i].fileName;
-						if(sel != tLXOptions->sTouchscreenLayout) {
-							tLXOptions->sTouchscreenLayout = sel;
-							TouchControls::ReloadLayout();
-							PlaySoundSample(sfxGeneral.smpClick);
-						}
-						break;
-					}
+			if(ev && ev->iEventMsg == TXB_MOUSEUP && ev->iControlID >= op_TouchTile && ev->iControlID < op_TouchTile + (int)gTouchLayoutInfos.size()) {
+				const std::string& sel = gTouchLayoutInfos[ev->iControlID - op_TouchTile].fileName;
+				if(sel != tLXOptions->sTouchscreenLayout) {
+					tLXOptions->sTouchscreenLayout = sel;
+					TouchControls::ReloadLayout();
+					PlaySoundSample(sfxGeneral.smpClick);
 				}
 			}
-		} else {
-			// "Reset defaults" button (manual, so it can show that exact label)
-			Menu_OptionsDrawResetButton(VideoPostProcessor::videoSurface().get());
-			if(Mouse->Up &&
-			   Mouse->X >= ResetBtnRect.x && Mouse->X <= ResetBtnRect.x + ResetBtnRect.w &&
-			   Mouse->Y >= ResetBtnRect.y && Mouse->Y <= ResetBtnRect.y + ResetBtnRect.h) {
-				Menu_ResetControlsTab(ControlsSubTab);
-				PlaySoundSample(sfxGeneral.smpClick);
-			}
+		}
+
+		if(ev && ev->iControlID == op_ControlsReset && ev->iEventMsg == TXB_MOUSEUP) {
+			Menu_ResetControlsTab(ControlsSubTab);
+			PlaySoundSample(sfxGeneral.smpClick);
+			return;
 		}
 
 		if(ev) {
@@ -1060,6 +1141,9 @@ void Menu_OptionsFrame()
 		// Game
 		ev = cOpt_Game.Process();
 		cOpt_Game.Draw(VideoPostProcessor::videoSurface().get());
+
+		if (Menu_OptionsProcessTopButtons(ev))
+			return;
 
 		val = (int)cOpt_Game.SendMessage(og_BloodAmount, SLM_GETVALUE, (uintptr_t)0, 0);
 		//s = (CSlider *)cOpt_Game.getWidget(og_BloodAmount);
@@ -1214,6 +1298,9 @@ void Menu_OptionsFrame()
 		// System
 		ev = cOpt_System.Process();
 		cOpt_System.Draw(VideoPostProcessor::videoSurface().get());
+
+		if (Menu_OptionsProcessTopButtons(ev))
+			return;
 
 		if(ev) {
 
@@ -1383,9 +1470,7 @@ void Menu_OptionsWaitInput(int ply, const std::string& name, CInputbox *b)
 	mouse_t *Mouse = GetMouse();
 
 	// Draw the back buffer
-	cOptions.Draw(tMenu->bmpBuffer.get());
 	Menu_OptionsControlsLayout().Draw(tMenu->bmpBuffer.get());
-	Menu_OptionsDrawControlsTabs(tMenu->bmpBuffer.get());
 
 	Menu_DrawBox(tMenu->bmpBuffer.get(), 210, 170, 430, 310);
 	//DrawImageAdv(tMenu->bmpBuffer, tMenu->bmpMainBack, 212,172, 212,172, 217,137);
@@ -1396,12 +1481,6 @@ void Menu_OptionsWaitInput(int ply, const std::string& name, CInputbox *b)
 
 	tLX->cFont.DrawCentre(tMenu->bmpBuffer.get(),320,270,Color(255,255,255),"Press any key/mouse");
 	tLX->cFont.DrawCentre(tMenu->bmpBuffer.get(),320,285,Color(128,128,128),"(Escape to cancel)");
-
-	TopButtons[OptionsMode].MouseOver(Mouse);
-	for(ushort i=0;i<3;i++) {
-		TopButtons[i].Draw(tMenu->bmpBuffer.get());
-	}
-
 
 	Menu_RedrawMouse(true);
 
@@ -1478,7 +1557,6 @@ void Menu_OptionsWaitInput(int ply, const std::string& name, CInputbox *b)
 // Shutdown the options menu
 void Menu_OptionsShutdown()
 {
-	cOptions.Shutdown();
 	for(int ply = 0; ply < kMaxPlayerControlTabs; ply++)
 		PlayerControlsLayout(ply)->Shutdown();
 	cOpt_ControlsGen.Shutdown();

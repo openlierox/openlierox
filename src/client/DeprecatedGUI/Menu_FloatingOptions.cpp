@@ -43,19 +43,22 @@ bool bShowFloatingOptions = false;
 
 
 int iFloatingOptionsMode = 0;
-CGuiLayout	cFloatingOptions;
 CGuiLayout	cFloatingOpt_Controls;
 CGuiLayout	cFloatingOpt_System;
 CGuiLayout	cFloatingOpt_Game;
-CButton		cFloatingOpt_TopButtons[3];
 
 // Control id's
 enum {
-	op_Ok = -2,
 	Static = -1,
-	op_Controls=0,
+};
+
+// The ids of the buttons that every page has; clear of the ids of the page widgets.
+// Controls, Game and System are in the order of iFloatingOptionsMode.
+enum {
+	op_Controls=1000,
 	op_Game,
-	op_System
+	op_System,
+	op_Ok,
 };
 
 enum {
@@ -147,6 +150,24 @@ static_assert( sFloatingOpt_InputNames__size == __SIN_PLY_BOTTOM - 5, "inputopts
 
 
 ///////////////////
+// Add the page buttons and the OK button to a page of the options
+static void Menu_FloatingOptionsAddTopButtons(CGuiLayout * layout)
+{
+	layout->Add( new CButton(BUT_CONTROLS, tMenu->bmpButtons), op_Controls, 180, 110, 100, 15);
+	layout->Add( new CButton(BUT_GAME, tMenu->bmpButtons), op_Game, 310, 110, 50, 15);
+	layout->Add( new CButton(BUT_SYSTEM, tMenu->bmpButtons), op_System, 390, 110, 70, 15);
+	layout->Add( new CButton(BUT_BACK, tMenu->bmpButtons), op_Ok, 540,440, 40,20);
+}
+
+// Highlight the button of the current page on all pages
+static void Menu_FloatingOptionsUpdateTopButtons()
+{
+	CGuiLayout * layouts[] = { &cFloatingOpt_Controls, &cFloatingOpt_Game, &cFloatingOpt_System };
+	for (CGuiLayout * layout : layouts)
+		for (int page = 0; page < 3; page++)
+			((CButton *)layout->getWidget(op_Controls + page))->setSelected(page == iFloatingOptionsMode);
+}
+
 // Initialize the options
 bool Menu_FloatingOptionsInitialize()
 {
@@ -157,28 +178,19 @@ bool Menu_FloatingOptionsInitialize()
 	// Create the buffer
 	DrawImage(tMenu->bmpBuffer.get(), tMenu->bmpMainBack_common,0,0);
 
-	// Setup the top buttons
-	cFloatingOpt_TopButtons[op_Controls] =	CButton(BUT_CONTROLS,	tMenu->bmpButtons);
-	cFloatingOpt_TopButtons[op_Game] =		CButton(BUT_GAME,		tMenu->bmpButtons);
-	cFloatingOpt_TopButtons[op_System] =		CButton(BUT_SYSTEM,		tMenu->bmpButtons);
-
-	cFloatingOpt_TopButtons[0].Setup(op_Controls, 180, 110, 100, 15);
-	cFloatingOpt_TopButtons[1].Setup(op_Game, 310, 110, 50, 15);
-	cFloatingOpt_TopButtons[2].Setup(op_System, 390, 110, 70, 15);
-    for(i=op_Controls; i<=op_System; i++)
-        cFloatingOpt_TopButtons[i].Create();
-
-	cFloatingOptions.Shutdown();
-	cFloatingOptions.Initialize();
-
 	cFloatingOpt_System.Shutdown();
 	cFloatingOpt_System.Initialize();
+	Menu_FloatingOptionsAddTopButtons(&cFloatingOpt_System);
 
 	cFloatingOpt_Controls.Shutdown();
 	cFloatingOpt_Controls.Initialize();
+	Menu_FloatingOptionsAddTopButtons(&cFloatingOpt_Controls);
 
 	cFloatingOpt_Game.Shutdown();
 	cFloatingOpt_Game.Initialize();
+	Menu_FloatingOptionsAddTopButtons(&cFloatingOpt_Game);
+
+	Menu_FloatingOptionsUpdateTopButtons();
 
 
 	// Add the controls
@@ -336,9 +348,6 @@ bool Menu_FloatingOptionsInitialize()
 
 	// TODO: Fix cSlider so it's value thing doesn't take up a square of 100x100 pixels.
 
-	// The OK button
-	cFloatingOptions.Add( new CButton(BUT_BACK, tMenu->bmpButtons), op_Ok, 540,440, 40,20);
-
 	// Set the values
 	cFloatingOpt_Game.SendMessage( og_BloodAmount,  SLM_SETVALUE, tLXOptions->iBloodAmount, 0);
 
@@ -372,6 +381,37 @@ void Menu_FloatingOptionsOkClose()
 }
 
 
+// Handle the page buttons and the OK button, which every page has.
+// Returns true if the page was changed or the options were closed, the caller must stop using its layout.
+static bool Menu_FloatingOptionsProcessTopButtons(gui_event_t *ev)
+{
+	if(!ev || ev->iEventMsg != BTN_CLICKED)
+		return false;
+
+	switch(ev->iControlID) {
+
+		// Ok
+		case op_Ok:
+			Menu_FloatingOptionsOkClose();
+			return true;
+
+		// Page buttons
+		case op_Controls:
+		case op_Game:
+		case op_System:
+			iFloatingOptionsMode = ev->iControlID - op_Controls;
+			Menu_FloatingOptionsUpdateTopButtons();
+			PlaySoundSample(sfxGeneral.smpClick);
+
+			// Continue from the same button on the new page
+			cFloatingOpt_Controls.FocusWidget(ev->iControlID);
+			cFloatingOpt_Game.FocusWidget(ev->iControlID);
+			cFloatingOpt_System.FocusWidget(ev->iControlID);
+			return true;
+	}
+	return false;
+}
+
 ///////////////////
 // Options main frame
 void Menu_FloatingOptionsFrame()
@@ -393,24 +433,7 @@ void Menu_FloatingOptionsFrame()
 	Menu_DrawBox(VideoPostProcessor::videoSurface().get(), x, y, x + w, y + h);
 	Menu_DrawSubTitle(VideoPostProcessor::videoSurface().get(), SUB_OPTIONS);
 
-	// Process the top buttons
-	cFloatingOpt_TopButtons[iFloatingOptionsMode].MouseOver(Mouse);
 	SetGameCursor(CURSOR_ARROW); // Hack: button changed the cursor to hand, we need to change it back
-	for(int i=op_Controls;i<=op_System;i++) {
-
-		cFloatingOpt_TopButtons[i].Draw(VideoPostProcessor::videoSurface().get());
-
-		if(i==iFloatingOptionsMode)
-			continue;
-
-		if(cFloatingOpt_TopButtons[i].InBox(Mouse->X,Mouse->Y)) {
-			cFloatingOpt_TopButtons[i].MouseOver(Mouse);
-			if(Mouse->Up) {
-				iFloatingOptionsMode = i;
-				PlaySoundSample(sfxGeneral.smpClick);
-			}
-		}
-	}
 
 	// Fullscreen value
 	c = (CCheckbox *)cFloatingOpt_System.getWidget(os_Fullscreen);
@@ -419,27 +442,14 @@ void Menu_FloatingOptionsFrame()
 	bool aa = c->getValue();
 
 
-	// Process the gui layout
-	ev = cFloatingOptions.Process();
-	if (ev)  {
-		switch (ev->iControlID)  {
-
-		// Ok
-		case op_Ok:
-			if(ev->iEventMsg == BTN_CLICKED) {
-				Menu_FloatingOptionsOkClose();
-				return;
-			}
-			break;
-
-		}
-	}
-
 	if(iFloatingOptionsMode == 0) {
 
 		// Controls
 		ev = cFloatingOpt_Controls.Process();
 		cFloatingOpt_Controls.Draw(VideoPostProcessor::videoSurface().get());
+
+		if (Menu_FloatingOptionsProcessTopButtons(ev))
+			return;
 
 		if(ev) {
 
@@ -470,6 +480,9 @@ void Menu_FloatingOptionsFrame()
 		// Game
 		ev = cFloatingOpt_Game.Process();
 		cFloatingOpt_Game.Draw(VideoPostProcessor::videoSurface().get());
+
+		if (Menu_FloatingOptionsProcessTopButtons(ev))
+			return;
 
 		val = (int)cFloatingOpt_Game.SendMessage(og_BloodAmount, SLM_GETVALUE, (uintptr_t)0, 0);
         DrawImageAdv(VideoPostProcessor::videoSurface().get(), tMenu->bmpBuffer, 385,140, 385,140, 70,40);
@@ -571,6 +584,9 @@ void Menu_FloatingOptionsFrame()
 		ev = cFloatingOpt_System.Process();
 		cFloatingOpt_System.Draw(VideoPostProcessor::videoSurface().get());
 
+		if (Menu_FloatingOptionsProcessTopButtons(ev))
+			return;
+
 		if(ev) {
 
 			switch(ev->iControlID) {
@@ -654,10 +670,6 @@ void Menu_FloatingOptionsFrame()
 		bChangedAntiAliasing = (aa != tLXOptions->bAntiAliasing);
 	}
 
-	// Draw the OK button
-	cFloatingOptions.Draw(VideoPostProcessor::videoSurface().get());
-
-
 	// Draw the mouse
 	DrawCursor(VideoPostProcessor::videoSurface().get());
 }
@@ -672,7 +684,6 @@ void Menu_FloatingOptionsWaitInput(int ply, const std::string& name, CInputbox *
 
 	// Draw the back buffer
 	DrawImage(tMenu->bmpBuffer.get(), VideoPostProcessor::videoSurface(), 0, 0);
-	cFloatingOptions.Draw(tMenu->bmpBuffer.get());
 	cFloatingOpt_Controls.Draw(tMenu->bmpBuffer.get());
 
 	Menu_DrawBox(tMenu->bmpBuffer.get(), 210, 170, 430, 310);
@@ -684,11 +695,6 @@ void Menu_FloatingOptionsWaitInput(int ply, const std::string& name, CInputbox *
 
 	tLX->cFont.DrawCentre(tMenu->bmpBuffer.get(),320,270,Color(255,255,255),"Press any key/mouse");
 	tLX->cFont.DrawCentre(tMenu->bmpBuffer.get(),320,285,Color(128,128,128),"(Escape to cancel)");
-
-	cFloatingOpt_TopButtons[iFloatingOptionsMode].MouseOver(Mouse);
-	for(ushort i=0;i<3;i++) {
-		cFloatingOpt_TopButtons[i].Draw(tMenu->bmpBuffer.get());
-	}
 
 	Menu_redrawBufferRect(0, 0, VideoPostProcessor::get()->screenWidth(), VideoPostProcessor::get()->screenHeight());
 
@@ -756,7 +762,6 @@ void Menu_FloatingOptionsWaitInput(int ply, const std::string& name, CInputbox *
 // Shutdown the options menu
 void Menu_FloatingOptionsShutdown()
 {
-	cFloatingOptions.Shutdown();
 	cFloatingOpt_Controls.Shutdown();
 	cFloatingOpt_System.Shutdown();
 	cFloatingOpt_Game.Shutdown();
