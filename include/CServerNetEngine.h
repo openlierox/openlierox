@@ -51,6 +51,7 @@ public:
 	void		 ParseDisconnect();
 	void		 ParseGrabBonus(CBytestream *bs);
 	void		 ParseSendFile(CBytestream *bs);
+	void		 ParseRequestMapSync(CBytestream *bs);
 
 	bool		 ParseChatCommand(const std::string& message);
 	

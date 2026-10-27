@@ -657,6 +657,14 @@ bool CClientNetEngine::ParsePacket(CBytestream *bs)
 				break;
 			}
 
+			case S2C_MAPSYNCDATA:
+				ParseMapSyncData(bs);
+				break;
+
+			case S2C_MAPCHECKSUM:
+				ParseMapChecksum(bs);
+				break;
+
 			default:
 #if !defined(FUZZY_ERROR_TESTING_S2C)
 				warnings << "cl: Unknown packet " << (unsigned)cmd << endl;
@@ -1456,6 +1464,51 @@ void CClientNetEngine::ParseGameOver(CBytestream *bs)
 
 	// if we are away (perhaps waiting because we were out), notify us
 	NotifyUserOnEvent();
+}
+
+
+///////////////////
+// Parse terrain-resync data:
+// apply the material of each region the server sent,
+// so our map catches up on destruction from before we joined (#827).
+void CClientNetEngine::ParseMapSyncData(CBytestream *bs)
+{
+	int num = bs->readInt16();
+	if(num < 0) { bs->SkipAll(); return; }
+
+	CMap* m = game.gameMap();
+	int applied = 0;
+	for(int i = 0; i < num; ++i) {
+		int col = bs->readInt16();
+		int row = bs->readInt16();
+		if(m && m->isLoaded()) {
+			if(m->applyRegionMaterial(bs, col, row))
+				applied++;
+		} else {
+			// No map to apply to; consume the payload to stay aligned.
+			Uint32 rawLen = (Uint32)bs->readInt(4); (void)rawLen;
+			Uint32 compLen = (Uint32)bs->readInt(4);
+			bs->readData(compLen);
+		}
+	}
+	if(m && applied) {
+		m->CalculateDirtCount();
+		notes << "map sync: applied " << applied << " terrain region(s)" << endl;
+	}
+}
+
+
+///////////////////
+// Parse the server's terrain checksum:
+// if our map differs, pull the regions that changed (#827).
+void CClientNetEngine::ParseMapChecksum(CBytestream *bs)
+{
+	Uint32 serverCrc = (Uint32)bs->readInt(4);
+	CMap* m = game.gameMap();
+	if(!m || !m->isLoaded())
+		return;
+	if(m->getMaterialChecksum() != serverCrc)
+		SendRequestMapSync();
 }
 
 

@@ -263,6 +263,8 @@ private:
 	// Saves region of map to savebuffer for RestoreFromMemory() - called from CarveHole()/PlaceDirt()/PlaceGreenDirt()
 	void SaveToMemoryInternal(int x, int y, int w, int h);
 
+	void syncRegionBounds(int col, int row, int& x0, int& y0, int& x1, int& y1) const;	// clipped region bounds (#827)
+
 
 public:	
 
@@ -352,6 +354,15 @@ public:
 	uint			GetMinimapHeight() const { return MinimapHeight; }
 	void				SetMinimapDimensions(uint _w, uint _h);
     uint         GetDirtCount() const { return nTotalDirtCount; }
+
+	// terrain reconciliation, per region (#827)
+	enum { MAP_SYNC_REGION = 64 };	// region size in pixels
+	int				getMapSyncCols() const { return (int)((Width + MAP_SYNC_REGION - 1) / MAP_SYNC_REGION); }
+	int				getMapSyncRows() const { return (int)((Height + MAP_SYNC_REGION - 1) / MAP_SYNC_REGION); }
+	Uint32			getMaterialChecksum();	// checksum of the whole material mask
+	Uint32			getRegionMaterialChecksum(int col, int row);
+	void			writeRegionMaterial(CBytestream* bs, int col, int row);	// serialize one region (zlib)
+	bool			applyRegionMaterial(CBytestream* bs, int col, int row);	// apply + redraw one region
 
 	bool			getCreated()	{ return Created; }
 	

@@ -85,6 +85,7 @@ private:
 	bool		recheckGame;
 
 	AbsTime		fLastBonusTime;
+	AbsTime		fLastMapChecksumSent;	// throttles the terrain-checksum broadcast (#827)
 
 	int			iLastVictim;	// TODO: what is this good for
 

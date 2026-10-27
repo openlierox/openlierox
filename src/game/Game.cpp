@@ -21,6 +21,7 @@
 #include "OLXCommand.h"
 #include "IRC.h"
 #include "CClient.h"
+#include "CClientNetEngine.h"
 #include "CServer.h"
 #include "Physics.h"
 #include "DeprecatedGUI/Menu.h"
@@ -446,6 +447,11 @@ Result Game::prepareGameloop() {
 	preparedMap = cClient->getGameLobby()[FT_Map];
 
 	cClient->bMapGrabbed = true;
+
+	// The map file is loaded pristine; a client (especially a mid-game joiner)
+	// now pulls the server's current terrain so past destruction is in sync (#827).
+	if(game.isClient())
+		cClient->getNetEngine()->SendRequestMapSync();
 
 	// always also load Gusanos engine
 	// even with LX-stuff-only, we may access/need it (for network stuff and later probably more)

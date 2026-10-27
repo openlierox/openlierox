@@ -178,6 +178,10 @@ void CServerNetEngine::ParsePacket(CBytestream *bs) {
 			break;
 		}
 
+		case C2S_REQUESTMAPSYNC:
+			ParseRequestMapSync(bs);
+			break;
+
 		default:
 			// HACK, HACK: old olx/lxp clients send the ping twice, once normally once per channel
 			// which leads to warnings here - we simply parse it here and avoid warnings
@@ -827,6 +831,53 @@ void CServerNetEngine::ParseDisconnect() {
 	server->DropClient(cl, CLL_QUIT, "client disconnected");
 }
 
+
+
+///////////////////
+// Parse a terrain-resync request: the client sent its per-region material
+// checksums; reply with the material of the regions that differ (#827).
+void CServerNetEngine::ParseRequestMapSync(CBytestream *bs) {
+	int cols = bs->readInt16();
+	int rows = bs->readInt16();
+
+	// Reject implausible dimensions before allocating/reading.
+	if(cols <= 0 || rows <= 0 || cols > 4096 || rows > 4096) {
+		bs->SkipAll();
+		return;
+	}
+
+	std::vector<Uint32> clientCrc((size_t)cols * rows);
+	for(size_t i = 0; i < clientCrc.size(); ++i)
+		clientCrc[i] = (Uint32)bs->readInt(4);
+
+	CMap* m = game.gameMap();
+	if(!m || !m->isLoaded())
+		return;
+	// Only same-size maps can be reconciled region by region.
+	if(cols != m->getMapSyncCols() || rows != m->getMapSyncRows())
+		return;
+
+	CBytestream out;
+	out.writeByte(S2C_MAPSYNCDATA);
+	// Reserve the region count; fill it in once we know how many differ.
+	std::vector< std::pair<int,int> > diff;
+	size_t idx = 0;
+	for(int r = 0; r < rows; ++r)
+		for(int c = 0; c < cols; ++c, ++idx)
+			if(m->getRegionMaterialChecksum(c, r) != clientCrc[idx])
+				diff.push_back(std::make_pair(c, r));
+
+	if(diff.empty())
+		return;
+
+	out.writeInt16((int)diff.size());
+	for(size_t i = 0; i < diff.size(); ++i) {
+		out.writeInt16(diff[i].first);
+		out.writeInt16(diff[i].second);
+		m->writeRegionMaterial(&out, diff[i].first, diff[i].second);
+	}
+	SendPacket(&out);
+}
 
 
 ///////////////////

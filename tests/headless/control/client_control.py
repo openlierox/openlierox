@@ -27,6 +27,7 @@ def main():
     name = os.environ.get("OLX_CLIENT_NAME", "client")
     leave_signal = os.environ.get("OLX_LEAVE_SIGNAL_FILE")
     emit_state = os.environ.get("OLX_EMIT_STATE")
+    emit_mapchk = os.environ.get("OLX_EMIT_MAPCHK")
     reached_playing = False
     combat = False
     prev_worms = set()
@@ -49,6 +50,13 @@ def main():
         if state == "Playing" and not reached_playing:
             emit("CLIENT[%s] PLAYING" % name)
             reached_playing = True
+        # Report this client's terrain checksum,
+        # so a test can confirm a mid-game joiner
+        # ends up with the same map state as the server (#827).
+        if reached_playing and emit_mapchk:
+            chk = command("getMapMaterialChecksum")
+            if chk:
+                emit("CLIENT[%s] MAPCHK %s" % (name, chk[0]))
         # Report this client's own view of every worm's state, so a test can
         # check it against the server's view and confirm the game state syncs.
         if reached_playing and emit_state:

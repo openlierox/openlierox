@@ -94,6 +94,20 @@ INLINE Version OLXBetaVersion(int num, int subnum, int betaversion) {
 	return v;
 }
 
+// A date-based release version (YYYYMMDD.build),
+// the scheme in use since the 0.59 betas -- see get_olx_version() in functions.sh.
+// Use this to gate a feature introduced
+// after the switch away from the OLXBetaVersion numbering.
+INLINE Version OLXDateVersion(int date, int build) {
+	Version v;
+	v.gamename = fullGameName;
+	v.num = date;
+	v.subnum = build;
+	v.subsubnum = 0;
+	v.releasetype = Version::RT_NORMAL;
+	return v;
+}
+
 INLINE Version OLXVersionBranchStart(int num, int subnum) {
 	Version v;
 	v.gamename = fullGameName;

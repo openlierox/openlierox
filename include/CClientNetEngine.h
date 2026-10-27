@@ -44,6 +44,7 @@ public:
 	virtual void		SendText(const std::string& sText, std::string sWormName);
 	virtual void		SendWormDetails();
 	virtual void		SendGrabBonus(int id, int wormid);
+	void				SendRequestMapSync();	// terrain resync request (#827)
 	virtual void		SendUpdateLobby(bool ready = true);
 	virtual void		SendDisconnect();
 	virtual void		SendFileData();
@@ -99,6 +100,8 @@ protected:
 	void		 ParseDestroyBonus(CBytestream *bs);
     void		 ParseDropped(CBytestream *bs);
     void		 ParseSendFile(CBytestream *bs);
+	void		 ParseMapSyncData(CBytestream *bs);
+	void		 ParseMapChecksum(CBytestream *bs);
 	virtual void ParseFlagInfo(CBytestream* bs);
 	virtual void ParseTeamScoreUpdate(CBytestream* bs);
 	virtual void ParseWormProps(CBytestream* bs);

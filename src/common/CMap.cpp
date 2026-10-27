@@ -813,6 +813,118 @@ void CMap::CalculateDirtCount()
 }
 
 
+Uint32 CMap::getMaterialChecksum() {
+	if(!material) return 0;
+	lockFlags(false);
+	uLong crc = crc32(0, Z_NULL, 0);
+	for(size_t y = 0; y < Height; ++y)
+		crc = crc32(crc, (const Bytef*)material->line[y], (uInt)Width);
+	unlockFlags(false);
+	return (Uint32)crc;
+}
+
+
+// Bounds of region (col,row), clipped to the map.
+void CMap::syncRegionBounds(int col, int row, int& x0, int& y0, int& x1, int& y1) const {
+	x0 = col * MAP_SYNC_REGION;
+	y0 = row * MAP_SYNC_REGION;
+	x1 = MIN(x0 + (int)MAP_SYNC_REGION, (int)Width);
+	y1 = MIN(y0 + (int)MAP_SYNC_REGION, (int)Height);
+}
+
+
+Uint32 CMap::getRegionMaterialChecksum(int col, int row) {
+	if(!material) return 0;
+	int x0, y0, x1, y1;
+	syncRegionBounds(col, row, x0, y0, x1, y1);
+	lockFlags(false);
+	uLong crc = crc32(0, Z_NULL, 0);
+	for(int y = y0; y < y1; ++y)
+		crc = crc32(crc, (const Bytef*)&material->line[y][x0], (uInt)(x1 - x0));
+	unlockFlags(false);
+	return (Uint32)crc;
+}
+
+
+void CMap::writeRegionMaterial(CBytestream* bs, int col, int row) {
+	int x0, y0, x1, y1;
+	syncRegionBounds(col, row, x0, y0, x1, y1);
+	int rw = x1 - x0, rh = y1 - y0;
+	uLong rawLen = (uLong)rw * rh;
+
+	std::vector<uchar> raw(rawLen ? rawLen : 1);
+	lockFlags(false);
+	size_t p = 0;
+	for(int y = y0; y < y1; ++y)
+		for(int x = x0; x < x1; ++x)
+			raw[p++] = (uchar)material->line[y][x];
+	unlockFlags(false);
+
+	uLong compLen = compressBound(rawLen);
+	std::vector<uchar> comp(compLen ? compLen : 1);
+	if(compress(&comp[0], &compLen, &raw[0], rawLen) != Z_OK) {
+		errors << "CMap::writeRegionMaterial: compress failed" << endl;
+		compLen = 0;
+	}
+	bs->writeInt((int)rawLen, 4);
+	bs->writeInt((int)compLen, 4);
+	bs->writeData(std::string((const char*)&comp[0], compLen));
+}
+
+
+bool CMap::applyRegionMaterial(CBytestream* bs, int col, int row) {
+	int x0, y0, x1, y1;
+	syncRegionBounds(col, row, x0, y0, x1, y1);
+	int rw = x1 - x0, rh = y1 - y0;
+
+	uLong rawLen = (uLong)(Uint32)bs->readInt(4);
+	uLong compLen = (uLong)(Uint32)bs->readInt(4);
+	std::string comp = bs->readData(compLen);
+	if(!material || rawLen != (uLong)rw * rh || comp.size() != compLen)
+		return false;
+
+	std::vector<uchar> raw(rawLen ? rawLen : 1);
+	uLong gotLen = rawLen;
+	if(uncompress(&raw[0], &gotLen, (const Bytef*)comp.data(), compLen) != Z_OK || gotLen != rawLen)
+		return false;
+
+	// Overwrite the material and repaint only the pixels that changed:
+	// carved/empty reveals the background image,
+	// placed dirt shows the front tile,
+	// unchanged pixels keep the original artwork.
+	const bool haveImage = bmpBackImageHiRes.get() != NULL && bmpDrawImage.get() != NULL
+		&& Theme.bmpFronttile.get() != NULL;
+	SDL_Surface* front = Theme.bmpFronttile.get();
+
+	lockFlags(true);
+	if(haveImage) { LockSurface(bmpDrawImage); LockSurface(Theme.bmpFronttile); }
+	size_t p = 0;
+	for(int y = y0; y < y1; ++y) {
+		for(int x = x0; x < x1; ++x, ++p) {
+			uchar newIdx = raw[p];
+			if((uchar)material->line[y][x] == newIdx)
+				continue;
+			material->line[y][x] = (char)newIdx;
+			if(!haveImage)
+				continue;
+			uchar lx = m_materialList[newIdx].toLxFlags();
+			int dx = x * 2, dy = y * 2;
+			if(lx & PX_DIRT) {
+				Color c(front->format, GetPixel(front, x % front->w, y % front->h));
+				PutPixel2x2(bmpDrawImage.get(), dx, dy, c.get(bmpDrawImage->format));
+			}
+			else // empty (carved) or rock: reveal the background image
+				CopyPixel2x2_SameFormat(bmpDrawImage.get(), bmpBackImageHiRes.get(), dx, dy);
+		}
+	}
+	if(haveImage) { UnlockSurface(Theme.bmpFronttile); UnlockSurface(bmpDrawImage); }
+	unlockFlags(true);
+
+	UpdateArea(x0, y0, rw, rh, true);
+	return true;
+}
+
+
 static bool getGroundPos(CMap* cMap, const CVec& pos, CVec* ret, uchar badPX) {
 	// TODO: optimise
 	
