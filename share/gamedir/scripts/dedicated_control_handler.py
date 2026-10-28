@@ -1,4 +1,4 @@
-#!/usr/bin/env -S python2 -u
+#!/usr/bin/env -S python3 -u
 # Dedicated Control handler script for OpenLieroX
 # (http://openlierox.sourceforge.net)
 
@@ -14,7 +14,7 @@ import traceback
 import random
 import portalocker
 import subprocess, signal, os.path
-import distutils.version
+import re
 
 import dedicated_control_io as io
 setvar = io.setvar
@@ -274,16 +274,23 @@ def parseNewWorm(wormID, name):
 	wormIP = io.getWormIP(wormID).split(":")[0]
 	# io.messageLog("Curtime " + str(time.time()) + " IP " + str(wormIP) + " Kicked worms: " + str(cmds.kickedUsers), io.LOG_INFO)
 	if wormIP in cmds.kickedUsers and cmds.kickedUsers[ wormIP ] > time.time():
-			io.kickWorm( wormID, "You can join in " + str(int(cmds.kickedUsers[ wormIP ] - time.time())/60 + 1) + " minutes" )
+			io.kickWorm( wormID, "You can join in " + str(int(cmds.kickedUsers[ wormIP ] - time.time())//60 + 1) + " minutes" )
 			return
 	cmds.recheckVote()
 
 	ver = io.getWormVersion(wormID)
-	if distutils.version.LooseVersion(ver.lower()) < distutils.version.LooseVersion("OpenLieroX/0.58_rc5".lower()):
+	if versionKey(ver) < versionKey("OpenLieroX/0.58_rc5"):
 		io.privateMsg(wormID, "Download OpenLieroX 0.58 rc5 at http://openlierox.net/")
 
 	if newWormHandler != None:
 		newWormHandler(wormID, name)
+
+
+# Splits a version string into comparable numeric/text parts
+# (distutils.version.LooseVersion was removed in Python 3.12).
+def versionKey(ver):
+	return [(0, int(p), "") if p.isdigit() else (1, 0, p)
+			for p in re.split(r"(\d+)|[._/-]+", ver.lower()) if p]
 
 
 def parseWormLeft(sig):
@@ -547,7 +554,7 @@ class ModCicler(StandardCiclerGameVar):
 
 		sDefaults = os.path.join(presetDir,"Defaults")
 		try:
-			execfile(sDefaults)
+			exec(compile(open(sDefaults).read(), sDefaults, 'exec'), globals())
 		except:
 			io.messageLog("Error in preset: " + str(formatExceptionInfo()),io.LOG_ERROR)
 
@@ -556,15 +563,15 @@ class ModCicler(StandardCiclerGameVar):
 		if os.path.exists(sFile):
 			StandardCiclerBase.apply(self)
 			try:
-				fPreset = file(sFile,"r")
+				fPreset = open(sFile,"r")
 				line = fPreset.readline()
 				if line.find("python") != -1:
 					fPreset.close()
-					execfile(sFile)
+					exec(compile(open(sFile).read(), sFile, 'exec'), globals())
 				else:
-					print line.strip().replace('"','')
+					print(line.strip().replace('"',''))
 					for line in fPreset.readlines():
-						print line.strip().replace('"','')
+						print(line.strip().replace('"',''))
 					fPreset.close()
 			except IOError:
 				# File does not exist, perhaps it was removed.
@@ -661,9 +668,9 @@ def randomizeTeams():
 	for w in worms.values():
 		io.setWormTeam( w.iID, 0 )
 	for f in range(int(len(worms)/2)):
-		red = random.choice(worms.values()).iID
+		red = random.choice(list(worms.values())).iID
 		if io.getWormTeam( red ) == 1: # Not "while" to avoid infinite loop
-			red = random.choice(worms.values()).iID
+			red = random.choice(list(worms.values())).iID
 		io.setWormTeam( red, 1 )
 
 def describeScheduledPresets():
@@ -734,7 +741,7 @@ def controlHandlerDefault():
 			cmds.increaseVoteTime()
 			cmds.recheckVote()
 			if videoRecorder:
-				os.kill(videoRecorder.pid, signal.SIGINT)  # videoRecorder.send_signal(signal.SIGINT) # This is available only on Python 2.6
+				os.kill(videoRecorder.pid, signal.SIGINT)  # equivalent to videoRecorder.send_signal(signal.SIGINT)
 				videoRecorderSignalTime = time.time()
 				io.chatMsg("Waiting for video recorder to finish")
 

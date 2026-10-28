@@ -1,4 +1,4 @@
-#!/usr/bin/env -S python2 -u
+#!/usr/bin/env -S python3 -u
 
 global worms, io
 

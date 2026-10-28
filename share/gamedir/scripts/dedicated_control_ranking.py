@@ -1,3 +1,5 @@
+import functools
+
 
 import dedicated_control_io as io
 
@@ -25,7 +27,6 @@ def ParseRank(useRatios = True):
                 deaders[deader].append(killer)
                 l = f.readline()
         f.close()
-        sorted = killers.keys()
         def sortFunc(s1, s2):
                 suicides1 = killers[s1].count(s1)
                 suicides2 = killers[s2].count(s2)
@@ -47,10 +48,10 @@ def ParseRank(useRatios = True):
                 if deaths1 < deaths2: return -1
                 if deaths1 > deaths2: return 1
                 return 0
-        sorted.sort(cmp=sortFunc)
+        ranked = sorted(killers.keys(), key=functools.cmp_to_key(sortFunc))
         rank = 0
         total = {}
-        for k in sorted:
+        for k in ranked:
                 rank += 1
                 kills = len(killers[k])
                 try:
@@ -112,12 +113,11 @@ def refreshRank(useRatios = True):
                 if deaths1 < deaths2: return -1
                 if deaths1 > deaths2: return 1
                 return 0
-        sorted=rank.keys()
-        sorted.sort(cmp=sortFunc)
+        ranked = sorted(rank.keys(), key=functools.cmp_to_key(sortFunc))
         oldrank = rank
         rank = {}
         count = 0
-        for k in sorted:
+        for k in ranked:
                 count += 1
                 rank[k] = [oldrank[k][0],oldrank[k][1],oldrank[k][2],count]
 

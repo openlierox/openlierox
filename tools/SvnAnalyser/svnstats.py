@@ -1,10 +1,8 @@
-#!/usr/bin/python
-
-from __future__ import division
+#!/usr/bin/python3
 
 import os
 import sys
-import StringIO
+import io
 import gzip
 import getopt
 
@@ -21,15 +19,15 @@ startrev = 2
 
 try:
 	opts, args = getopt.getopt(sys.argv[1:], "r:", ["rev="])
-except getopt.GetoptError, err:
+except getopt.GetoptError as err:
 	# print help information and exit:
-	print str(err) # will print something like "option -a not recognized"
+	print(str(err)) # will print something like "option -a not recognized"
 	usage()
 	sys.exit(2)
 for o, a in opts:
 	if o == "-r":
 		startrev = int(a)
-	
+
 
 def svnInfo(revision):
 	first = True
@@ -45,20 +43,20 @@ def svnInfo(revision):
 			continue
 		if len(comment) > 0: comment += "   "
 		comment += l
-	if author == "": raise "invalid revision"
+	if author == "": raise ValueError("invalid revision")
 	return (author, date, comment)
 
 def analyseData(preprint, data):
-	print preprint, "size:", len(data)
+	print(preprint, "size:", len(data))
 	if data == "": return 0
-	s = StringIO.StringIO()
+	s = io.BytesIO()
 	g = gzip.GzipFile(fileobj=s, mode="wb")
-	gzipheadersize = s.len + 10
-	g.write(data)
+	gzipheadersize = s.tell() + 10
+	g.write(data.encode("utf-8", "replace"))
 	g.close()
-	complen = s.len - gzipheadersize
-	print preprint, "compressed size:", complen
-	print preprint, "compress rate:", (100 * len(data) / complen), "%"
+	complen = s.tell() - gzipheadersize
+	print(preprint, "compressed size:", complen)
+	print(preprint, "compress rate:", (100 * len(data) / complen), "%")
 	return min(len(data), complen)
 
 def analyseDiff(dir, diffOut):
@@ -69,7 +67,7 @@ def analyseDiff(dir, diffOut):
 		if l.startswith("======="): continue
 		if l.startswith("Index: "):
 			file = dir + "/" + l[7:]
-			print "  file:", file
+			print("  file:", file)
 			continue
 		if file == "": continue
 		if l.startswith("+"):
@@ -83,11 +81,11 @@ def analyseDiff(dir, diffOut):
 stats = dict()
 
 def analyseSvnRev(rev):
-	print "rev", rev, ":",
+	print("rev", rev, ":", end=" ")
 	author, date, comment = svnInfo(rev)
-	print author, ",", date, ":", comment
+	print(author, ",", date, ":", comment)
 	if not author in stats:
-		print "  new dev:", author
+		print("  new dev:", author)
 		stats[author] = 0
 
 	for d in dirs:
@@ -100,5 +98,5 @@ def analyseSvnRev(rev):
 rev = startrev
 while True:
 	analyseSvnRev(rev)
-	print "stats:", stats
+	print("stats:", stats)
 	rev += 1

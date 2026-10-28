@@ -1,4 +1,4 @@
-#!/usr/bin/env -S python2 -u
+#!/usr/bin/env -S python3 -u
 
 # The Python presets are detected from non-Python ones by first line which shouild contain "python" string
 # This file contains default settings for all presets, 

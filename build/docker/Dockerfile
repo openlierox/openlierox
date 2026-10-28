@@ -1,14 +1,12 @@
-# OpenLieroX dedicated server — Ubuntu 22.04 "jammy"
+# OpenLieroX dedicated server — Ubuntu 24.04 "noble"
 #
-# Why jammy: the dedicated-server automation (share/gamedir/scripts/
-# dedicated_control*) is written in Python 2 and runs via a
-# "#!/usr/bin/env -S python2 -u" shebang. jammy is the newest widely-used LTS
-# release that still packages python2.7 (in universe, enabled by default in
-# the base image) — Ubuntu 24.04 and Debian 12/13 dropped it. jammy is in
-# standard support until April 2027 (then Ubuntu Pro ESM).
+# Why noble: an LTS release with all the build dependencies packaged and in
+# standard support until April 2029 (then Ubuntu Pro ESM). The dedicated-server
+# automation (share/gamedir/scripts/dedicated_control*) is written in Python 3
+# and runs via a "#!/usr/bin/env -S python3 -u" shebang.
 
 # ---------- build stage ----------
-FROM ubuntu:22.04 AS build
+FROM ubuntu:24.04 AS build
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -46,11 +44,11 @@ RUN cmake -DDEDICATED_ONLY=Yes -DHAWKNL_BUILTIN=Yes -DDEBUG=No . \
     && make -j"$n"
 
 # ---------- runtime stage ----------
-FROM ubuntu:22.04
+FROM ubuntu:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        python2.7 \
+        python3 \
         libbinutils \
         # Needed for libcurl's HTTPS certificate verification (external-IP
         # lookup and master-server registration both use HTTPS).
@@ -61,12 +59,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libxml2 \
         libgd3 \
         zlib1g \
-        libzip4 \
-        libcurl4 \
+        libzip4t64 \
+        libcurl4t64 \
         libopenal1 \
         libalut0 \
         libvorbisfile3 \
-    && ln -sf /usr/bin/python2.7 /usr/bin/python2 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /src/bin/openlierox /usr/local/bin/openlierox
